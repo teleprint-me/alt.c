@@ -162,6 +162,7 @@ class MagicType:
         return value == MagicType.ALIGNMENT
 
 
+@dataclass
 class CLIParams:
     alt_file: Optional[IO] = None
     directory: str = ""
