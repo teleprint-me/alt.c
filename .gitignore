@@ -14,6 +14,7 @@ build-no-accel/
 build-sanitize-addr/
 build-sanitize-thread/
 
+/papers
 /models
 /main
 /quantize
