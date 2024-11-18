@@ -1,14 +1,12 @@
 # alt.c CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.14)
-project("alt" VERSION 0.1.0 DESCRIPTION "ANSI C/C++ library for inferencing, training, and finetuning Mistral.")
+project("alt" VERSION 0.1.0 DESCRIPTION "ANSI C library for inferencing, training, and finetuning Mistral.")
 
 # Set C and C++ standard rules
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add sanitizers for memory safety
 # Ref: https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html
@@ -27,10 +25,8 @@ set(DEBUG_ANALYSIS "-Wanalyzer-double-free -Wanalyzer-file-leak -Wanalyzer-mallo
 # Apply flags conditionally based on build type
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_WARNING_FLAGS} ${DEBUG_SANITIZERS} ${DEBUG_EXTRA_WARNINGS} ${DEBUG_ANALYSIS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_WARNING_FLAGS} ${DEBUG_SANITIZERS} ${DEBUG_EXTRA_WARNINGS} ${DEBUG_ANALYSIS}")
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_WARNING_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_WARNING_FLAGS}")
 endif()
 
 # Enable Shared Libraries option
@@ -41,11 +37,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Define the core C library
-set(C_SOURCES src/magic.c src/mistral.c)
+set(C_SOURCES src/tensors.c)
 add_library("alt" ${C_SOURCES})
 
 # Include headers
 target_include_directories("alt" PUBLIC include)
+
+# Add examples
+add_subdirectory(examples)
 
 # Link necessary libraries (e.g., math, real-time library, Vulkan if Linux)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
