@@ -6,11 +6,17 @@
 
 #include <stdio.h>
 
-int main() {
-    unsigned int shape[2] = {4, 2};
-    Tensor* tensor = tensor_create(shape, 2);
+#define INPUT_RANK 2
 
-    unsigned int indices[2] = {1, 1};
+/**
+ * This example demonstrates how to create a 2D tensor, set an element at a specific index,
+ * retrieve the value of an element at a specific index, and deallocate memory for the tensor.
+ */
+int main() {
+    unsigned int shape[INPUT_RANK] = {4, 2};
+    Tensor* tensor = tensor_create(shape, INPUT_RANK);
+
+    unsigned int indices[INPUT_RANK] = {1, 1};
     tensor_set_element(tensor, indices, 3.14);
 
     // @note Handle implicit conversion from float to double.
