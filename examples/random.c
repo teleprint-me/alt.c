@@ -32,9 +32,9 @@ void interval(float n) {
 }
 
 int main(void) {
-    int max = 10;
+    int max_outputs = 10;
     initialize();
-    for (int i = 0; i < max; i++) {
+    for (int i = 0; i < max_outputs; i++) {
         float norm = normalize();
         interval(norm);
     }
