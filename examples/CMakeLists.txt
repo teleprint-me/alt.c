@@ -1,7 +1,9 @@
 # Add ALT related examples
-set(EXAMPLES 
+set(EXAMPLES
+    compare_float
     random
     tensors
+    # perceptron
 )
 
 # Create executables for simple ALT examples
