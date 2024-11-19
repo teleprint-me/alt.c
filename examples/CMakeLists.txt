@@ -3,7 +3,7 @@ set(EXAMPLES
     compare_float
     random
     tensors
-    # perceptron
+    perceptron
 )
 
 # Create executables for simple ALT examples
