@@ -8,25 +8,36 @@
 #include <string.h>
 #include <time.h>
 
+#include "tensors.h"
+
+// Define macros for input dimensions
+#define INPUT_ROWS 4
+#define INPUT_COLS 2
+#define INPUT_RANK 2
+
+#define WEIGHTS_ROWS INPUT_COLS
+#define WEIGHTS_COLS 1
+#define WEIGHTS_RANK 2
+
+#define OUTPUT_ROWS INPUT_ROWS
+#define OUTPUT_COLS 1
+#define OUTPUT_RANK 2
+
+// Default hyperparameter values
+#define DEFAULT_LEARNING_RATE 1e-5f
+#define DEFAULT_N_EPOCHS 10
+#define DEFAULT_N_SAMPLES 4
+#define DEFAULT_N_INPUTS 2
+#define DEFAULT_N_OUTPUTS 1
+
 // Hyperparameters structure
 typedef struct Parameters {
-    // float32
-    float learning_rate;
-    // uint32
-    unsigned int n_epochs;
-    unsigned int n_samples;
-    unsigned int n_inputs;
-    unsigned int n_outputs;
+    float learning_rate; // Learning rate for weight updates
+    unsigned int n_epochs; // Number of training epochs
+    unsigned int n_samples; // Number of training samples
+    unsigned int n_inputs; // Number of input features
+    unsigned int n_outputs; // Number of output nodes
 } Parameters;
-
-// Perceptron structure
-typedef struct Perceptron {
-    float bias;
-    float* x; // inputs
-    float* w; // weights
-    float* o; // outputs
-    Parameters* params;
-} Perceptron;
 
 // Create Parameters
 Parameters* create_parameters(
@@ -37,39 +48,55 @@ Parameters* create_parameters(
     float learning_rate
 ) {
     Parameters* params = (Parameters*) malloc(sizeof(Parameters));
-    params->n_inputs = n_inputs;
-    params->n_outputs = n_outputs ? n_outputs : 1;
-    params->n_epochs = n_epochs ? n_epochs : 10;
-    params->n_samples = n_samples ? n_samples : 1;
-    params->learning_rate = learning_rate ? learning_rate : 1e-5f; // 1 * 10-e5
+    if (!params) {
+        fprintf(stderr, "Error: Memory allocation failed for Parameters.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    params->n_inputs = n_inputs ? n_inputs : DEFAULT_N_INPUTS;
+    params->n_outputs = n_outputs ? n_outputs : DEFAULT_N_OUTPUTS;
+    params->n_epochs = n_epochs ? n_epochs : DEFAULT_N_EPOCHS;
+    params->n_samples = n_samples ? n_samples : DEFAULT_N_SAMPLES;
+    params->learning_rate = learning_rate > 0.0f ? learning_rate : DEFAULT_LEARNING_RATE;
+
     return params;
 }
 
+// Free Parameters
 void free_parameters(Parameters* params) {
     if (params) {
         free(params);
     }
 }
 
-// private function for creating perceptrons
-// @note avoiding tensors for now as it'll complicate the implementation. better to keep it simple.
-void create_vector(float** x, unsigned int limit) {
-    *x = (float*) malloc(limit * sizeof(float)); // Allocate memory
-    for (unsigned int i = 0; i < limit; i++) {
-        (*x)[i] = 0.0f; // Zero-initialize
-    }
-}
+// Perceptron structure
+typedef struct Perceptron {
+    float bias;
+    Tensor* x; // input shape is 4x2 (n_samples, n_inputs)
+    Tensor* w; // weight shape is 2x1 (x_i * w + bias)
+    Tensor* o; // output shape is 4x1 (n_samples, 1)
+    Parameters* params;
+} Perceptron;
 
 // Initialize perceptron
 Perceptron* create_perceptron(Parameters* params, float bias) {
-    // allocate the perceptron
     Perceptron* perceptron = (Perceptron*) malloc(sizeof(Perceptron));
-    // allocate the inputs, weights, and outputs
-    create_vector(&perceptron->x, params->n_inputs);
-    create_vector(&perceptron->w, params->n_inputs);
-    create_vector(&perceptron->o, params->n_outputs);
-    perceptron->params = params; // set hyperparameters
-    perceptron->bias = bias; // set the bias
+    if (!perceptron) {
+        fprintf(stderr, "Error: Memory allocation failed for Perceptron.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    unsigned int input_shape[INPUT_RANK] = {params->n_samples, params->n_inputs};
+    unsigned int weight_shape[WEIGHTS_RANK] = {params->n_inputs, 1};
+    unsigned int output_shape[OUTPUT_RANK] = {params->n_samples, params->n_outputs};
+
+    perceptron->x = tensor_create(input_shape, INPUT_RANK); // Inputs
+    perceptron->w = tensor_create(weight_shape, WEIGHTS_RANK); // Weights
+    perceptron->o = tensor_create(output_shape, OUTPUT_RANK); // Outputs
+
+    perceptron->params = params;
+    perceptron->bias = bias;
+
     return perceptron;
 }
 
@@ -77,86 +104,137 @@ Perceptron* create_perceptron(Parameters* params, float bias) {
 void free_perceptron(Perceptron* p) {
     if (p) {
         if (p->x) {
-            free(p->x);
+            tensor_free(p->x);
         }
         if (p->w) {
-            free(p->w);
+            tensor_free(p->w);
         }
         if (p->o) {
-            free(p->o);
+            tensor_free(p->o);
         }
         free(p);
     }
 }
 
-// @note Can probably use xavier or he initialization. doesn't matter right now.
-// something to think about.
-void initialize_weights(Perceptron* p) {
-    for (unsigned int i = 0; i < p->params->n_inputs; i++) {
-        float norm = (float) rand() / (float) RAND_MAX; // normalize input
-        p->w[i] = norm * 2 - 1; // set an interval of [-1, 1]
-    }
-}
-
-void initialize_inputs(Perceptron* p, float* inputs) {
-    // if n_inputs is 0, the loop will not execute
-    for (unsigned int i = 0; i < p->params->n_inputs; i++) {
-        p->x[i] = inputs[i];
-    }
-}
-
-void initialize_outputs(Perceptron* p, float* outputs) {
-    // if n_outputs is 0, the loop will not execute
-    for (unsigned int i = 0; i < p->params->n_outputs; i++) {
-        p->o[i] = outputs[i];
-    }
-}
-
-float calculate_dot_product(Perceptron* p) {
-    float sum = p->bias;
-    for (size_t i = 0; i < p->params->n_inputs; i++) {
-        sum += p->x[i] * p->w[i]; // weighted sum
-    }
-    return sum;
-}
-
 // 32-bit floating-point comparison
 unsigned int compare_float(float a, float b, float threshold) {
-    return fabsf(a - b) < (threshold ? threshold : 1e-7) ? 1 : 0; // 1 is true, 0 is false
+    // Use a default threshold if none is provided
+    float abs_threshold = threshold > 0.0f ? threshold : 1e-7f;
+
+    // Absolute difference
+    float diff = fabsf(a - b);
+
+    // Handle near-zero comparisons with absolute threshold
+    if (diff < abs_threshold) {
+        return 1; // True
+    }
+
+    // Relative difference comparison for larger numbers
+    float largest = fmaxf(fabsf(a), fabsf(b));
+    if (diff < abs_threshold * largest) {
+        return 1; // True
+    }
+
+    return 0; // False
 }
 
+// Populate inputs for AND truth table
+void initialize_inputs(Tensor* inputs) {
+    float input_data[INPUT_ROWS][INPUT_COLS] = {
+        {0.0, 0.0},
+        {0.0, 1.0},
+        {1.0, 0.0},
+        {1.0, 1.0}
+    };
+
+    for (unsigned int i = 0; i < INPUT_ROWS; i++) {
+        for (unsigned int j = 0; j < INPUT_COLS; j++) {
+            tensor_set_element(inputs, (unsigned int[]){i, j}, input_data[i][j]);
+        }
+    }
+}
+
+// @note Can probably use xavier or he initialization.
+// doesn't matter right now. something to think about.
+
+// Initialize weights randomly in the range [0, 1]
+void initialize_weights(Tensor* weights) {
+    for (unsigned int i = 0; i < weights->shape[0]; i++) {
+        unsigned int index[1] = {i};
+        float random_weight = (float) rand() / RAND_MAX; // Range [0, 1]
+        tensor_set_element(weights, index, random_weight);
+    }
+}
+
+// Alternative: Initialize weights in the range [-1, 1]
+void initialize_weights_alternative(Tensor* weights) {
+    for (unsigned int i = 0; i < weights->shape[0]; i++) {
+        unsigned int index[1] = {i};
+        float random_weight = ((float) rand() / RAND_MAX) * 2 - 1; // Range [-1, 1]
+        tensor_set_element(weights, index, random_weight);
+    }
+}
+
+// @note can probably use sigmoid, silu, relu, gelu, etc.
+// doesn't matter right now. something to think about.
+
 // Activation function
-// @note can probably use silu, relu, gelu, etc. doesn't matter right now.
-// something to think about.
 float binary_step_activation(float x) {
     return compare_float(x, 0.0f, 0.0f) ? 1.0f : 0.0f;
 }
 
-// Predict using the perceptron
-int predict(Perceptron* p, float* inputs) {
-    initialize_inputs(p, inputs);
-    float sum = calculate_dot_product(p);
-    return binary_step_activation(sum);
+float sigmoid_activation(float x) {
+    return 1.0f / (1.0f + expf(-x));
+}
+
+// Compute dot product using tensors
+float calculate_row_dot_product(Tensor* x, Tensor* w, float bias, unsigned int row) {
+    float dot_product = 0.0f;
+    for (unsigned int i = 0; i < x->shape[1]; i++) {
+        dot_product += tensor_get_element(x, (unsigned int[]){row, i})
+                       * tensor_get_element(w, (unsigned int[]){i, 0});
+    }
+    return dot_product + bias;
+}
+
+// Feed-forward using the perceptron
+float predict(Perceptron* p, unsigned int row, float (*activation_fn)(float)) {
+    float sum = calculate_row_dot_product(p->x, p->w, p->bias, row);
+    return activation_fn(sum);
+}
+
+// Back-propagation (error correction)
+void update_weights(Perceptron* p, unsigned int row, float error) {
+    for (unsigned int j = 0; j < p->params->n_inputs; j++) {
+        float weight = tensor_get_element(p->w, (unsigned int[]){j, 0});
+        float input = tensor_get_element(p->x, (unsigned int[]){row, j});
+        weight += p->params->learning_rate * error * input;
+        tensor_set_element(p->w, (unsigned int[]){j, 0}, weight);
+    }
+    p->bias += p->params->learning_rate * error;
 }
 
 // Train perceptron using the perceptron learning rule
-void train(Perceptron* p, float** inputs, float* outputs) {
-    for (size_t epoch = 0; epoch < p->params->n_epochs; epoch++) {
-        printf("Epoch %zu:\n", epoch + 1);
-        for (size_t i = 0; i < p->params->n_samples; i++) {
-            int output = predict(p, inputs[i]);
-            int error = outputs[i] - output;
+void train(Perceptron* p, float (*activation_fn)(float)) {
+    for (unsigned int epoch = 0; epoch < p->params->n_epochs; epoch++) {
+        printf("Epoch %u:\n", epoch + 1);
+
+        for (unsigned int i = 0; i < p->x->shape[0]; i++) { // Iterate over rows (samples)
+            // Predict the output for the current row
+            float predicted = predict(p, i, activation_fn);
+
+            // Calculate the error
+            float actual = tensor_get_element(p->o, (unsigned int[]){i, 0}); // Expected output
+            float error = actual - predicted;
 
             // Update weights and bias
-            for (size_t j = 0; j < p->params->n_inputs; j++) {
-                p->w[j] += p->params->learning_rate * error * inputs[i][j];
-            }
-            p->bias += p->params->learning_rate * error;
+            update_weights(p, i, error);
 
-            printf("  Sample %zu: Error = %d, New Weights = [", i, error);
-            for (size_t j = 0; j < p->params->n_inputs; j++) {
-                printf("%.2f", p->w[j]);
-                if (j < p->params->n_inputs - 1) {
+            // Debugging: Print weights and bias
+            printf("  Sample %u: Error = %.2f, Weights = [", i, error);
+            for (unsigned int j = 0; j < p->w->shape[0]; j++) {
+                printf("%.2f", tensor_get_element(p->w, (unsigned int[]){j, 0}));
+                if (j < p->w->shape[0] - 1) {
                     printf(", ");
                 }
             }
@@ -166,51 +244,50 @@ void train(Perceptron* p, float** inputs, float* outputs) {
     }
 }
 
+// Main function
 int main() {
-    // Seed once at the start of the program
-    srand(time(NULL));
+    // Seed random number generator for reproducibility
+    srand((unsigned int) time(NULL));
 
-    // Logical AND dataset
-    float** inputs = {
-        {0, 0},
-        {0, 1},
-        {1, 0},
-        {1, 1}
-    };
-    float* outputs = {0, 0, 0, 1}; // AND truth table
-
-    // Create perceptron and parameters
+    // Create perceptron parameters
     Parameters* params = create_parameters(
         /* n_inputs */ 2,
         /* n_outputs */ 1,
         /* n_epochs */ 10,
         /* n_samples */ 4,
-        /* learning_rate */ 0.1f
+        /* learning rate */ 0.01f
     );
+
+    // Create and initialize the perceptron
     Perceptron* perceptron = create_perceptron(params, /* bias */ 0.0f);
 
+    // Initialize inputs and expected outputs (AND truth table)
+    initialize_inputs(perceptron->x);
+
     // Initialize weights
-    initialize_weights(perceptron);
+    initialize_weights(perceptron->w);
 
-    // Train perceptron
-    train(perceptron, inputs, outputs);
+    // Train the perceptron using the binary step activation function
+    train(perceptron, binary_step_activation);
 
-    // Test perceptron
-    printf("Testing perceptron:\n");
-    for (unsigned int i = 0; i < params->n_samples; i++) {
-        int prediction = predict(perceptron, inputs[i]);
+    // Test the trained perceptron
+    printf("Testing trained perceptron:\n");
+    for (unsigned int i = 0; i < perceptron->x->shape[0]; i++) {
+        // Predict output for each row
+        float predicted = predict(perceptron, i, binary_step_activation);
+        float actual = tensor_get_element(perceptron->o, (unsigned int[]){i, 0});
         printf(
-            "  Input: [%.0f, %.0f], Predicted: %d, Expected: %.0f\n",
-            inputs[i][0],
-            inputs[i][1],
-            prediction,
-            outputs[i]
+            "  Input: [%.1f, %.1f], Predicted: %.1f, Actual: %.1f\n",
+            tensor_get_element(perceptron->x, (unsigned int[]){i, 0}),
+            tensor_get_element(perceptron->x, (unsigned int[]){i, 1}),
+            predicted,
+            actual
         );
     }
 
-    // Clean up
-    free_perceptron(perceptron);
+    // Clean up memory
     free_parameters(params);
+    free_perceptron(perceptron);
 
     return 0;
 }
