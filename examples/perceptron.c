@@ -165,8 +165,8 @@ void initialize_inputs(Tensor* inputs) {
 }
 
 void initialize_targets(Tensor* targets) {
-    float output_data[4] = {0.0, 0.0, 0.0, 1.0}; // AND truth table results
-    for (unsigned int i = 0; i < 4; i++) {
+    float output_data[OUTPUT_ROWS] = {0.0, 0.0, 0.0, 1.0}; // AND truth table results
+    for (unsigned int i = 0; i < OUTPUT_ROWS; i++) {
         tensor_set_element(targets, (unsigned int[]){i, 0}, output_data[i]);
     }
 }
@@ -197,7 +197,7 @@ void initialize_weights_alternative(Tensor* weights) {
 
 // Activation function
 float binary_step_activation(float x) {
-    return compare_float(x, 0.0f, 0.0f) ? 1.0f : 0.0f;
+    return (x >= 0.0f) ? 1.0f : 0.0f;
 }
 
 float sigmoid_activation(float x) {
@@ -243,13 +243,14 @@ void train(Perceptron* p, float (*activation_fn)(float)) {
             tensor_set_element(p->o, (unsigned int[]){i, 0}, predicted);
 
             // Calculate the error using the ground truth
-            float label = tensor_get_element(p->t, (unsigned int[]){i, 0});
-            float error = label - predicted;
+            float actual = tensor_get_element(p->t, (unsigned int[]){i, 0});
+            float error = actual - predicted;
 
             // Update weights and bias
             update_weights(p, i, error);
 
             // Debugging: Print weights and bias
+            printf("  Weighted Sum (Row %u): %.2f\n", i, (double) predicted);
             printf("  Sample %u: Error = %.2f, Weights = [", i, (double) error);
             for (unsigned int j = 0; j < p->w->shape[0]; j++) {
                 printf("%.2f", (double) tensor_get_element(p->w, (unsigned int[]){j, 0}));
@@ -274,7 +275,7 @@ int main() {
         /* n_outputs */ 1,
         /* n_epochs */ 10,
         /* n_samples */ 4,
-        /* learning rate */ 0.01f
+        /* learning rate */ 0.1f
     );
 
     // Create and initialize the perceptron
@@ -289,6 +290,15 @@ int main() {
     // Initialize ground truth
     initialize_targets(perceptron->t);
 
+    printf("Initialized Weights = [");
+    for (unsigned int j = 0; j < perceptron->w->shape[0]; j++) {
+        printf("%.2f", (double) tensor_get_element(perceptron->w, (unsigned int[]){j, 0}));
+        if (j < perceptron->w->shape[0] - 1) {
+            printf(", ");
+        }
+    }
+    printf("], Bias = %.2f\n", (double) perceptron->bias);
+
     // Train the perceptron using the binary step activation function
     train(perceptron, binary_step_activation);
 
@@ -297,7 +307,7 @@ int main() {
     for (unsigned int i = 0; i < perceptron->x->shape[0]; i++) {
         // Predict output for each row
         float predicted = predict(perceptron, i, binary_step_activation);
-        float actual = tensor_get_element(perceptron->o, (unsigned int[]){i, 0});
+        float actual = tensor_get_element(perceptron->t, (unsigned int[]){i, 0});
         printf(
             "  Input: [%.1f, %.1f], Predicted: %.1f, Actual: %.1f\n",
             (double) tensor_get_element(perceptron->x, (unsigned int[]){i, 0}),
