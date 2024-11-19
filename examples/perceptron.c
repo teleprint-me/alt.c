@@ -72,9 +72,10 @@ void free_parameters(Parameters* params) {
 // Perceptron structure
 typedef struct Perceptron {
     float bias;
-    Tensor* x; // input shape is 4x2 (n_samples, n_inputs)
-    Tensor* w; // weight shape is 2x1 (x_i * w + bias)
-    Tensor* o; // output shape is 4x1 (n_samples, 1)
+    Tensor* x; // inputs shape is 4x2 (n_samples, n_inputs)
+    Tensor* w; // weights shape is 2x1 (x_i * w + bias)
+    Tensor* o; // predictions shape is 4x1 (n_samples, 1)
+    Tensor* t; // targets shape matches predictions shape
     Parameters* params;
 } Perceptron;
 
@@ -90,9 +91,11 @@ Perceptron* create_perceptron(Parameters* params, float bias) {
     unsigned int weight_shape[WEIGHTS_RANK] = {params->n_inputs, 1};
     unsigned int output_shape[OUTPUT_RANK] = {params->n_samples, params->n_outputs};
 
+    // Tensors are zero-initialized upon creation
     perceptron->x = tensor_create(input_shape, INPUT_RANK); // Inputs
     perceptron->w = tensor_create(weight_shape, WEIGHTS_RANK); // Weights
     perceptron->o = tensor_create(output_shape, OUTPUT_RANK); // Outputs
+    perceptron->t = tensor_create(output_shape, OUTPUT_RANK); // Targets
 
     perceptron->params = params;
     perceptron->bias = bias;
@@ -101,18 +104,25 @@ Perceptron* create_perceptron(Parameters* params, float bias) {
 }
 
 // Free perceptron
-void free_perceptron(Perceptron* p) {
-    if (p) {
-        if (p->x) {
-            tensor_free(p->x);
+void free_perceptron(Perceptron* perceptron) {
+    if (perceptron) {
+        // free the inputs
+        if (perceptron->x) {
+            tensor_free(perceptron->x);
         }
-        if (p->w) {
-            tensor_free(p->w);
+        // free the weights
+        if (perceptron->w) {
+            tensor_free(perceptron->w);
         }
-        if (p->o) {
-            tensor_free(p->o);
+        // free the predictions
+        if (perceptron->o) {
+            tensor_free(perceptron->o);
         }
-        free(p);
+        // free the targets (ground truth)
+        if (perceptron->t) {
+            tensor_free(perceptron->t);
+        }
+        free(perceptron);
     }
 }
 
@@ -154,13 +164,20 @@ void initialize_inputs(Tensor* inputs) {
     }
 }
 
+void initialize_targets(Tensor* targets) {
+    float output_data[4] = {0.0, 0.0, 0.0, 1.0}; // AND truth table results
+    for (unsigned int i = 0; i < 4; i++) {
+        tensor_set_element(targets, (unsigned int[]){i, 0}, output_data[i]);
+    }
+}
+
 // @note Can probably use xavier or he initialization.
 // doesn't matter right now. something to think about.
 
 // Initialize weights randomly in the range [0, 1]
 void initialize_weights(Tensor* weights) {
     for (unsigned int i = 0; i < weights->shape[0]; i++) {
-        unsigned int index[1] = {i};
+        unsigned int index[WEIGHTS_RANK] = {i, 0};
         float random_weight = (float) rand() / RAND_MAX; // Range [0, 1]
         tensor_set_element(weights, index, random_weight);
     }
@@ -169,7 +186,7 @@ void initialize_weights(Tensor* weights) {
 // Alternative: Initialize weights in the range [-1, 1]
 void initialize_weights_alternative(Tensor* weights) {
     for (unsigned int i = 0; i < weights->shape[0]; i++) {
-        unsigned int index[1] = {i};
+        unsigned int index[WEIGHTS_RANK] = {i, 0};
         float random_weight = ((float) rand() / RAND_MAX) * 2 - 1; // Range [-1, 1]
         tensor_set_element(weights, index, random_weight);
     }
@@ -222,23 +239,25 @@ void train(Perceptron* p, float (*activation_fn)(float)) {
         for (unsigned int i = 0; i < p->x->shape[0]; i++) { // Iterate over rows (samples)
             // Predict the output for the current row
             float predicted = predict(p, i, activation_fn);
+            // Set the models predicted output
+            tensor_set_element(p->o, (unsigned int[]){i, 0}, predicted);
 
-            // Calculate the error
-            float actual = tensor_get_element(p->o, (unsigned int[]){i, 0}); // Expected output
-            float error = actual - predicted;
+            // Calculate the error using the ground truth
+            float label = tensor_get_element(p->t, (unsigned int[]){i, 0});
+            float error = label - predicted;
 
             // Update weights and bias
             update_weights(p, i, error);
 
             // Debugging: Print weights and bias
-            printf("  Sample %u: Error = %.2f, Weights = [", i, error);
+            printf("  Sample %u: Error = %.2f, Weights = [", i, (double) error);
             for (unsigned int j = 0; j < p->w->shape[0]; j++) {
-                printf("%.2f", tensor_get_element(p->w, (unsigned int[]){j, 0}));
+                printf("%.2f", (double) tensor_get_element(p->w, (unsigned int[]){j, 0}));
                 if (j < p->w->shape[0] - 1) {
                     printf(", ");
                 }
             }
-            printf("], Bias = %.2f\n", p->bias);
+            printf("], Bias = %.2f\n", (double) p->bias);
         }
         printf("\n");
     }
@@ -267,6 +286,9 @@ int main() {
     // Initialize weights
     initialize_weights(perceptron->w);
 
+    // Initialize ground truth
+    initialize_targets(perceptron->t);
+
     // Train the perceptron using the binary step activation function
     train(perceptron, binary_step_activation);
 
@@ -278,10 +300,10 @@ int main() {
         float actual = tensor_get_element(perceptron->o, (unsigned int[]){i, 0});
         printf(
             "  Input: [%.1f, %.1f], Predicted: %.1f, Actual: %.1f\n",
-            tensor_get_element(perceptron->x, (unsigned int[]){i, 0}),
-            tensor_get_element(perceptron->x, (unsigned int[]){i, 1}),
-            predicted,
-            actual
+            (double) tensor_get_element(perceptron->x, (unsigned int[]){i, 0}),
+            (double) tensor_get_element(perceptron->x, (unsigned int[]){i, 1}),
+            (double) predicted,
+            (double) actual
         );
     }
 
