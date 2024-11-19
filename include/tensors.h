@@ -9,6 +9,10 @@
 #ifndef ALT_TENSORS_H
 #define ALT_TENSORS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 // @brief Simplifies usage by mapping the tensor_compute_flat_index function call.
 #define TENSOR_IDX(tensor, indices) tensor_compute_flat_index((tensor), (indices))
 
@@ -32,5 +36,9 @@ void tensor_compute_multi_indices(const Tensor* tensor, unsigned int* indices, u
 float tensor_get_element(Tensor* tensor, unsigned int* indices);
 // @brief Sets an element at a specific set of indices.
 void tensor_set_element(Tensor* tensor, unsigned int* indices, float value);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // ALT_TENSORS_H
