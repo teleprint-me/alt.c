@@ -1,18 +1,11 @@
 /**
  * @file include/data_types.h
+ * @brief API for handling numeric data types and conversions.
  *
- * @brief API for handling numeric data types and conversions, focusing on 32-bit
- *        floating-point (float) and 32-bit integer (int32_t) representations. 
- *        Future extensions may include 16-bit and 8-bit formats for digital 
- *        signal processing (DSP) applications.
- *
- * This implementation uses pure C with minimal dependencies on external libraries.
- *
- * Key considerations:
- * - The interface is kept minimal and focused.
- * - Avoids the use of generics, limiting to a single base type (float, int32_t).
- * - Conversion logic is isolated into utility functions.
- * - A clean separation is maintained between different components for clarity.
+ * Focused on:
+ * - Single and half-precision floating-point.
+ * - 8-bit and 4-bit quantized integers.
+ * - Minimal dependencies and consistent design.
  */
 
 #ifndef ALT_DATA_TYPES_H
@@ -23,143 +16,87 @@ extern "C" {
 #endif // __cplusplus
 
 // Block size definitions for quantization
-#define DATA_QUANT_BLOCK_SIZE 32    /**< Standard block size for quantization */
-#define QK8_ELEMENTS DATA_QUANT_BLOCK_SIZE  /**< Number of elements in a q8 block */
-#define QK4_NIBBLES (DATA_QUANT_BLOCK_SIZE / 2) /**< Number of nibbles in a q4 block */
+#define DATA_QUANT_BLOCK_SIZE 32 /**< Standard block size for quantization */
+#define Q8_ELEMENTS DATA_QUANT_BLOCK_SIZE /**< Elements in an 8-bit quantized block */
+#define Q4_NIBBLES (DATA_QUANT_BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
+
+// Macro to compute the minimum of two values
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+// Macro to compute the maximum of two values
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// Macro to ensure a value falls within a specific range [min, max]
+#define MINMAX(value, min, max) ((value) < (min) ? (min) : ((value) > (max) ? (max) : (value)))
+
+// Macro to clamp a value between a lower and upper bound
+#define CLAMP(value, lower, upper) MINMAX((value), (lower), (upper))
 
 /**
- * @brief Enumeration for different data types used in this API.
- *
- * @param TYPE_FLOAT32 IEEE-754 32-bit floating-point precision.
- * @param TYPE_FLOAT16 IEEE-754 16-bit floating-point precision.
- * @param TYPE_QINT8 8-bit integer precision (8 elements per block).
- * @param TYPE_QINT4 Packed 8-bit integer precision (4 elements per block, 2 bits per element).
- * @param TYPE_TYPES Total number of data types supported.
+ * @brief Supported data types for this API.
  */
-typedef enum DataType {
-    TYPE_FLOAT32, /**< IEEE-754 32-bit floating-point precision */
-    TYPE_FLOAT16, /**< IEEE-754 16-bit floating-point precision */
-    TYPE_QINT8,   /**< 8-bit integer precision (8 elements per block) */
-    TYPE_QINT4,   /**< Packed 8-bit integer precision (4 elements per block, 2 bits per element) */
-    TYPE_TYPES    /**< Number of data types supported */
+typedef enum {
+    TYPE_FLOAT32, /**< IEEE-754 32-bit floating-point */
+    TYPE_FLOAT16, /**< IEEE-754 16-bit floating-point */
+    TYPE_QINT8, /**< 8-bit integer quantization */
+    TYPE_QINT4, /**< 4-bit packed quantization */
+    TYPE_COUNT /**< Total number of supported types */
 } DataType;
 
 /**
- * @brief Union representing a flexible floating-point representation.
- *
- * This union allows access to both the raw bit representation of a floating-point
- * number and its actual 32-bit value.
- *
- * @param value 32-bit floating-point value.
- * @param bits Raw 32-bit integer bit representation of the floating-point number.
+ * @brief Union for floating-point bit manipulation.
  */
-typedef union UnionType {
-    float value;  /**< The actual floating-point value */
-    unsigned int bits; /**< Raw 32-bit integer bit representation */
-} UnionType;
+typedef union {
+    float value; /**< Floating-point value */
+    unsigned int bits; /**< Raw bit representation */
+} FloatBits;
 
-/**
- * @brief Structure representing an 8-bit quantization block with a scaling factor.
- *
- * This structure holds a block of 8-bit quantized values, along with a scaling factor
- * (delta) to adjust the range of quantized values.
- */
 typedef struct {
-    float delta; /**< Scaling factor for the quantized values */
-    signed char elements[QK8_ELEMENTS]; /**< 8-bit quantized values (one element per byte) */
-} block_q8_0;
+    float delta;  /**< Scaling factor for quantization */
+    float min;    /**< Minimum representable value */
+    float max;    /**< Maximum representable value */
+    unsigned char scalar; /**< Quantized scalar value */
+} Q8;
 
-/**
- * @brief Structure representing a 4-bit quantization block with a scaling factor.
- *
- * This structure holds a block of 4-bit quantized values stored as nibbles, along with
- * a scaling factor (delta) to adjust the range of quantized values.
- */
 typedef struct {
-    float delta; /**< Scaling factor for the quantized values */
-    signed char nibbles[QK4_NIBBLES]; /**< 4-bit quantized values stored as nibbles (half-byte) */
-} block_q4_0;
+    float delta;
+    float min;
+    float max;
+    unsigned char scalar; /**< Packed nibble (4 bits) */
+} Q4;
 
-/**
- * @brief Encodes a given floating-point value into its corresponding 32-bit integer
- *        representation (IEEE-754 format).
- *
- * @param[in] value The floating-point value to encode.
- *
- * @return The resulting encoded 32-bit integer representation of the input value.
- */
-unsigned int data_encode_float32(float value);
+typedef Q8 Q8Row[Q8_ELEMENTS];
+typedef Q4 Q4Row[Q4_NIBBLES];
 
-/**
- * @brief Decodes a 32-bit integer representation into its corresponding floating-point value.
- *
- * @param[in] bits The encoded 32-bit integer bit representation of the floating-point number.
- *
- * @return The decoded 32-bit floating-point value.
- */
-float data_decode_float32(unsigned int bits);
+// Scalar Conversions
 
-/**
- * @brief Converts a 16-bit floating-point (half precision) value to a 32-bit floating-point value.
- *
- * @param[in] fp16_val The 16-bit floating-point value to convert.
- *
- * @return The converted 32-bit floating-point value.
- */
-float data_fp16_to_fp32(unsigned short fp16_val);
+// Floating-point encoding and decoding
+unsigned int encode_float32_to_bits(float value);
+float decode_bits_to_float32(unsigned int bits);
 
-/**
- * @brief Converts a 32-bit floating-point value to a 16-bit floating-point (half precision) value.
- *
- * @param[in] fp32_val The 32-bit floating-point value to convert.
- *
- * @return The converted 16-bit floating-point value.
- */
-unsigned short data_fp32_to_fp16(float fp32_val);
+// Half-precision floating-point quantization
+unsigned short quantize_scalar_fp16(float value);
+float dequantize_scalar_fp16(unsigned short f16);
 
-/**
- * @brief Quantizes a row of floating-point values into an 8-bit quantization block (q8_0).
- *
- * @param[in] input_vals Pointer to the array of input floating-point values to quantize.
- * @param[out] output_block Pointer to the output block where quantized values will be stored.
- * @param[in] num_elements The number of elements to quantize.
- */
-void data_quantize_row_q8_0(
-    const float* restrict input_vals, void* restrict output_block, int num_elements
-);
+// 8-bit integer quantization
+Q8 quantize_scalar_q8(float value);
+float dequantize_scalar_q8(Q8 q8);
 
-/**
- * @brief Dequantizes an 8-bit quantization block (q8_0) back into floating-point values.
- *
- * @param[in] input_block Pointer to the input quantization block to dequantize.
- * @param[out] output_vals Pointer to the output array where dequantized values will be stored.
- * @param[in] num_elements The number of elements to dequantize.
- */
-void data_dequantize_row_q8_0(
-    const void* restrict input_block, float* restrict output_vals, int num_elements
-);
+// 4-bit integer quantization
+Q4 quantize_scalar_q4(float value1, float value2);
+float dequantize_scalar_q4(Q4 q4, int index);
 
-/**
- * @brief Quantizes a row of floating-point values into a 4-bit quantization block (q4_0).
- *
- * @param[in] input_vals Pointer to the array of input floating-point values to quantize.
- * @param[out] output_block Pointer to the output block where quantized values will be stored.
- * @param[in] num_elements The number of elements to quantize.
- */
-void data_quantize_row_q4_0(
-    const float* restrict input_vals, void* restrict output_block, int num_elements
-);
+// Vector Conversions (1D arrays)
 
-/**
- * @brief Dequantizes a 4-bit quantization block (q4_0) back into floating-point values.
- *
- * @param[in] input_block Pointer to the input quantization block to dequantize.
- * @param[out] output_vals Pointer to the output array where dequantized values will be stored.
- * @param[in] num_elements The number of elements to dequantize.
- */
-void data_dequantize_row_q4_0(
-    const void* restrict input_block, float* restrict output_vals, int num_elements
-);
+// Row-based quantization and dequantization
+void quantize_row_fp16(const float* input, unsigned short* output, int count);
+void dequantize_row_fp16(const unsigned short* input, float* output, int count);
+
+void quantize_row_q8(const float* input, Q8Row output, int count);
+void dequantize_row_q8(const Q8Row input, float* output, int count);
+
+void quantize_row_q4(const float* input, Q4Row output, int count);
+void dequantize_row_q4(const Q4Row input, float* output, int count);
 
 #ifdef __cplusplus
 }
