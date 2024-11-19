@@ -3,17 +3,12 @@
  *
  * @file src/data_types.c
  *
- * @brief API for handling various numeric types and conversions, currently
- *        focused on 32-bit floating-point (float) and integer (int32_t)
- *        representations. Future extensions may include 16-bit and 8-bit
- *        formats for digital signal processing.
+ * @brief API for handling numeric data types and conversions.
  *
- * Only pure C is used with minimal dependencies on external libraries.
- *
- * - Keep the interface minimal and focused.
- * - Avoid generics; stick to a single base type (float, int32) for now.
- * - Isolate conversion logic into a utility file/module.
- * - Maintain clean and comprehensible separation between different components.
+ * Focused on:
+ * - Single and half-precision floating-point.
+ * - 8-bit and 4-bit quantized integers.
+ * - Minimal dependencies and consistent design.
  */
 
 #include "data_types.h"
@@ -25,59 +20,61 @@
 // Scalar Conversions
 
 // Floating-point encoding and decoding
-unsigned int encode_float32_to_bits(float float32) {
-    FloatBits bits;
-    bits.value = float32;
-    return bits.bits;
+unsigned int encode_float32_to_bits(float value) {
+    FloatBits raw;
+    raw.value = value;
+    return raw.bits;
 }
 
-float decode_bits_to_float32(unsigned int uint32) {
-    FloatBits bits;
-    bits.bits = uint32;
-    return bits.value;
+float decode_bits_to_float32(unsigned int bits) {
+    FloatBits raw;
+    raw.bits = bits;
+    return raw.value;
 }
 
 // Half-precision floating-point quantization
-unsigned short quantize_scalar_fp16(float float32) {
-    const float scale_to_inf = 0x1.0p+112f;
-    const float scale_to_zero = 0x1.0p-110f;
-    float base = (fabsf(float32) * scale_to_inf) * scale_to_zero;
+unsigned short quantize_scalar_fp16(float value) {
+    float base = (fabsf(value) * F16_SCALE_TO_INF) * F16_SCALE_TO_ZERO;
 
-    const unsigned int w = encode_float32_to_bits(float32);
-    const unsigned int shl1_w = w + w;
-    const unsigned int sign = w & 0x80000000;
-    unsigned int bias = shl1_w & 0xFF000000;
+    const unsigned int w = encode_float32_to_bits(value);
+    const unsigned int shl1_w = w + w; // Double the exponent
+    const unsigned int sign = w & F16_SIGN_MASK; // Extract the sign bit
 
-    if (bias < 0x71000000) {
-        bias = 0x71000000;
+    unsigned int bias = shl1_w & F32_EXPONENT_MASK; // Extract exponent
+    if (bias < F16_SMALLEST_EXPONENT) { // Clamp small exponents
+        bias = F16_SMALLEST_EXPONENT;
     }
 
-    base = decode_bits_to_float32((bias >> 1) + 0x07800000) + base;
+    base = decode_bits_to_float32((bias >> 1) + F16_BIAS_ADJUSTMENT) + base;
+
     const unsigned int bits = encode_float32_to_bits(base);
-    const unsigned int exp_bits = (bits >> 13) & 0x00007C00;
-    const unsigned int mantissa_bits = bits & 0x00000FFF;
+    const unsigned int exp_bits = (bits >> 13) & F16_EXP_MASK; // f16 exponent
+    const unsigned int mantissa_bits = bits & F16_MANTISSA_MASK; // f16 mantissa
+
     const unsigned int nonsign = exp_bits + mantissa_bits;
-    return (sign >> 16) | (shl1_w > 0xFF000000 ? 0x7E00 : nonsign);
+    return (sign >> 16) | (shl1_w > F32_EXPONENT_MASK ? F16_INFINITY : nonsign);
 }
 
-float dequantize_scalar_fp16(unsigned short float16) {
-    const unsigned int w = (unsigned int) float16 << 16;
-    const unsigned int sign = w & 0x80000000;
-    const unsigned int two_w = w + w;
+float dequantize_scalar_fp16(unsigned short bits) {
+    const unsigned int w = (unsigned int) bits << 16;   // Convert f16 to f32
+    const unsigned int sign = w & F16_SIGN_MASK;          // Extract sign bit
+    const unsigned int two_w = w + w;                     // Double exponent and mantissa
 
-    const unsigned int exp_offset = 0xE0 << 23;
-    const float exp_scale = 0x1.0p-112f;
-    const float normalized_value = decode_bits_to_float32((two_w >> 4) + exp_offset) * exp_scale;
+    // Handle normalized values
+    const float normalized_value
+        = decode_bits_to_float32((two_w >> 4) + F16_EXP_OFFSET) * F16_EXP_SCALE;
 
-    const unsigned int magic_mask = 0x7E000000;
-    const float magic_bias = 0.5f;
-    const float denormalized_value = decode_bits_to_float32((two_w >> 17) | magic_mask) - magic_bias;
+    // Handle denormalized values
+    const float denormalized_value
+        = decode_bits_to_float32((two_w >> 17) | F16_MAGIC_MASK) - F16_MAGIC_BIAS;
 
-    const unsigned int denormalized_cutoff = 1 << 27;
+    // Determine if value is denormalized
     const unsigned int result
         = sign
-          | (two_w < denormalized_cutoff ? encode_float32_to_bits(denormalized_value)
-                                         : encode_float32_to_bits(normalized_value));
+          | (two_w < F16_DENORMALIZED_CUTOFF
+                 ? encode_float32_to_bits(denormalized_value)
+                 : encode_float32_to_bits(normalized_value));
+
     return decode_bits_to_float32(result);
 }
 
@@ -127,10 +124,14 @@ float dequantize_scalar_q4(Q4 q4, int index) {
 
     if (index == 0) { // Lower nibble
         quant = q4.scalar & 0x0F;
-        if (quant & 0x08) quant -= 16; // Sign extension for 4-bit negative values
+        if (quant & 0x08) {
+            quant -= 16; // Sign extension for 4-bit negative values
+        }
     } else { // Upper nibble
         quant = (q4.scalar >> 4) & 0x0F;
-        if (quant & 0x08) quant -= 16;
+        if (quant & 0x08) {
+            quant -= 16;
+        }
     }
 
     return quant * q4.delta;
@@ -138,6 +139,7 @@ float dequantize_scalar_q4(Q4 q4, int index) {
 
 // Vector Conversions (1D arrays)
 
+// Half-precision floating-point quantization
 void quantize_row_fp16(const float* input, unsigned short* output, int count) {
     assert(input != NULL);
     assert(output != NULL);
@@ -156,7 +158,10 @@ void dequantize_row_fp16(const unsigned short* input, float* output, int count) 
     }
 }
 
+// 8-bit integer quantization
 void quantize_row_q8(const float* input, Q8Row output, int count) {
+    assert(input != NULL);
+    assert(output != NULL);
     assert(count % Q8_ELEMENTS == 0);
 
     for (int i = 0; i < count / Q8_ELEMENTS; ++i) {
@@ -167,6 +172,8 @@ void quantize_row_q8(const float* input, Q8Row output, int count) {
 }
 
 void dequantize_row_q8(const Q8Row input, float* output, int count) {
+    assert(input != NULL);
+    assert(output != NULL);
     assert(count % Q8_ELEMENTS == 0);
 
     for (int i = 0; i < count / Q8_ELEMENTS; ++i) {
@@ -176,8 +183,11 @@ void dequantize_row_q8(const Q8Row input, float* output, int count) {
     }
 }
 
+// 4-bit integer quantization
 void quantize_row_q4(const float* input, Q4Row output, int count) {
-    assert(count % 2 == 0); // Ensure input size is even
+    assert(input != NULL);
+    assert(output != NULL);
+    assert(count % Q4_NIBBLES == 0); // Ensure input size is even
 
     for (int i = 0; i < count / 2; ++i) {
         output[i] = quantize_scalar_q4(input[2 * i], input[2 * i + 1]);
@@ -185,10 +195,12 @@ void quantize_row_q4(const float* input, Q4Row output, int count) {
 }
 
 void dequantize_row_q4(const Q4Row input, float* output, int count) {
-    assert(count % 2 == 0); // Ensure output size is even
+    assert(input != NULL);
+    assert(output != NULL);
+    assert(count % Q4_NIBBLES == 0); // Ensure output size is even
 
     for (int i = 0; i < count / 2; ++i) {
-        output[2 * i] = dequantize_scalar_q4(input[i], 0);     // Lower nibble
+        output[2 * i] = dequantize_scalar_q4(input[i], 0); // Lower nibble
         output[2 * i + 1] = dequantize_scalar_q4(input[i], 1); // Upper nibble
     }
 }
