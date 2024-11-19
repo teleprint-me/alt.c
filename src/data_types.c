@@ -56,9 +56,9 @@ unsigned short quantize_scalar_fp16(float value) {
 }
 
 float dequantize_scalar_fp16(unsigned short bits) {
-    const unsigned int w = (unsigned int) bits << 16;   // Convert f16 to f32
-    const unsigned int sign = w & F16_SIGN_MASK;          // Extract sign bit
-    const unsigned int two_w = w + w;                     // Double exponent and mantissa
+    const unsigned int w = (unsigned int) bits << 16; // Convert f16 to f32
+    const unsigned int sign = w & F16_SIGN_MASK; // Extract sign bit
+    const unsigned int two_w = w + w; // Double exponent and mantissa
 
     // Handle normalized values
     const float normalized_value
@@ -71,9 +71,8 @@ float dequantize_scalar_fp16(unsigned short bits) {
     // Determine if value is denormalized
     const unsigned int result
         = sign
-          | (two_w < F16_DENORMALIZED_CUTOFF
-                 ? encode_float32_to_bits(denormalized_value)
-                 : encode_float32_to_bits(normalized_value));
+          | (two_w < F16_DENORMALIZED_CUTOFF ? encode_float32_to_bits(denormalized_value)
+                                             : encode_float32_to_bits(normalized_value));
 
     return decode_bits_to_float32(result);
 }
@@ -99,17 +98,17 @@ float dequantize_scalar_q8(Q8 q8) {
 }
 
 // 4-bit integer quantization
-Q4 quantize_scalar_q4(float value1, float value2) {
+Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
     // Determine delta using the larger absolute value
-    q4.delta = fmaxf(fabsf(value1), fabsf(value2)) / 7.0f;
+    q4.delta = fmaxf(fabsf(a), fabsf(b)) / 7.0f;
     q4.min = -7.0f * q4.delta;
     q4.max = 7.0f * q4.delta;
 
     // Clamp and quantize the two values
-    float clamped1 = CLAMP(value1, q4.min, q4.max);
-    float clamped2 = CLAMP(value2, q4.min, q4.max);
+    float clamped1 = CLAMP(a, q4.min, q4.max);
+    float clamped2 = CLAMP(b, q4.min, q4.max);
 
     signed char quant1 = (signed char) roundf(clamped1 / q4.delta);
     signed char quant2 = (signed char) roundf(clamped2 / q4.delta);
