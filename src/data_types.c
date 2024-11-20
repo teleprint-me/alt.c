@@ -81,41 +81,40 @@ float dequantize_scalar_fp16(unsigned short bits) {
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    // Fixed-scalar for the full Q8 range
-    q8.scalar = 1.0f / 127.0f; // Scaling factor
+    // Fixed delta based on the full q8 range
+    q8.scalar = 1.0f / 127.0f; // Scaling factor for the full range [-127, 127]
+    q8.min = -127.0f;
+    q8.max = 127.0f;
 
-    float min = -127.0f;
-    float max = 127.0f;
-
-    // Clamp the input to ensure it lies within the valid range
-    float clamped = CLAMP(value, min, max);; // Map [-127, 127] to floating-point value
+    // Clamp the input value to the quantizable range
+    float clamped = CLAMP(value, q8.min, q8.max);
 
     // Quantize by scaling and rounding
     signed char quant = (signed char) roundf(clamped / q8.scalar);
 
     // Store the quantized value
-    q8.quant = (unsigned char) quant;
+    q8.quant = (unsigned char) quant + q8.max; // Shift the range [0, 255]
 
     return q8;
 }
 
 float dequantize_scalar_q8(Q8 q8) {
-    return (float) q8.quant * (float) q8.scalar;
+    return q8.scalar * (q8.quant + q8.min); // Shift the range [-127, 127]
 }
 
 // 4-bit integer quantization
 Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
-    // Fixed-scalar for the full Q4 range
-    q4.scalar = 1.0f / 7.0f; // Scaling factor for the full range [-7, 7]
+    q4.min = -7.0f;
+    q4.max = 7.0f;
 
-    float min = -7.0f;
-    float max = 7.0f;
+    // Fixed-scalar for the full Q4 range
+    q4.scalar = 1.0f / q4.max; // Scaling factor for the full range [-7, 7]
 
     // Clamp the two values
-    float clamped1 = CLAMP(a, min, max);
-    float clamped2 = CLAMP(b, min, max);
+    float clamped1 = CLAMP(a, q4.min, q4.max);
+    float clamped2 = CLAMP(b, q4.min, q4.max);
 
     // Quantize by scaling and rounding
     signed char quant1 = (signed char) roundf(clamped1 / q4.scalar);
@@ -142,7 +141,7 @@ float dequantize_scalar_q4(Q4 q4, int index) {
         }
     }
 
-    return quant * q4.scalar;
+    return q4.scalar * quant;
 }
 
 // Vector Conversions (1D arrays)

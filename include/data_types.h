@@ -128,6 +128,8 @@ typedef union {
 
 typedef struct {
     float scalar;  /**< Scaling factor for quantization */
+    float min;
+    float max;
     unsigned char quant; /**< Quantized scalar value */
 } Q8;
 
