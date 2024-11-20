@@ -3,10 +3,13 @@
  *
  * @brief Prototype for QINT8 quantization.
  *
- * @note
- * - A modern transformer typically consists of 32 blocks.
- * - A block is a single layer composed of 9 sub-layers.
- * - F32 and F16 will typically contain 32 blocks.
+ * @note A modern transformer typically consists of 32 blocks.
+ *   - A block is a single layer composed of 9 sub-layers.
+ *   - Each sub-layer usually consists of one of two shapes.
+ *     - @note Shapes represent row major order.
+ *     - Shape 1: Vector: (n, 1) -> n (cols) x 1 (rows)
+ *     - Shape 2: Matrix: (n, m) -> n (cols) x m (rows)
+ * - @note F32, F16, I16, and I8 will typically contain 32 blocks.
  */
 
 #include <assert.h>
