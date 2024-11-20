@@ -126,28 +126,6 @@ void free_perceptron(Perceptron* perceptron) {
     }
 }
 
-// 32-bit floating-point comparison
-unsigned int compare_float(float a, float b, float threshold) {
-    // Use a default threshold if none is provided
-    float abs_threshold = threshold > 0.0f ? threshold : 1e-7f;
-
-    // Absolute difference
-    float diff = fabsf(a - b);
-
-    // Handle near-zero comparisons with absolute threshold
-    if (diff < abs_threshold) {
-        return 1; // True
-    }
-
-    // Relative difference comparison for larger numbers
-    float largest = fmaxf(fabsf(a), fabsf(b));
-    if (diff < abs_threshold * largest) {
-        return 1; // True
-    }
-
-    return 0; // False
-}
-
 // Populate inputs for AND truth table
 void initialize_inputs(Tensor* inputs) {
     float input_data[INPUT_ROWS][INPUT_COLS] = {
