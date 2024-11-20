@@ -87,9 +87,9 @@ extern "C" {
 // F32 and F16 will typically contain 32 blocks.
 
 // Block size definitions for quantization
-#define DATA_QUANT_BLOCK_SIZE 32 /**< Standard block size for quantization */
-#define Q8_ELEMENTS DATA_QUANT_BLOCK_SIZE /**< Elements in an 8-bit quantized block */
-#define Q4_NIBBLES (DATA_QUANT_BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
+#define DATA_BLOCK_SIZE 32 /**< Standard block size for quantization */
+#define Q8_ELEMENTS DATA_BLOCK_SIZE /**< Elements in an 8-bit quantized block */
+#define Q4_NIBBLES (DATA_BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
 
 // Interval arithmetic
 
