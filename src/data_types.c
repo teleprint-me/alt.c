@@ -81,46 +81,49 @@ float dequantize_scalar_fp16(unsigned short bits) {
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    // Calculate delta based on the full q8 range
-    q8.delta = 1.0f / 127.0f; // Scaling factor for the full range [-127, 127]
-    q8.min = -127.0f * q8.delta;
-    q8.max = 127.0f * q8.delta;
+    // Fixed-scalar for the full Q8 range
+    q8.scalar = 1.0f / 127.0f; // Scaling factor
 
-    // Clamp the input value to the quantizable range
-    float clamped = CLAMP(value, q8.min, q8.max);
+    float min = -127.0f;
+    float max = 127.0f;
+
+    // Clamp the input to ensure it lies within the valid range
+    float clamped = CLAMP(value, min, max);; // Map [-127, 127] to floating-point value
 
     // Quantize by scaling and rounding
-    signed char quant = (signed char) roundf(clamped / q8.delta);
+    signed char quant = (signed char) roundf(clamped / q8.scalar);
 
     // Store the quantized value
-    q8.scalar = (unsigned char) quant;
+    q8.quant = (unsigned char) quant;
 
     return q8;
 }
 
 float dequantize_scalar_q8(Q8 q8) {
-    return q8.scalar * q8.delta;
+    return (float) q8.quant * (float) q8.scalar;
 }
 
 // 4-bit integer quantization
 Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
-    // Calculate delta based on the full q4 range
-    q4.delta = 1.0f / 7.0f; // Scaling factor for the full range [-7, 7]
-    q4.min = -7.0f * q4.delta;
-    q4.max = 7.0f * q4.delta;
+    // Fixed-scalar for the full Q4 range
+    q4.scalar = 1.0f / 7.0f; // Scaling factor for the full range [-7, 7]
 
-    // Clamp and quantize the two values
-    float clamped1 = CLAMP(a, q4.min, q4.max);
-    float clamped2 = CLAMP(b, q4.min, q4.max);
+    float min = -7.0f;
+    float max = 7.0f;
+
+    // Clamp the two values
+    float clamped1 = CLAMP(a, min, max);
+    float clamped2 = CLAMP(b, min, max);
 
     // Quantize by scaling and rounding
-    signed char quant1 = (signed char) roundf(clamped1 / q4.delta);
-    signed char quant2 = (signed char) roundf(clamped2 / q4.delta);
+    signed char quant1 = (signed char) roundf(clamped1 / q4.scalar);
+    signed char quant2 = (signed char) roundf(clamped2 / q4.scalar);
 
     // Pack two quantized values into a single byte
-    q4.scalar = ((unsigned char) quant2 << 4) | ((unsigned char) quant1 & 0x0F);
+    q4.quant = ((unsigned char) quant2 << 4) | ((unsigned char) quant1 & 0x0F);
+
     return q4;
 }
 
@@ -128,18 +131,18 @@ float dequantize_scalar_q4(Q4 q4, int index) {
     signed char quant;
 
     if (index == 0) { // Lower nibble
-        quant = q4.scalar & 0x0F;
+        quant = q4.quant & 0x0F;
         if (quant & 0x08) {
             quant -= 16; // Sign extension for 4-bit negative values
         }
     } else { // Upper nibble
-        quant = (q4.scalar >> 4) & 0x0F;
+        quant = (q4.quant >> 4) & 0x0F;
         if (quant & 0x08) {
             quant -= 16;
         }
     }
 
-    return quant * q4.delta;
+    return quant * q4.scalar;
 }
 
 // Vector Conversions (1D arrays)

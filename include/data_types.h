@@ -18,6 +18,8 @@
 extern "C" {
 #endif // __cplusplus
 
+#include <math.h>
+
 // Fixed-point arithmetic
 
 // @brief Number of fractional bits in the fixed-point representation.
@@ -93,14 +95,8 @@ extern "C" {
 
 // Interval arithmetic
 
-// Macro to compute the minimum of two values
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-// Macro to compute the maximum of two values
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 // Macro to ensure a value falls within a specific range [min, max]
-#define MINMAX(value, min, max) ((value) < (min) ? (min) : ((value) > (max) ? (max) : (value)))
+#define MINMAX(value, min, max) fmaxf((min), (fminf((value), (max))))
 
 // Macro to clamp a value between a lower and upper bound
 #define CLAMP(value, lower, upper) MINMAX((value), (lower), (upper))
@@ -131,19 +127,11 @@ typedef union {
 // Quantized conversions
 
 typedef struct {
-    float delta;  /**< Scaling factor for quantization */
-    float min;    /**< Minimum representable value */
-    float max;    /**< Maximum representable value */
-    unsigned char scalar; /**< Quantized scalar value */
+    float scalar;  /**< Scaling factor for quantization */
+    unsigned char quant; /**< Quantized scalar value */
 } Q8;
 
-typedef struct {
-    float delta;
-    float min;
-    float max;
-    unsigned char scalar; /**< Packed nibble (4 bits) */
-} Q4;
-
+typedef Q8 Q4; // /**< Packed nibble (4 bits) */
 typedef Q8 Q8Row[Q8_ELEMENTS];
 typedef Q4 Q4Row[Q4_NIBBLES];
 
