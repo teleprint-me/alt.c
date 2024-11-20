@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define MAX_ELEMENTS 10 ///< Maximum number of elements to generate
+#define MAX_ELEMENTS 10  ///< Maximum number of elements to generate
 
 /**
  * @brief Generates random floating-point values in the range [-n, n-1].
@@ -38,18 +38,44 @@ void generate_random_values(float* values, int max_elements, int n) {
     }
 }
 
-int main() {
-    int n = 5; // Define the range parameter
+int main(int argc, char** argv) {
+    // Default parameters
+    int n = 5;        // Default range
+    unsigned int seed = (unsigned int) time(NULL);  // Default seed
+
+    // No arguments given
+    if (argc == 1) {
+        fprintf(stdout, "Usage: %s <optional range> <optional seed>\n", argv[0]);
+    }
+
+    // 1 argument given
+    if (argc > 1) {
+        n = atoi(argv[1]);  // First argument: range parameter
+        if (n <= 0) {
+            fprintf(stderr, "Error: Range parameter n must be positive.\n");
+            return 1;
+        }
+    }
+
+    // 2 arguments given
+    if (argc > 2) {
+        seed = (unsigned int) atoi(argv[2]);
+        if (seed <= 0) {  // Correct the condition to validate seed
+            fprintf(stderr, "Error: srand() parameter seed must be positive.\n");
+            return 1;
+        }
+    }
+
+    fprintf(stdout, "Using: %s where range = [-%d, %d - 1], seed = %u\n", argv[0], n, n, seed);
+
+    // Seed the random number generator
+    srand(seed);
+
+    // Generate random values
     float values[MAX_ELEMENTS];
-
-    // Seed the random number generator with the current time
-    srand(1337); // Use a discrete deterministic value for reproducibility
-
-    // Generate random values in the range [-n, n-1]
     generate_random_values(values, MAX_ELEMENTS, n);
 
     // Print the generated values
-    printf("Random values in the range [-%d, %d-1]:\n", n, n);
     for (int i = 0; i < MAX_ELEMENTS; ++i) {
         printf("%.7f\n", (double) values[i]);
     }
