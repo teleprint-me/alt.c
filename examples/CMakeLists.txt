@@ -2,6 +2,7 @@
 set(EXAMPLES
     compare_float
     random
+    data_types
     tensors
     perceptron
 )
