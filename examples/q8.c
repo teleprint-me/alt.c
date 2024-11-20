@@ -27,9 +27,9 @@ typedef union {
 } FloatBits;
 
 typedef struct Q8 {
-    float scalar;    /**< Scaling factor for quantization */
-    float min;       /**< Minimum quantizable value */
-    float max;       /**< Maximum quantizable value */
+    float scalar; /**< Scaling factor for quantization */
+    float min; /**< Minimum quantizable value */
+    float max; /**< Maximum quantizable value */
     unsigned char quant; /**< Quantized scalar value */
 } Q8;
 
@@ -55,18 +55,21 @@ Q8 quantize_scalar_q8(float value) {
     q8.min = -127.0f;
     q8.max = 127.0f;
 
-    // Compute the scaling factor (scalar)
-    float abs_value = fabsf(value); // get the absolute value
-    q8.scalar = abs_value / fmaxf(q8.max, abs_value); // bind the value to [0, 127]
-
     // Clamp the input value to the quantizable range
+    // @warn using max in isolation breaks the range.
+    // @warn using min improves results compared to max, but still fails.
+    // @warn using abs seems to mask the additive inverse range (hides signed values).
+    // @note Clamping seems to achieve the desired effect.
     float clamped = CLAMP(value, q8.min, q8.max);
 
-    // Compute the quantized value
-    signed char quant = (signed char) roundf(clamped / q8.scalar);
+    // Compute the scaling factor (scalar)
+    q8.scalar = (clamped == 0.0f) ? 1.0f : (value / clamped); // bind the value to [0, 127]
 
-    // Shift to unsigned range
-    q8.quant = (unsigned char) (quant + 127);
+    // Compute the quantized value
+    signed char quant = (signed char) clamped / q8.scalar;
+
+    // Shift to unsigned range [0, 255]
+    q8.quant = (unsigned char) (quant + q8.max);
 
     return q8;
 }
@@ -106,7 +109,7 @@ void print_floats(const char* label, const float* values, int count) {
     for (int i = 0; i < count; ++i) {
         printf("%.6f ", (double) values[i]);
     }
-    printf("\n");
+    printf("\n\n");
 }
 
 void print_q8_row(const Q8Row row) {
@@ -114,49 +117,81 @@ void print_q8_row(const Q8Row row) {
     for (int i = 0; i < Q8_ELEMENTS; ++i) {
         printf("%u ", row[i].quant);
     }
+    printf("\n\n");
+}
+
+void generate_random_values(float* values, int max_elements, int n) {
+    assert(values != NULL);
+    assert(max_elements > 0);
+
+    for (int i = 0; i < max_elements; ++i) {
+        // Generate a random value in the range [0, 1]
+        float normalized = (float) rand() / (float) RAND_MAX;
+
+        // Map the normalized value to the range [-n, n-1]
+        values[i] = -n + (normalized * (2 * n - 1));
+    }
+}
+
+void compute_error(const float* original, const float* dequantized, int count) {
+    printf("Quantization Error: ");
+    for (int i = 0; i < count; ++i) {
+        printf("%.6f ", (double) fabsf(original[i] - dequantized[i]));
+    }
     printf("\n");
 }
 
-void test_q8_prototype(void) {
-    float input[Q8_ELEMENTS] = {-127.0f, -64.0f, -32.0f, -1.0f, 0.0f, 1.0f, 32.0f, 64.0f, 127.0f};
-    Q8Row q8_row;
-    float output[Q8_ELEMENTS];
-
-    // Quantize and dequantize the row
-    quantize_row_q8(input, q8_row, Q8_ELEMENTS);
-    dequantize_row_q8(q8_row, output, Q8_ELEMENTS);
-
-    // Print results
-    print_floats("Input", input, Q8_ELEMENTS);
-    print_q8_row(q8_row);
-    print_floats("Dequantized Output", output, Q8_ELEMENTS);
-}
-
-void test_q8_concept(void) {
-    int seed = 1337;
+// Stress test for validating out-of-bounds behavior
+void run_tests(int seed) {
+    // initialize the rng
     srand(seed);
+    printf("=== Running tests with seed: %d ===\n\n", seed);
 
-    // Example data
-    float data[BLOCK_SIZE];
-    for (int i = 0; i < BLOCK_SIZE; i++) {
-        data[i] = ((float) rand() / (float) RAND_MAX) * 1000.0f - 500.0f; // Generate values in [-500, 500]
+    // Test parameters
+    float test_case_1[Q8_ELEMENTS];
+    float test_case_2[Q8_ELEMENTS];
+    float test_case_3[Q8_ELEMENTS];
+    generate_random_values(test_case_1, Q8_ELEMENTS, 127); // [-2^7-1, 2^7-1]
+    generate_random_values(test_case_2, Q8_ELEMENTS, 255); // [-2^8-1, 2^8-1]
+    generate_random_values(test_case_3, Q8_ELEMENTS, 32767); // [-2^15-1, 2^15-1]
+
+    // @warn Calculating the test count dynamically is unreliable.
+    // @warn A variable cannot be used to statically allocate memory to the stack.
+    #define TEST_COUNT 3 // @warn Always use a macro for this.
+    struct {
+        const char* label;
+        int count;
+        int range;
+        float* input;
+    } test_cases[TEST_COUNT] = {
+        {"Test Case 1", Q8_ELEMENTS, 127, test_case_1},
+        {"Test Case 2", Q8_ELEMENTS, 255, test_case_2},
+        {"Test Case 3", Q8_ELEMENTS, 32767, test_case_3}
+    };
+
+    // Execute test cases
+    for (int t = 0; t < TEST_COUNT; ++t) {
+        fprintf(stdout, "=== %s (Range: [-%d, %d]) ===\n", test_cases[t].label, test_cases[t].range, test_cases[t].range);
+        Q8Row q8_row = {0};
+        float dequantized[Q8_ELEMENTS] = {0};
+
+        // Quantize and dequantize
+        quantize_row_q8(test_cases[t].input, q8_row, test_cases[t].count);
+        dequantize_row_q8(q8_row, dequantized, test_cases[t].count);
+
+        // Print results
+        print_floats("Input", test_cases[t].input, test_cases[t].count);
+        print_q8_row(q8_row);
+        print_floats("Dequantized Output", dequantized, test_cases[t].count);
+        compute_error(test_cases[t].input, dequantized, test_cases[t].count);
+        printf("\n");
     }
-    // Print original data
-    print_floats("Data", data, BLOCK_SIZE);
 
-    // Quantize and dequantize the data
-    Q8Row q8_row;
-    float dequantized[BLOCK_SIZE];
-
-    quantize_row_q8(data, q8_row, BLOCK_SIZE);
-    dequantize_row_q8(q8_row, dequantized, BLOCK_SIZE);
-
-    // Print quantized and dequantized results
-    print_q8_row(q8_row);
-    print_floats("Dequantized", dequantized, BLOCK_SIZE);
+    printf("=== Completed %d test cases ===\n", TEST_COUNT);
 }
 
 int main(void) {
-    test_q8_prototype();
+    int seed = 1337;
+    run_tests(seed);
     return 0;
 }
