@@ -81,7 +81,7 @@ float dequantize_scalar_fp16(unsigned short bits) {
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    // Fixed delta based on the full q8 range
+    // Calculate delta based on the full q8 range
     q8.delta = 1.0f / 127.0f; // Scaling factor for the full range [-127, 127]
     q8.min = -127.0f * q8.delta;
     q8.max = 127.0f * q8.delta;
@@ -106,8 +106,8 @@ float dequantize_scalar_q8(Q8 q8) {
 Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
-    // Determine delta using the larger absolute value
-    q4.delta = fmaxf(fabsf(a), fabsf(b)) / 7.0f;
+    // Calculate delta based on the full q4 range
+    q4.delta = 1.0f / 7.0f; // Scaling factor for the full range [-7, 7]
     q4.min = -7.0f * q4.delta;
     q4.max = 7.0f * q4.delta;
 
@@ -115,11 +115,12 @@ Q4 quantize_scalar_q4(float a, float b) {
     float clamped1 = CLAMP(a, q4.min, q4.max);
     float clamped2 = CLAMP(b, q4.min, q4.max);
 
+    // Quantize by scaling and rounding
     signed char quant1 = (signed char) roundf(clamped1 / q4.delta);
     signed char quant2 = (signed char) roundf(clamped2 / q4.delta);
 
     // Pack two quantized values into a single byte
-    q4.scalar = (quant2 << 4) | (quant1 & 0x0F);
+    q4.scalar = ((unsigned char) quant2 << 4) | ((unsigned char) quant1 & 0x0F);
     return q4;
 }
 
