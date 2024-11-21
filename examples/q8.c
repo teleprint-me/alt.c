@@ -25,7 +25,6 @@
 #define CLAMP(value, min, max) fmaxf((min), (fminf((value), (max))))
 
 typedef struct Q8 {
-    float scalar; /**< Scaling factor for quantization */
     float min; /**< Minimum quantizable value */
     float max; /**< Maximum quantizable value */
     unsigned char quant; /**< Quantized scalar value */
@@ -37,18 +36,15 @@ typedef Q8 Q8Row[Q8_ELEMENTS];
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    q8.max = (1 << 7) - 1; // 127
-    q8.min = -(1 << 7); // -128
+    q8.max = (1 << 7) - 1; // 127 (additive interval)
+    q8.min = -(1 << 7); // -128 (inverse interval)
 
     // Clamp the input to the specified range
-    value = CLAMP(value, q8.min, q8.max);
-
-    // Compute the scalar for dequantization
-    q8.scalar = (q8.max - q8.min) / (2 * q8.max);
+    float clamped = CLAMP(value, q8.min, q8.max);
 
     // Normalize the value to [-1, 1] and scale
-    float normalized = (value - q8.min) / (q8.max - q8.min);
-    q8.quant = (unsigned char) roundf((normalized * q8.max));
+    float normalized = (clamped - q8.min) / (q8.max - q8.min); // (v + 128) / 255
+    q8.quant = (unsigned char) roundf((normalized * q8.max)); // round(norm * 127)
 
     return q8;
 }
@@ -56,8 +52,8 @@ Q8 quantize_scalar_q8(float value) {
 // Function to dequantize a Q8 value back to float
 float dequantize_scalar_q8(Q8 q8) {
     // Map back to the original range
-    float normalized = (signed char) q8.quant / q8.max;
-    return (normalized * (q8.max - q8.min) + q8.min);
+    float normalized = (signed char) q8.quant / q8.max; // norm = q / 127
+    return (normalized * (q8.max - q8.min) + q8.min); // (norm * (127 + 128)) - 128
 }
 
 // 8-bit integer quantization
@@ -152,7 +148,7 @@ void run_tests(int seed) {
 
     // Execute test cases
     for (int t = 0; t < TEST_COUNT; ++t) {
-        fprintf(stdout, "=== %s (Range: [-%d, %d]) ===\n", test_cases[t].label, test_cases[t].range, test_cases[t].range);
+        fprintf(stdout, "=== %s (Range: [-%d, %d]) ===\n", test_cases[t].label, test_cases[t].range + 1, test_cases[t].range);
         Q8Row q8_row = {0};
         float dequantized[Q8_ELEMENTS] = {0};
 
