@@ -76,10 +76,11 @@ $$
 
 2. **Relationship to Normalization**:
    - The scalar is implicitly baked into the normalization and quantization equations:
-   - Here, $v_{\text{min}}$ and $v_{\text{max}}$ ensure clamping within $[-128, 127]$.
-   - The denominator implicitly incorporates the scalar's behavior.
 
 $$\text{normalized} = \frac{v_{\text{clamped}} - v_{\text{min}}}{v_{\text{max}} - v_{\text{min}}}$$
+
+   - Here, $v_{\text{min}}$ and $v_{\text{max}}$ ensure clamping within $[-128, 127]$.
+   - The denominator implicitly incorporates the scalar's behavior.
 
 3. **Simplified Form**:
    - The scalar does not explicitly alter the computation in this implementation. Instead, it represents the conceptual link between the range and step size.
