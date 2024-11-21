@@ -223,14 +223,14 @@ print(f"Input: {v}, Quantized: {q}, Restored: {restored}, Error: {error}")
 
 For $v = 27.12345$:
 
-| **Step**            | **Value**               |
-|----------------------|-------------------------|
-| Input Value          | $ 27.12345 $         |
-| Clamped Value        | $ 27.12345 $         |
-| Normalized Value     | $ 0.6083 $           |
-| Quantized Value      | $ 77 $               |
-| Dequantized Value    | $ 26.6063 $          |
-| Error                | $ 0.5171 $           |
+| **Step**          | **Value**   |
+|-------------------|-------------|
+| Input Value       | $27.12345$  |
+| Clamped Value     | $27.12345$  |
+| Normalized Value  | $0.6083$    |
+| Quantized Value   | $77$        |
+| Dequantized Value | $26.6063$   |
+| Error             | $0.5171$    |
 
 ## **Analysis**
 
