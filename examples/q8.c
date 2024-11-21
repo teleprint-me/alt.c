@@ -24,11 +24,6 @@
 // Macro to clamp a value between a lower and upper bound
 #define CLAMP(value, min, max) fmaxf((min), (fminf((value), (max))))
 
-typedef union {
-    float value; /**< Floating-point value */
-    unsigned int bits; /**< Raw bit representation */
-} FloatBits;
-
 typedef struct Q8 {
     float scalar; /**< Scaling factor for quantization */
     float min; /**< Minimum quantizable value */
@@ -38,48 +33,31 @@ typedef struct Q8 {
 
 typedef Q8 Q8Row[Q8_ELEMENTS];
 
-// Floating-point encoding and decoding
-unsigned int encode_float32_to_bits(float value) {
-    FloatBits raw;
-    raw.value = value;
-    return raw.bits;
-}
-
-float decode_bits_to_float32(unsigned int bits) {
-    FloatBits raw;
-    raw.bits = bits;
-    return raw.value;
-}
-
 // 8-bit integer quantization
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    q8.min = -127.0f;
-    q8.max = 127.0f;
+    q8.max = (1 << 7) - 1; // 127
+    q8.min = -(1 << 7); // -128
 
-    // Clamp the input value to the quantizable range
-    // @warn using max in isolation breaks the range.
-    // @warn using min improves results compared to max, but still fails.
-    // @warn using abs seems to mask the additive inverse range (hides signed values).
-    // @note Clamping seems to achieve the desired effect.
-    float clamped = CLAMP(value, q8.min, q8.max);
+    // Clamp the input to the specified range
+    value = CLAMP(value, q8.min, q8.max);
 
-    // Compute the scaling factor (scalar)
-    q8.scalar = (clamped == 0.0f) ? 1.0f : (value / clamped); // bind the value to [0, 127]
+    // Compute the scalar for dequantization
+    q8.scalar = (q8.max - q8.min) / (2 * q8.max);
 
-    // Compute the quantized value
-    signed char quant = (signed char) clamped / q8.scalar;
-
-    // Shift to unsigned range [0, 255]
-    q8.quant = (unsigned char) (quant + q8.max);
+    // Normalize the value to [-1, 1] and scale
+    float normalized = (value - q8.min) / (q8.max - q8.min);
+    q8.quant = (unsigned char) roundf((normalized * q8.max));
 
     return q8;
 }
 
-// Reverse the scaling to reconstruct the original value
+// Function to dequantize a Q8 value back to float
 float dequantize_scalar_q8(Q8 q8) {
-    return q8.scalar * (q8.quant + q8.min); // Shift the range [-127, 127]
+    // Map back to the original range
+    float normalized = (signed char) q8.quant / q8.max;
+    return (normalized * (q8.max - q8.min) + q8.min);
 }
 
 // 8-bit integer quantization
