@@ -17,20 +17,24 @@ $$
 1. **Bit Representation**:
    - A signed 8-bit integer reserves 1 bit for the sign, leaving 7 bits for the value.
    - The largest positive value is:
-     $$
-     2^7 - 1 = 127
-     $$
+
+$$
+2^7 - 1 = 127
+$$
+
    - The smallest negative value (including zero) is:
-     $$
-     -(2^7) = -128
-     $$
+$$
+-(2^7) = -128
+$$
+
    - Together, this forms the range $[-128, 127]$, with a total of $255$ unique representable values.
 
 2. **Inclusion of Zero**:
    - The interval includes zero, which acts as the midpoint of the range:
-     $$
-     v_{\text{min}} = -128 \quad \text{and} \quad v_{\text{max}} = 127
-     $$
+
+$$
+v_{\text{min}} = -128 \quad \text{and} \quad v_{\text{max}} = 127
+$$
 
 #### **Range and Step Size**
 
@@ -41,23 +45,28 @@ s = \frac{v_{\text{max}} - v_{\text{min}}}{(2 \cdot v_{\text{max}}) + 1}
 $$
 
 Let’s break this down:
+
 1. **Range Calculation**:
-   $$
-   v_{\text{max}} - v_{\text{min}} = 127 - (-128) = 255
-   $$
-   This represents the total spread of the signed 8-bit range.
+
+$$
+v_{\text{max}} - v_{\text{min}} = 127 - (-128) = 255
+$$
+
+This represents the total spread of the signed 8-bit range.
 
 2. **Normalization Denominator**:
-   $$
-   (2 \cdot v_{\text{max}}) + 1 = 255
-   $$
-   This restores the offset introduced by including zero as part of the signed range.
 
-3. **Resulting Scalar**:
-   Substituting these values:
-   $$
-   s = \frac{255}{255} = 1
-   $$
+$$
+(2 \cdot v_{\text{max}}) + 1 = 255
+$$
+
+This restores the offset introduced by including zero as part of the signed range.
+
+3. **Resulting Scalar**: Substituting these values:
+
+$$
+s = \frac{255}{255} = 1
+$$
 
 #### **Key Observations**
 
@@ -68,9 +77,7 @@ Let’s break this down:
 2. **Relationship to Normalization**:
    - The scalar is implicitly baked into the normalization and quantization equations:
 
-     $$
-     \text{normalized} = \frac{v_{\text{clamped}} - v_{\text{min}}}{v_{\text{max}} - v_{\text{min}}}
-     $$
+$$\text{normalized} = \frac{v_{\text{clamped}} - v_{\text{min}}}{v_{\text{max}} - v_{\text{min}}}$$
 
      - Here, $v_{\text{min}}$ and $v_{\text{max}}$ ensure clamping within $[-128, 127]$.
      - The denominator implicitly incorporates the scalar's behavior.
@@ -90,19 +97,25 @@ The range and scaling factor play a critical role in the following steps:
 ### **Quantization**
 
 #### **Clamping**:
+
 First, $v$ is clamped to ensure it fits within the quantization range:
+
 $$
 v_{\text{clamped}} = \max(v_{\text{min}}, \min(v, v_{\text{max}}))
 $$
 
 #### **Normalization**:
+
 The clamped value is normalized to a range of $[0, 1]$:
+
 $$
 \text{normalized} = \frac{v_{\text{clamped}} - v_{\text{min}}}{v_{\text{max}} - v_{\text{min}}}
 $$
 
 #### **Quantization**:
+
 The normalized value is scaled to $[-128, 127]$ and rounded to the nearest integer:
+
 $$
 q = \text{round}(\text{normalized} \cdot v_{\text{max}})
 $$
@@ -110,14 +123,18 @@ $$
 ### **Dequantization**
 
 To reconstruct the approximate floating-point value:
+
 1. Normalize $q$ back to $[0, 1]$:
-   $$
-   \text{normalized} = \frac{q}{v_{\text{max}}}
-   $$
+
+$$
+\text{normalized} = \frac{q}{v_{\text{max}}}
+$$
+
 2. Scale back to the original range:
-   $$
-   v_{\text{restored}} = \text{normalized} \cdot (v_{\text{max}} - v_{\text{min}}) + v_{\text{min}}
-   $$
+
+$$
+v_{\text{restored}} = \text{normalized} \cdot (v_{\text{max}} - v_{\text{min}}) + v_{\text{min}}
+$$
 
 This ensures that the restored value $v_{\text{restored}}$ is an approximation of $v$, with quantization error bounded by the step size $s$.
 
