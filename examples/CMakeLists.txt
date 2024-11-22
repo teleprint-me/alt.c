@@ -3,6 +3,7 @@ set(EXAMPLES
     compare_float
     random
     q8
+    qk8
     data_types
     tensors
     perceptron
