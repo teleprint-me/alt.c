@@ -24,10 +24,10 @@ typedef struct FlexArray {
     DataType type; /**< Data type of the elements */
 
     // Function pointers
-    int (*append)(FlexArray*, void*);
-    int (*pop)(FlexArray*, unsigned int, void* element);
-    int (*get)(FlexArray*, unsigned int);
-    int (*set)(FlexArray*, unsigned int, void* element);
+    int (*append)(struct FlexArray*, void*);
+    int (*pop)(struct FlexArray*, void* element);
+    void* (*get)(struct FlexArray*, unsigned int);
+    int (*set)(struct FlexArray*, unsigned int, void* element);
 } FlexArray;
 
 /* Initialize a new flexible array */
@@ -43,7 +43,7 @@ int flex_array_resize(FlexArray* array, unsigned int new_capacity);
 int flex_array_append(FlexArray* array, void* element);
 
 /* Pop an element from the array */
-int flex_array_pop(FlexArray* array, unsigned int index, void* element);
+int flex_array_pop(FlexArray* array, void* element);
 
 /* Get an element from the array */
 void* flex_array_get(FlexArray* array, unsigned int index);
