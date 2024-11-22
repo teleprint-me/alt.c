@@ -92,6 +92,7 @@ typedef enum {
     TYPE_QINT16, /**< 16-bit integer quantization */
     TYPE_QINT8, /**< 8-bit integer quantization */
     TYPE_QINT4, /**< 4-bit packed quantization */
+    TYPE_CHAR, /** 1-byte pointer to a set of characters */
     TYPE_COUNT /**< Total number of supported types */
 } DataType;
 
