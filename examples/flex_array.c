@@ -41,6 +41,16 @@ int main() {
             fprintf(stderr, "Failed to get element at index %u\n", i);
         }
     }
+    
+    // Pop values one by one
+    float popped_value = 0.0f;
+    while (float_array->length > 0) {
+        if (flex_array_pop(float_array, &popped_value) == FLEX_ARRAY_SUCCESS) {
+            printf("Popped: %f\n", (double) popped_value);
+        } else {
+            fprintf(stderr, "Failed to pop from FlexArray.\n");
+        }
+    }
 
     // Step 4: Destroy the array
     flex_array_destroy(float_array);
