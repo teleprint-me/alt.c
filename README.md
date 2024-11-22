@@ -2,6 +2,13 @@
 
 The transformer model completely from scratch in C.
 
+## Dependencies
+
+- cmake
+- POSIX Threads
+- Vulkan
+- clib
+
 ## Build
 
 ```sh
