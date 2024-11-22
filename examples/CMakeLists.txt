@@ -5,6 +5,7 @@ set(EXAMPLES
     q8
     qk8
     data_types
+    flex_array
     tensors
     perceptron
     mlp
