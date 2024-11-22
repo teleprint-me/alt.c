@@ -148,6 +148,7 @@ $$
 #### **Interval of the Output Domain**
 
 The interval of $\mathbb{Z}$ can be represented as a range function, denoted $I(y)$, where $y$ represents the magnitude of the output domain. This interval includes all integer values between $-y$ and $y$, inclusive:
+
 $$
 I(y) = [-y, y]
 $$
@@ -185,9 +186,10 @@ These bounds constrain the range of $\mathbb{Z}$, ensuring that all quantized in
 Let us consider an 8-bit signed integer representation, commonly used in digital systems. In this case:
 
 - The range of values is:
-  $$
-  I(127) = [-128, 127]
-  $$
+
+$$
+I(127) = [-128, 127]
+$$
 
 - **Maximum value**: $z_{\text{max}} = 127$
 - **Minimum value**: $z_{\text{min}} = -128$
@@ -333,47 +335,53 @@ The scalar value defines the proportional relationship between the floating-poin
 
 The input range is defined by its maximum and minimum values:
 - **Maximum value**:
-  $$
-  r_{\text{max}} = 
-  \begin{cases} 
-  x & \text{if } x > 0 \\
-  -x & \text{if } x < 0
-  \end{cases}
-  $$
+
+$$
+r_{\text{max}} = 
+\begin{cases} 
+x & \text{if } x > 0 \\
+-x & \text{if } x < 0
+\end{cases}
+$$
 
 - **Minimum value**:
-  $$
-  r_{\text{min}} = 
-  \begin{cases} 
-  -x & \text{if } x > 0 \\
-  x & \text{if } x < 0
-  \end{cases}
-  $$
+
+$$
+r_{\text{min}} = 
+\begin{cases} 
+-x & \text{if } x > 0 \\
+x & \text{if } x < 0
+\end{cases}
+$$
 
 #### **Mapping the Output Range**
 
 Similarly, the output range is defined as:
+
 - **Maximum value**:
-  $$
-  z_{\text{max}} = 
-  \begin{cases} 
-  y & \text{if } y > 0 \\
-  -y & \text{if } y < 0
-  \end{cases}
-  $$
+
+$$
+z_{\text{max}} = 
+\begin{cases} 
+y & \text{if } y > 0 \\
+-y & \text{if } y < 0
+\end{cases}
+$$
 
 - **Minimum value**:
-  $$
-  z_{\text{min}} = 
-  \begin{cases} 
-  -y & \text{if } y > 0 \\
-  y & \text{if } y < 0
-  \end{cases}
-  $$
+
+$$
+z_{\text{min}} = 
+\begin{cases} 
+-y & \text{if } y > 0 \\
+y & \text{if } y < 0
+\end{cases}
+$$
 
 #### **Calculating the Scalar Value**
 
 The scalar value $s$ relates the ranges of input and output:
+
 $$
 s = \frac{r_{\text{max}} - r_{\text{min}}}{z_{\text{max}} - z_{\text{min}}}
 $$
@@ -400,6 +408,7 @@ Clamping ensures that any input value outside the representable range is constra
 #### **Clamping Algorithm**
 
 The clamping function is defined as:
+
 $$
 \text{clamp}(x, \text{min}, \text{max}) =
 \begin{cases} 
