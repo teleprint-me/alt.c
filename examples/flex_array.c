@@ -36,7 +36,7 @@ int main() {
     for (unsigned int i = 0; i < float_array->length; i++) {
         float* element = (float*) flex_array_get(float_array, i);
         if (element) {
-            printf("Element %u: %f\n", i, *element);
+            printf("Element %u: %f\n", i, (double) *element);
         } else {
             fprintf(stderr, "Failed to get element at index %u\n", i);
         }
