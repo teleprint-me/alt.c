@@ -86,8 +86,10 @@ extern "C" {
  * @brief Supported data types for this API.
  */
 typedef enum {
+    TYPE_FLOAT64, /**< IEEE-754 64-bit floating-point (double) */
     TYPE_FLOAT32, /**< IEEE-754 32-bit floating-point */
     TYPE_FLOAT16, /**< IEEE-754 16-bit floating-point */
+    TYPE_QINT16, /**< 16-bit integer quantization */
     TYPE_QINT8, /**< 8-bit integer quantization */
     TYPE_QINT4, /**< 4-bit packed quantization */
     TYPE_COUNT /**< Total number of supported types */
