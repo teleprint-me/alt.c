@@ -6,6 +6,7 @@
  * @note This implementation is intentionally kept as simple and minimalistic as possible.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,11 +52,15 @@ void tensor_free(Tensor* tensor) {
 }
 
 unsigned int tensor_compute_flat_index(const Tensor* tensor, unsigned int* indices) {
+    assert(tensor != NULL && "Tensor must not be NULL.");
+    assert(indices != NULL && "Indices array must not be NULL.");
+    // assert(VECTOR_LEN(indices) >= tensor->rank && "Indices array length must match or exceed the tensor's rank.");
+
     unsigned int offset = 0;
     unsigned int stride = 1;
 
-    // Compute the offset by iterating backward over dimensions
     for (int i = tensor->rank - 1; i >= 0; --i) {
+        assert(indices[i] < tensor->shape[i] && "Index out of bounds.");
         offset += indices[i] * stride;
         stride *= tensor->shape[i];
     }
@@ -64,7 +69,12 @@ unsigned int tensor_compute_flat_index(const Tensor* tensor, unsigned int* indic
 }
 
 void tensor_compute_multi_indices(const Tensor* tensor, unsigned int* indices, unsigned int flat_index) {
+    assert(tensor != NULL && "Tensor must not be NULL.");
+    assert(indices != NULL && "Indices array must not be NULL.");
+    // assert(VECTOR_LEN(indices) >= tensor->rank && "Indices array length must match or exceed the tensor's rank.");
+
     for (int dim = tensor->rank - 1; dim >= 0; --dim) {
+        assert(flat_index < tensor->shape[dim] * tensor->shape[tensor->rank - 1] && "Flat index out of bounds.");
         indices[dim] = flat_index % tensor->shape[dim];
         flat_index /= tensor->shape[dim];
     }
