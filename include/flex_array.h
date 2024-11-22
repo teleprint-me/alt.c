@@ -12,6 +12,9 @@
 
 #include "data_types.h"
 
+#define FLEX_ARRAY_SUCCESS 0
+#define FLEX_ARRAY_ERROR -1
+
 typedef struct FlexArray {
     // Member variables
     void* data; /**< Pointer to the array's data */
@@ -28,7 +31,7 @@ typedef struct FlexArray {
 } FlexArray;
 
 /* Initialize a new flexible array */
-FlexArray* flex_array_create(unsigned int initial_capacity, DataType type);
+FlexArray* flex_array_create(unsigned int initial_capacity, DataType type, unsigned int element_size);
 
 /* Free the memory of a flexible array */
 void flex_array_destroy(FlexArray* array);
