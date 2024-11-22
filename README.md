@@ -7,7 +7,7 @@ The transformer model completely from scratch in C.
 - cmake
 - POSIX Threads
 - Vulkan
-- clib
+- libc
 
 ## Build
 
