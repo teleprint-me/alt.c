@@ -248,8 +248,13 @@ Where $r \in [-x, x]$ and $z \in [-y, y]$.
 The inverse mapping approximates floating-point values from quantized integers:
 
 $$
-\mathbb{Q_{\text{reverse}}}: \mathbb{Z}^+ \to 2^{\mathbb{R}}, \quad z \mapsto r
+\mathbb{Q_{\text{reverse}}}: \mathbb{Z}^+ \to 2^{\mathbb{R}}, \quad z \mapsto \hat{r}
 $$
+
+Here:
+
+- $z$ is the quantized integer value.
+- $\hat{r}$ represents the dequantized value, an approximation of the original floating-point input $r$.
 
 This process involves reconstructing $r$ from $z$ using the proportionality defined by the scalar $s$, with a bounded error margin.
 
@@ -278,7 +283,7 @@ This maps floating-point values to integers.
 For $z \in [z_{\text{min}}, z_{\text{max}}]$:
 
 $$
-r = s \cdot (z - z_{\text{min}}) + r_{\text{min}}
+\hat{r} = s \cdot (z - z_{\text{min}}) + r_{\text{min}}
 $$
 
 This reconstructs the floating-point approximation from integers.
