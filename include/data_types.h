@@ -20,27 +20,6 @@ extern "C" {
 
 #include <math.h>
 
-// Fixed-point arithmetic
-
-// @brief Number of fractional bits in the fixed-point representation.
-#define FIXED_SIZE        16
-
-// @brief Converts a fixed-point number to an integer.
-#define FIXED_TO_INT(x)   ((x) >> FIXED_SIZE)
-
-// @brief Converts an integer to a fixed-point number.
-#define INT_TO_FIXED(x)   ((x) << FIXED_SIZE)
-
-// @brief Scale between an integer and a fixed-point value.
-// @note Fixed-point scaling factor, equivalent to 2^FIXED_SIZE (65536).
-#define FIXED_VAL         (1 << FIXED_SIZE)
-
-// @brief Converts a floating-point number to fixed-point format.
-#define FLOAT_TO_FIXED(x) ((signed int) ((x) * FIXED_VAL))
-
-// @brief Converts a fixed-point number to floating-point format.
-#define FIXED_TO_FLOAT(x) ((float) (x) / FIXED_VAL)
-
 // Half-precision arithmetic
 
 // Quantize F16
