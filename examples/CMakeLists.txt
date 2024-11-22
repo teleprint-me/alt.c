@@ -7,6 +7,7 @@ set(EXAMPLES
     data_types
     tensors
     perceptron
+    mlp
 )
 
 # Create executables for simple ALT examples
