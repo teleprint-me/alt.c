@@ -99,14 +99,20 @@ FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity) {
 
 // Get an element at a specific index
 FlexState flex_array_get(FlexArray* array, unsigned int index, void* element) {
+    // Step 1: Validate the array pointer
     if (!array) {
         return FLEX_ARRAY_ERROR; // Null pointer
     }
+
+    // Step 2: Check if the index is within bounds
     if (index >= array->length) {
-        return FLEX_ARRAY_OUT_OF_BOUNDS; // Out of bounds
+        return FLEX_ARRAY_OUT_OF_BOUNDS; // Index is out of bounds
     }
-    memcpy((char*)array->data + (index * array->element_size), element, array->element_size);
-    return FLEX_ARRAY_SUCCESS;
+
+    // Step 3: Copy the element from the array to the provided buffer
+    memcpy(element, (char*)array->data + (index * array->element_size), array->element_size);
+
+    return FLEX_ARRAY_SUCCESS; // Operation successful
 }
 
 // Set an element at a specific index
