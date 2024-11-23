@@ -9,6 +9,11 @@
  * - Single and half-precision floating-point.
  * - 8-bit and 4-bit quantized integers.
  * - Minimal dependencies and consistent design.
+ * 
+ * @note
+ * - A modern transformer typically consists of 32 blocks.
+ * - A block is a single layer composed of 9 sub-layers.
+ * - The number of layers will typically determine the number of blocks.
  */
 
 #ifndef ALT_DATA_TYPES_H
@@ -19,66 +24,15 @@ extern "C" {
 #endif // __cplusplus
 
 #include <math.h>
-
-// Half-precision arithmetic
-
-// Quantize F16
-
-// Mask for extracting the exponent bits of f32
-#define F32_EXPONENT_MASK 0xFF000000 /**< Isolates the exponent bits from f32 representation */
-
-// Half-precision floating-point bit masks
-#define F16_SIGN_MASK 0x80000000 /**< Extracts the sign bit from f32 representation */
-#define F16_EXP_MASK 0x00007C00 /**< Isolates the exponent bits in f16 format */
-#define F16_MANTISSA_MASK 0x00000FFF /**< Isolates the mantissa bits in f16 format */
-
-// Scaling factors for handling denormalized values
-#define F16_SCALE_TO_INF 0x1.0p+112f  /**< Scales small numbers up to avoid denormalization */
-#define F16_SCALE_TO_ZERO 0x1.0p-110f /**< Scales large numbers down to fit in f16 range */
-
-// Smallest positive f32 value that maps to f16
-#define F16_SMALLEST_EXPONENT 0x71000000 /**< Clamps f32 exponent to the smallest f16 normalized exponent */
-
-// Bias adjustment for f16 exponent
-#define F16_BIAS_ADJUSTMENT 0x07800000 /**< Shifts f32 exponent to align with f16 bias and range */
-
-// Overflow marker for f16 (infinity)
-#define F16_INFINITY 0x7E00 /**< Represents infinity in f16 format (11111 exponent, 0 mantissa) */
-
-// Dequantize F16
-
-// Bias adjustment for normalized f32 values
-#define F16_EXP_OFFSET (0xE0 << 23) /**< Bias adjustment for converting f16 exponent to f32 */
-
-// Scale factor for normalized f32 values
-#define F16_EXP_SCALE 0x1.0p-112f /**< Scale factor for normalized values */
-
-// Mask and bias for denormalized f32 values
-#define F16_MAGIC_MASK 0x7E000000 /**< Bias mask for denormalized values */
-#define F16_MAGIC_BIAS 0.5f       /**< Bias offset for denormalized values */
-
-// Threshold for denormalized cutoff
-#define F16_DENORMALIZED_CUTOFF (1 << 27) /**< Threshold for identifying denormalized values */
-
-// Quantized arithmetic
-
-// @note
-// A modern transformer typically consists of 32 blocks.
-// A block is a single layer composed of 9 sub-layers.
-// F32 and F16 will typically contain 32 blocks.
+#include <stdint.h>
 
 // Block size definitions for quantization
-#define DATA_BLOCK_SIZE 32 /**< Standard block size for quantization */
-#define Q8_ELEMENTS DATA_BLOCK_SIZE /**< Elements in an 8-bit quantized block */
-#define Q4_NIBBLES (DATA_BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
-
-// Interval arithmetic
-
-// Macro to ensure a value falls within a specific range [min, max]
-#define MINMAX(value, min, max) fmaxf((min), (fminf((value), (max))))
+#define BLOCK_SIZE 32 /**< Standard block size for quantization */
+#define Q8_ELEMENTS BLOCK_SIZE /**< Elements in an 8-bit quantized block */
+#define Q4_NIBBLES (BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
 
 // Macro to clamp a value between a lower and upper bound
-#define CLAMP(value, lower, upper) MINMAX((value), (lower), (upper))
+#define CLAMP(value, lower, upper) fmaxf((lower), (fminf((value), (upper))))
 
 // Supported data types
 
@@ -86,15 +40,38 @@ extern "C" {
  * @brief Supported data types for this API.
  */
 typedef enum {
-    TYPE_FLOAT64, /**< IEEE-754 64-bit floating-point (double) */
-    TYPE_FLOAT32, /**< IEEE-754 32-bit floating-point */
-    TYPE_FLOAT16, /**< IEEE-754 16-bit floating-point */
-    TYPE_QINT16, /**< 16-bit integer quantization */
-    TYPE_QINT8, /**< 8-bit integer quantization */
-    TYPE_QINT4, /**< 4-bit packed quantization */
-    TYPE_CHAR, /** 1-byte pointer to a set of characters */
-    TYPE_COUNT /**< Total number of supported types */
+    // Floating-point
+    TYPE_DOUBLE,       /**< IEEE-754 64-bit floating-point (double) */
+    TYPE_FLOAT,        /**< IEEE-754 32-bit floating-point */
+    TYPE_FLOAT16,      /**< IEEE-754 16-bit floating-point */
+    TYPE_BFLOAT16,     /**< Brain floating-point 16-bit */
+    // Signed integers
+    TYPE_INT64,        /**< 64-bit signed integer */
+    TYPE_INT32,        /**< 32-bit signed integer */
+    TYPE_INT16,        /**< 16-bit signed integer */
+    TYPE_INT8,         /**< 8-bit signed integer */
+    TYPE_INT4,         /**< 4-bit signed integer */
+    // Unsigned integers
+    TYPE_UINT64,       /**< 64-bit unsigned integer */
+    TYPE_UINT32,       /**< 32-bit unsigned integer */
+    TYPE_UINT16,       /**< 16-bit unsigned integer */
+    TYPE_UINT8,        /**< 8-bit unsigned integer */
+    TYPE_UINT4,        /**< 4-bit unsigned integer */
+    // Boolean
+    TYPE_BOOL,         /**< Boolean type */
+    // Character
+    TYPE_CHAR,         /**< 1-byte character */
+    TYPE_WCHAR,        /**< Wide character */
+    // Complex numbers
+    TYPE_COMPLEX_FLOAT, /**< Complex number with float components */
+    TYPE_COMPLEX_DOUBLE,/**< Complex number with double components */
+    // Custom and others
+    TYPE_CUSTOM,       /**< User-defined type */
+    TYPE_COUNT         /**< Total number of supported types */
 } DataType;
+
+// @brief Returns the size of the data type in bytes
+uint32_t data_type_size(DataType type);
 
 // Single precision conversions
 
@@ -102,8 +79,16 @@ typedef enum {
  * @brief Union for floating-point bit manipulation.
  */
 typedef union {
+    double value; /**< Floating-point value */
+    uint64_t bits; /**< Raw bit representation */
+} DoubleBits;
+
+/**
+ * @brief Union for floating-point bit manipulation.
+ */
+typedef union {
     float value; /**< Floating-point value */
-    unsigned int bits; /**< Raw bit representation */
+    uint32_t bits; /**< Raw bit representation */
 } FloatBits;
 
 // Quantized conversions
@@ -112,7 +97,7 @@ typedef struct {
     float scalar;  /**< Scaling factor for quantization */
     float min;
     float max;
-    unsigned char quant; /**< Quantized scalar value */
+    uint8_t quant; /**< Quantized scalar value */
 } Q8;
 
 typedef Q8 Q4; // /**< Packed nibble (4 bits) */
@@ -121,13 +106,16 @@ typedef Q4 Q4Row[Q4_NIBBLES];
 
 // Scalar Conversions
 
+uint64_t encode_scalar_fp64(double value); 
+double decode_scalar_fp64(uint64_t bits);
+
 // Floating-point encoding and decoding
-unsigned int encode_float32_to_bits(float value);
-float decode_bits_to_float32(unsigned int bits);
+uint32_t encode_scalar_fp32(float value);
+float decode_scalar_fp32(uint32_t bits);
 
 // Half-precision floating-point quantization
-unsigned short quantize_scalar_fp16(float value);
-float dequantize_scalar_fp16(unsigned short bits);
+uint16_t quantize_scalar_fp16(float value);
+float dequantize_scalar_fp16(uint16_t bits);
 
 // 8-bit integer quantization (unpacked)
 Q8 quantize_scalar_q8(float value);
@@ -140,8 +128,8 @@ float dequantize_scalar_q4(Q4 q4, int index);
 // Vector Conversions (1D arrays)
 
 // Half-precision floating-point quantization
-void quantize_row_fp16(const float* input, unsigned short* output, int count);
-void dequantize_row_fp16(const unsigned short* input, float* output, int count);
+void quantize_row_fp16(const float* input, uint16_t* output, int count);
+void dequantize_row_fp16(const uint16_t* input, float* output, int count);
 
 // 8-bit integer quantization (unpacked)
 void quantize_row_q8(const float* input, Q8Row output, int count);
