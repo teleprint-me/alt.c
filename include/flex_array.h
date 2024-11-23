@@ -12,43 +12,40 @@
 
 #include "data_types.h"
 
-#define FLEX_ARRAY_SUCCESS 0
-#define FLEX_ARRAY_ERROR -1
+typedef enum FlexState {
+    FLEX_ARRAY_SUCCESS,               /**< Operation was successful */
+    FLEX_ARRAY_ERROR,                 /**< Generic error */
+    FLEX_ARRAY_RESIZE,                /**< Resize operation performed */
+    FLEX_ARRAY_OUT_OF_BOUNDS,         /**< Index out of bounds */
+    FLEX_ARRAY_MEMORY_ALLOCATION_FAILED /**< Memory allocation failure */
+} FlexState;
 
 typedef struct FlexArray {
     // Member variables
-    void* data; /**< Pointer to the array's data */
+    void* data;              /**< Pointer to the array's data */
     unsigned int element_size; /**< Size of each element in bytes */
-    unsigned int length; /**< Current number of elements */
-    unsigned int capacity; /**< Total allocated capacity */
-    DataType type; /**< Data type of the elements */
+    unsigned int length;      /**< Current number of elements */
+    unsigned int capacity;    /**< Total allocated capacity */
+    DataType type;            /**< Data type of the elements */
 
-    // Function pointers
-    int (*append)(struct FlexArray*, void*);
-    int (*pop)(struct FlexArray*, void* element);
-    void* (*get)(struct FlexArray*, unsigned int);
-    int (*set)(struct FlexArray*, unsigned int, void* element);
+    // Function pointers for methods
+    FlexState (*append)(struct FlexArray*, void* element);  /**< Append an element */
+    void* (*pop)(struct FlexArray*);     /**< Pop the last element */
+    void* (*get)(struct FlexArray*, unsigned int index); /**< Get an element by index */
+    FlexState (*set)(struct FlexArray*, unsigned int index, void* element); /**< Set an element */
 } FlexArray;
 
-/* Initialize a new flexible array */
+// Constructor and Destructor
 FlexArray* flex_array_create(unsigned int initial_capacity, DataType type, unsigned int element_size);
-
-/* Free the memory of a flexible array */
 void flex_array_destroy(FlexArray* array);
 
-/* Resize a flexible array */
-int flex_array_resize(FlexArray* array, unsigned int new_capacity);
+// Modifiers
+FlexState flex_array_append(FlexArray* array, void* element);
+FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity);
 
-/* Append an element to the array */
-int flex_array_append(FlexArray* array, void* element);
-
-/* Pop an element from the array */
-int flex_array_pop(FlexArray* array, void* element);
-
-/* Get an element from the array */
+// Accessors
 void* flex_array_get(FlexArray* array, unsigned int index);
-
-/* Set an element in the array */
-int flex_array_set(FlexArray* array, unsigned int index, void* element);
+FlexState flex_array_set(FlexArray* array, unsigned int index, void* element);
+void* flex_array_pop(FlexArray* array);
 
 #endif // ALT_FLEX_ARRAY_H
