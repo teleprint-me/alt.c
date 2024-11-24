@@ -2,14 +2,14 @@
  * Copyright © 2024 Austin Berrio
  *
  * @file include/data_types.h
- * 
+ *
  * @brief API for handling numeric data types and conversions.
  *
  * Focused on:
  * - Single and half-precision floating-point.
  * - 8-bit and 4-bit quantized integers.
  * - Minimal dependencies and consistent design.
- * 
+ *
  * @note
  * - A modern transformer typically consists of 32 blocks.
  * - A block is a single layer composed of 9 sub-layers.
@@ -24,64 +24,72 @@ extern "C" {
 #endif // __cplusplus
 
 #include <math.h>
+#include <stdalign.h>
+#include <stdbool.h>
 #include <stdint.h>
-
-// Block size definitions for quantization
-#define BLOCK_SIZE 32 /**< Standard block size for quantization */
-#define Q8_ELEMENTS BLOCK_SIZE /**< Elements in an 8-bit quantized block */
-#define Q4_NIBBLES (BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
-
-// Macro to clamp a value between a lower and upper bound
-#define CLAMP(value, lower, upper) fmaxf((lower), (fminf((value), (upper))))
+#include <wchar.h>
 
 // Supported data types
 
-/**
- * @brief Supported data types for this API.
- */
+#define TYPE_CAST(ptr, type) ((type*) (ptr))
+#define TYPE_CAST_SAFE(ptr, type, type_object) \
+    ((type_object->size == sizeof(*(type*) (ptr))) ? (type*) (ptr) : NULL)
+
+// Supported data types (as in your original code)
 typedef enum {
-    // Floating-point
-    TYPE_DOUBLE,       /**< IEEE-754 64-bit floating-point (double) */
-    TYPE_FLOAT,        /**< IEEE-754 32-bit floating-point */
-    TYPE_FLOAT16,      /**< IEEE-754 16-bit floating-point */
-    TYPE_BFLOAT16,     /**< Brain floating-point 16-bit */
-    // Signed integers
-    TYPE_INT64,        /**< 64-bit signed integer */
-    TYPE_INT32,        /**< 32-bit signed integer */
-    TYPE_INT16,        /**< 16-bit signed integer */
-    TYPE_INT8,         /**< 8-bit signed integer */
-    TYPE_INT4,         /**< 4-bit signed integer */
-    // Unsigned integers
-    TYPE_UINT64,       /**< 64-bit unsigned integer */
-    TYPE_UINT32,       /**< 32-bit unsigned integer */
-    TYPE_UINT16,       /**< 16-bit unsigned integer */
-    TYPE_UINT8,        /**< 8-bit unsigned integer */
-    TYPE_UINT4,        /**< 4-bit unsigned integer */
-    // Boolean
-    TYPE_BOOL,         /**< Boolean type */
-    // Character
-    TYPE_CHAR,         /**< 1-byte character */
-    TYPE_WCHAR,        /**< Wide character */
-    // Complex numbers
-    TYPE_COMPLEX_FLOAT, /**< Complex number with float components */
-    TYPE_COMPLEX_DOUBLE,/**< Complex number with double components */
-    // Custom and others
-    TYPE_CUSTOM,       /**< User-defined type */
-    TYPE_COUNT         /**< Total number of supported types */
+    TYPE_FLOAT, /**< IEEE-754 32-bit floating-point */
+    TYPE_FLOAT16, /**< IEEE-754 16-bit floating-point */
+    TYPE_INT32, /**< 32-bit signed integer */
+    TYPE_INT16, /**< 16-bit signed integer */
+    TYPE_INT8, /**< 8-bit signed integer */
+    TYPE_INT4, /**< 4-bit signed integer */
+    TYPE_UINT32, /**< 32-bit unsigned integer */
+    TYPE_UINT16, /**< 16-bit unsigned integer */
+    TYPE_UINT8, /**< 8-bit unsigned integer */
+    TYPE_UINT4, /**< 4-bit unsigned integer */
+    TYPE_BOOL, /**< Boolean type */
+    TYPE_CHAR, /**< 1-byte character */
+    TYPE_WCHAR, /**< Wide character */
+    TYPE_COUNT /**< Total number of types */
+} DataTypeId;
+
+typedef enum {
+    TYPE_NOT_APPLICABLE,
+    TYPE_IS_SIGNED,
+    TYPE_IS_UNSIGNED
+} DataTypeSign;
+
+typedef struct {
+    const char* name; /**< Human-readable name of the type */
+    uint32_t alignment; /**< Memory alignment in bytes */
+    uint32_t size; /**< Size in bytes */
+    DataTypeSign sign; /**< Signed, unsigned, or not applicable */
+    DataTypeId id; /**< Unique type ID */
 } DataType;
 
-// @brief Returns the size of the data type in bytes
-uint32_t data_type_size(DataType type);
+// Static array of types
+static const DataType TYPES[TYPE_COUNT] = {
+    [TYPE_FLOAT] = {"float32", _Alignof(float),    sizeof(float),    TYPE_IS_SIGNED,      TYPE_FLOAT  },
+    [TYPE_FLOAT16] = {"float16", _Alignof(uint16_t), sizeof(uint16_t), TYPE_IS_UNSIGNED,    TYPE_FLOAT16},
+    [TYPE_INT32] = {"int32",   _Alignof(int32_t),  sizeof(int32_t),  TYPE_IS_SIGNED,      TYPE_INT32  },
+    [TYPE_INT16] = {"int16",   _Alignof(int16_t),  sizeof(int16_t),  TYPE_IS_SIGNED,      TYPE_INT16  },
+    [TYPE_INT8] = {"int8",    _Alignof(int8_t),   sizeof(int8_t),   TYPE_IS_SIGNED,      TYPE_INT8   },
+    [TYPE_INT4] = {"int4",    _Alignof(int8_t),   sizeof(int8_t),   TYPE_IS_SIGNED,      TYPE_INT4   }, // Packed
+    [TYPE_UINT32] = {"uint32",  _Alignof(uint32_t), sizeof(uint32_t), TYPE_IS_UNSIGNED,    TYPE_UINT32 },
+    [TYPE_UINT16] = {"uint16",  _Alignof(uint16_t), sizeof(uint16_t), TYPE_IS_UNSIGNED,    TYPE_UINT16 },
+    [TYPE_UINT8] = {"uint8",   _Alignof(uint8_t),  sizeof(uint8_t),  TYPE_IS_UNSIGNED,    TYPE_UINT8  },
+    [TYPE_UINT4] = {"uint4",   _Alignof(uint8_t),  sizeof(uint8_t),  TYPE_IS_UNSIGNED,    TYPE_UINT4  }, // Packed
+    [TYPE_BOOL] = {"bool",    _Alignof(bool),     sizeof(bool),     TYPE_NOT_APPLICABLE, TYPE_BOOL   },
+    [TYPE_CHAR] = {"char",    _Alignof(char),     sizeof(char),     TYPE_IS_UNSIGNED,    TYPE_CHAR   },
+    [TYPE_WCHAR] = {"wchar",   _Alignof(wchar_t),  sizeof(wchar_t),  TYPE_IS_UNSIGNED,    TYPE_WCHAR  }
+};
+
+// Data type management
+const DataType* data_type_get(DataTypeId id);
+uint32_t data_type_size(DataTypeId id);
+const char* data_type_name(DataTypeId id);
 
 // Single precision conversions
-
-/**
- * @brief Union for floating-point bit manipulation.
- */
-typedef union {
-    double value; /**< Floating-point value */
-    uint64_t bits; /**< Raw bit representation */
-} DoubleBits;
 
 /**
  * @brief Union for floating-point bit manipulation.
@@ -93,21 +101,36 @@ typedef union {
 
 // Quantized conversions
 
-typedef struct {
-    float scalar;  /**< Scaling factor for quantization */
-    float min;
-    float max;
-    uint8_t quant; /**< Quantized scalar value */
-} Q8;
+// Block size definitions for quantization
+#define BLOCK_SIZE 32 /**< Standard block size for quantization */
+#define Q8_ELEMENTS BLOCK_SIZE /**< Elements in an 8-bit quantized block */
+#define Q4_NIBBLES (BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
 
-typedef Q8 Q4; // /**< Packed nibble (4 bits) */
-typedef Q8 Q8Row[Q8_ELEMENTS];
-typedef Q4 Q4Row[Q4_NIBBLES];
+// Macro to clamp a value between a lower and upper bound
+#define CLAMP(value, lower, upper) fmaxf((lower), fminf((value), (upper)))
+
+/**
+ * Digital Signal Processing
+ *
+ * scalar = ((f_max - f_min) / (i_max - i_min))
+ * y = clamp(x, f_max, f_min)
+ * q = round(x / scalar)
+ * x' = q * scalar // approximate reconstruction of x
+ * e = x - x' // abs error of reconstruction
+ * r = e / x if x != 0 // rel error of reconstruction
+ */
+// Quantization structure
+typedef struct Quant {
+    float scalar; /**< Scaling factor for quantization of input */
+    uint8_t bits; /**< Quantized value */
+} Quant;
+
+typedef Quant Q8;
+typedef Quant Q4; // /**< Packed nibble (4 bits) */
+typedef Quant Q8Row[Q8_ELEMENTS];
+typedef Quant Q4Row[Q4_NIBBLES];
 
 // Scalar Conversions
-
-uint64_t encode_scalar_fp64(double value); 
-double decode_scalar_fp64(uint64_t bits);
 
 // Floating-point encoding and decoding
 uint32_t encode_scalar_fp32(float value);

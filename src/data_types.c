@@ -16,62 +16,28 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-#include <wchar.h>
 
-uint32_t data_type_size(DataType type) {
-    switch(type) {
-        // Floating-point types
-        case TYPE_DOUBLE:       return sizeof(double);
-        case TYPE_FLOAT:        return sizeof(float);
-        case TYPE_FLOAT16:      return sizeof(uint16_t); // IEEE-754 half-precision
-        case TYPE_BFLOAT16:     return sizeof(uint16_t); // Brain floating-point 16-bit
+// Data type management
 
-        // Signed integers
-        case TYPE_INT64:        return sizeof(int64_t);
-        case TYPE_INT32:        return sizeof(int32_t);
-        case TYPE_INT16:        return sizeof(int16_t);
-        case TYPE_INT8:         return sizeof(int8_t); // Unpacked 8-bits
-        case TYPE_INT4:         return sizeof(int8_t); // Packed 4-bits
-
-        // Unsigned integers
-        case TYPE_UINT64:       return sizeof(uint64_t);
-        case TYPE_UINT32:       return sizeof(uint32_t);
-        case TYPE_UINT16:       return sizeof(uint16_t);
-        case TYPE_UINT8:        return sizeof(uint8_t); // Unpacked 8-bits
-        case TYPE_UINT4:        return sizeof(uint8_t); // Packed 4-bits
-
-        // Boolean
-        case TYPE_BOOL:         return sizeof(uint8_t); // Typically stored as 1 byte
-
-        // Character types
-        case TYPE_CHAR:         return sizeof(char);
-        case TYPE_WCHAR:        return sizeof(wchar_t);
-
-        // Complex numbers
-        case TYPE_COMPLEX_FLOAT:  return 2 * sizeof(float);
-        case TYPE_COMPLEX_DOUBLE: return 2 * sizeof(double);
-
-        // Custom and unsupported types
-        case TYPE_CUSTOM:
-        default:
-            return 0; // Unsupported or unknown type
+const DataType* data_type_get(DataTypeId id) {
+    // Bounds checking to avoid invalid access
+    if (id >= TYPE_COUNT) {
+        return NULL; // Invalid type
     }
+    return &TYPES[id];
+}
+
+uint32_t data_type_size(DataTypeId id) {
+    const DataType* type = data_type_get(id);
+    return type ? type->size : 0;
+}
+
+const char* data_type_name(DataTypeId id) {
+    const DataType* type = data_type_get(id);
+    return type ? type->name : "Unknown";
 }
 
 // Scalar Conversions
-
-// 64-bit encoding and decoding
-uint64_t encode_scalar_fp64(double value) {
-    DoubleBits raw;
-    raw.value = value;
-    return raw.bits;
-}
-
-double decode_scalar_fp64(uint64_t bits) {
-    DoubleBits raw;
-    raw.bits = bits;
-    return raw.value;
-}
 
 // 32-bit encoding and decoding
 uint32_t encode_scalar_fp32(float value) {
@@ -123,10 +89,9 @@ float dequantize_scalar_fp16(uint16_t bits) {
     const float denormalized_value = decode_scalar_fp32((two_w >> 17) | magic_mask) - magic_bias;
 
     const uint32_t denormalized_cutoff = 1 << 27;
-    const uint32_t result
-        = sign
-          | (two_w < denormalized_cutoff ? encode_scalar_fp32(denormalized_value)
-                                         : encode_scalar_fp32(normalized_value));
+    const uint32_t result = sign
+                            | (two_w < denormalized_cutoff ? encode_scalar_fp32(denormalized_value)
+                                                           : encode_scalar_fp32(normalized_value));
     return decode_scalar_fp32(result);
 }
 
@@ -134,67 +99,81 @@ float dequantize_scalar_fp16(uint16_t bits) {
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    // Fixed delta based on the full q8 range
-    q8.scalar = 1.0f / 127.0f; // Scaling factor for the full range [-127, 127]
-    q8.min = -127.0f;
-    q8.max = 127.0f;
+    // Set the range for the integer domain
+    int z_max = 127;
+    int z_min = -128;
 
-    // Clamp the input value to the quantizable range
-    float clamped = CLAMP(value, q8.min, q8.max);
+    // Clamp the real input value to the integer domain
+    float clamped = CLAMP(value, z_min, z_max);
 
-    // Quantize by scaling and rounding
-    int8_t quant = (int8_t) roundf(clamped / q8.scalar);
+    // Calculate the dynamic range for the real domain
+    float r_max = fabsf(clamped); // Use the absolute value for max
+    float r_min = -r_max;         // Reflect the max as min in the negative domain
 
-    // Store the quantized value
-    q8.quant = (unsigned char) quant + q8.max; // Shift the range [0, 255]
+    // Calculate the scaling factor and preserve the sign
+    q8.scalar = (r_max - r_min) / (z_max - z_min);
+    q8.scalar = (value >= 0) ? q8.scalar : -q8.scalar;
+
+    // Quantize the value
+    q8.bits = (uint8_t) roundf(clamped / q8.scalar);
 
     return q8;
 }
 
+// Reconstruct the real value using the scalar
 float dequantize_scalar_q8(Q8 q8) {
-    return q8.scalar * (q8.quant + q8.min); // Shift the range [-127, 127]
+    return (float) q8.bits * q8.scalar;
 }
 
 // 4-bit integer quantization
 Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
-    q4.min = -7.0f;
-    q4.max = 7.0f;
+    // Set the range for the integer domain
+    int z_max = 7;
+    int z_min = -8;
 
-    // Fixed-scalar for the full Q4 range
-    q4.scalar = 1.0f / q4.max; // Scaling factor for the full range [-7, 7]
+    // Clamp the real input values to the integer domain
+    float a_clamped = CLAMP(a, z_min, z_max);
+    float b_clamped = CLAMP(b, z_min, z_max);
 
-    // Clamp the two values
-    float clamped1 = CLAMP(a, q4.min, q4.max);
-    float clamped2 = CLAMP(b, q4.min, q4.max);
+    // Calculate the dynamic range for the real domain
+    float a_max = fabsf(a_clamped);
+    float a_min = -a_max;
+    float a_scalar = (a_max - a_min) / (z_max - z_min);
+    float b_max = fabsf(b_clamped);
+    float b_min = fabsf(b_clamped);
+    float b_scalar = (b_max - b_min) / (z_max - z_min);
+
+    // Calculate the scaling factor
+    q4.scalar = (a_scalar + b_scalar) / 2; // Use the mean of the scalars
 
     // Quantize by scaling and rounding
-    int8_t quant1 = (int8_t) roundf(clamped1 / q4.scalar);
-    int8_t quant2 = (int8_t) roundf(clamped2 / q4.scalar);
+    int8_t quant1 = (int8_t) roundf(a_clamped / q4.scalar);
+    int8_t quant2 = (int8_t) roundf(b_clamped / q4.scalar);
 
     // Pack two quantized values into a single byte
-    q4.quant = ((unsigned char) quant2 << 4) | ((unsigned char) quant1 & 0x0F);
+    q4.bits = ((uint8_t) quant2 << 4) | ((uint8_t) quant1 & 0x0F);
 
     return q4;
 }
 
 float dequantize_scalar_q4(Q4 q4, int index) {
-    int8_t quant;
+    int8_t bits;
 
     if (index == 0) { // Lower nibble
-        quant = q4.quant & 0x0F;
-        if (quant & 0x08) {
-            quant -= 16; // Sign extension for 4-bit negative values
+        bits = q4.bits & 0x0F;
+        if (bits & 0x08) {
+            bits -= 16; // Sign extension for 4-bit negative values
         }
     } else { // Upper nibble
-        quant = (q4.quant >> 4) & 0x0F;
-        if (quant & 0x08) {
-            quant -= 16;
+        bits = (q4.bits >> 4) & 0x0F;
+        if (bits & 0x08) {
+            bits -= 16;
         }
     }
 
-    return q4.scalar * quant;
+    return bits * q4.scalar;
 }
 
 // Vector Conversions (1D arrays)

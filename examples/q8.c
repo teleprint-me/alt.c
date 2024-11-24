@@ -16,70 +16,9 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-// Block size definitions for quantization
-#define BLOCK_SIZE 32
-#define Q8_ELEMENTS BLOCK_SIZE
-
-// Macro to clamp a value between a lower and upper bound
-#define CLAMP(value, min, max) fmaxf((min), (fminf((value), (max))))
-
-typedef struct Q8 {
-    float min; /**< Minimum quantizable value */
-    float max; /**< Maximum quantizable value */
-    unsigned char quant; /**< Quantized scalar value */
-} Q8;
-
-typedef Q8 Q8Row[Q8_ELEMENTS];
-
-// 8-bit integer quantization
-Q8 quantize_scalar_q8(float value) {
-    Q8 q8;
-
-    q8.max = (1 << 7) - 1; // 127 (additive interval)
-    q8.min = -(1 << 7); // -128 (inverse interval)
-
-    // Clamp the input to the specified range
-    float clamped = CLAMP(value, q8.min, q8.max);
-
-    // Normalize the value to [-1, 1] and scale
-    float normalized = (clamped - q8.min) / (q8.max - q8.min); // (v + 128) / 255
-    q8.quant = (unsigned char) roundf((normalized * q8.max)); // round(norm * 127)
-
-    return q8;
-}
-
-// Function to dequantize a Q8 value back to float
-float dequantize_scalar_q8(Q8 q8) {
-    // Map back to the original range
-    float normalized = (signed char) q8.quant / q8.max; // norm = q / 127
-    return (normalized * (q8.max - q8.min) + q8.min); // (norm * (127 + 128)) - 128
-}
-
-// 8-bit integer quantization
-void quantize_row_q8(const float* input, Q8Row output, int count) {
-    assert(input != NULL);
-    assert(output != NULL);
-    assert(count % Q8_ELEMENTS == 0);
-
-    for (int i = 0; i < count / Q8_ELEMENTS; ++i) {
-        for (int j = 0; j < Q8_ELEMENTS; ++j) {
-            output[i * Q8_ELEMENTS + j] = quantize_scalar_q8(input[i * Q8_ELEMENTS + j]);
-        }
-    }
-}
-
-void dequantize_row_q8(const Q8Row input, float* output, int count) {
-    assert(input != NULL);
-    assert(output != NULL);
-    assert(count % Q8_ELEMENTS == 0);
-
-    for (int i = 0; i < count / Q8_ELEMENTS; ++i) {
-        for (int j = 0; j < Q8_ELEMENTS; ++j) {
-            output[i * Q8_ELEMENTS + j] = dequantize_scalar_q8(input[i * Q8_ELEMENTS + j]);
-        }
-    }
-}
+#include "data_types.h"
 
 void print_floats(const char* label, const float* values, int count) {
     printf("%s: ", label);
@@ -92,7 +31,7 @@ void print_floats(const char* label, const float* values, int count) {
 void print_q8_row(const Q8Row row) {
     printf("Q8 Row: ");
     for (int i = 0; i < Q8_ELEMENTS; ++i) {
-        printf("%u ", row[i].quant);
+        printf("%u ", (uint8_t) row[i].bits);
     }
     printf("\n\n");
 }
