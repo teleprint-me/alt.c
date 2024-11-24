@@ -198,4 +198,56 @@ $$
 
 ---
 
+### **Option 1: 16-bit Components + 8-bit Quantized Value**
+
+- **Storage**: $2 \times 3 + 1 = 7$ bytes.
+  - Scalar: $2$ bytes (16-bit float or fixed-point).
+  - Alpha: $2$ bytes.
+  - Residual: $2$ bytes.
+  - Quantized Value: $1$ byte ($8$-bit integer).
+
+- **Upside**: 
+  - Higher efficiency in computation compared to 32-bit float-based components.
+  - Retains precision for components better than 8-bit while reducing storage from full 32-bit representation.
+
+- **Downside**:
+  - Still nearly doubles the storage requirement compared to a single 4-byte float.
+
+---
+
+### **Option 2: Fully Quantized Components**
+
+- Quantize scalar, alpha, and residual into $8$-bit precision.
+
+- **Storage**: $1 \times 3 + 1 = 4$ bytes.
+  - Scalar: $1$ byte.
+  - Alpha: $1$ byte.
+  - Residual: $1$ byte.
+  - Quantized Value: $1$ byte.
+
+- **Upside**:
+  - Matches the storage of a $32$-bit float ($4$ bytes).
+  - Gains efficiency in computation due to $8$-bit operations.
+
+- **Downside**:
+  - Precision loss for all components could lead to cumulative errors during dequantization.
+  - Limited range for quantized components might fail for edge cases.
+
+---
+
+### **Key Considerations**
+
+#### **Precision vs. Storage**
+- **16-bit precision** strikes a middle ground by preserving more accuracy while halving the storage for components compared to $32$-bit floats.
+- **8-bit precision** maximizes storage savings but risks excessive cumulative error due to aggressive quantization of components.
+
+#### **Efficiency**
+- Smaller bit-width components allow for faster computations (e.g., SIMD operations) and reduced memory bandwidth usage, improving efficiency in constrained environments.
+
+#### **Application Context**
+- If reconstruction accuracy is critical, $16$-bit precision might be preferable.
+- If storage and computational efficiency are the primary concerns, fully $8$-bit quantized components could be an option.
+
+---
+
 <p align="center">Copyright (C) 2024 Austin Berrio</p>
