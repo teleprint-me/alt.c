@@ -87,22 +87,26 @@ $$
 ### **Step 2: Dequantization Math**
 
 1. **Reconstructed Value** ($x'$):
-   - Combines the quantized value, scalar, and residual to restore the original input:
-     $$
-     x' = q \cdot s / \alpha + r
-     $$
+
+- Combines the quantized value, scalar, and residual to restore the original input:
+
+$$
+x' = q \cdot s / \alpha + r
+$$
 
 ---
 
 ### **Step 3: Storage Requirements**
 
 To achieve error-free reconstruction, the following components are stored:
+
 1. **Quantized Value** ($q$) — $8$ bits.
 2. **Scalar** ($s$) — $32$ bits (float).
 3. **Squeezing Factor** ($\alpha$) — $32$ bits (float).
 4. **Residual** ($r$) — $32$ bits (float).
 
 **Total Storage**:
+
 - $8 + 32 + 32 + 32 = 104$ bits ($13$ bytes) per quantized value.
 
 ---
@@ -110,62 +114,74 @@ To achieve error-free reconstruction, the following components are stored:
 ### **Example: Walkthrough for $x = -170.665173$**
 
 1. **Define Integer Domain** ($z_{\text{min}}, z_{\text{max}}$):
-   $$
-   z_{\text{min}} = -128, \quad z_{\text{max}} = 127, \quad z_{\text{domain}} = 255
-   $$
+
+$$
+z_{\text{min}} = -128, \quad z_{\text{max}} = 127, \quad z_{\text{domain}} = 255
+$$
 
 2. **Calculate Real Domain** ($r_{\text{min}}, r_{\text{max}}, r_{\text{domain}}$):
-   $$
-   r_{\text{max}} = |x| = 170.665173, \quad r_{\text{min}} = -170.665173
-   $$
-   $$
-   r_{\text{domain}} = r_{\text{max}} - r_{\text{min}} = 341.330346
-   $$
+
+$$
+r_{\text{max}} = |x| = 170.665173, \quad r_{\text{min}} = -170.665173
+$$
+
+$$
+r_{\text{domain}} = r_{\text{max}} - r_{\text{min}} = 341.330346
+$$
 
 3. **Calculate Squeezing Factor ($\alpha$)**:
-   $$
-   \alpha = \frac{z_{\text{domain}}}{r_{\text{domain}}} = \frac{255}{341.330346} \approx 0.747077
-   $$
+
+$$
+\alpha = \frac{z_{\text{domain}}}{r_{\text{domain}}} = \frac{255}{341.330346} \approx 0.747077
+$$
 
 4. **Calculate Base Step Size ($s_{\text{base}}$)**:
-   $$
-   s_{\text{base}} = \frac{r_{\text{domain}}}{z_{\text{domain}}} = \frac{341.330346}{255} \approx 1.338552
-   $$
+
+$$
+s_{\text{base}} = \frac{r_{\text{domain}}}{z_{\text{domain}}} = \frac{341.330346}{255} \approx 1.338552
+$$
 
 5. **Calculate Scalar ($s$)**:
-   $$
-   s = s_{\text{base}} \cdot \alpha = 1.338552 \cdot 0.747077 \approx 1.000000
-   $$
+
+$$
+s = s_{\text{base}} \cdot \alpha = 1.338552 \cdot 0.747077 \approx 1.000000
+$$
 
 6. **Quantize**:
-   $$
-   q = \text{round}\left(\frac{x}{s}\right) = \text{round}\left(\frac{-170.665173}{1.000000}\right) = -171
-   $$
+
+$$
+q = \text{round}\left(\frac{x}{s}\right) = \text{round}\left(\frac{-170.665173}{1.000000}\right) = -171
+$$
 
 7. **Calculate Residual ($r$)**:
-   $$
-   r = x - q \cdot s = -170.665173 - (-171 \cdot 1.000000) = 0.334827
-   $$
+
+$$
+r = x - q \cdot s = -170.665173 - (-171 \cdot 1.000000) = 0.334827
+$$
 
 ---
 
 ### **Step 4: Reconstruction**
 
 1. **Reconstruct the Value**:
-   $$
-   x' = q \cdot s / \alpha + r = (-171 \cdot 1.000000 / 0.747077) + 0.334827
-   $$
-   $$
-   x' \approx -170.665173
-   $$
+
+$$
+x' = q \cdot s / \alpha + r = (-171 \cdot 1.000000 / 0.747077) + 0.334827
+$$
+
+$$
+x' \approx -170.665173
+$$
 
 2. **Check for Error**:
-   $$
-   \text{Absolute Error} = |x - x'| = 0
-   $$
-   $$
-   \text{Relative Error} = \frac{\text{Absolute Error}}{|x|} = 0
-   $$
+
+$$
+\text{Absolute Error} = |x - x'| = 0
+$$
+
+$$
+\text{Relative Error} = \frac{\text{Absolute Error}}{|x|} = 0
+$$
 
 ---
 
