@@ -70,14 +70,14 @@ float decode_float8(uint8_t bits) {
 }
 
 // Function to sample floating-point values in the range [-n, n-1]
-void sampler(double* x, int max_elements, int n) {
+void sampler(double* x, int length, int range) {
     assert(x != NULL);
-    assert(max_elements > 0);
-    assert(n > 1);
+    assert(length > 0);
+    assert(range > 1);
 
-    for (int i = 0; i < max_elements; ++i) {
+    for (int i = 0; i < length; ++i) {
         double normalized = (double) rand() / (double) RAND_MAX;
-        x[i] = -n + (normalized * (2 * n - 1));
+        x[i] = -(range + 1) + (normalized * ((2 * range) - 1));
     }
 }
 
@@ -92,7 +92,7 @@ int main() {
 
     // Generate sampled data
     double sampled[MAX_SAMPLES];
-    sampler(sampled, MAX_SAMPLES, 2);
+    sampler(sampled, MAX_SAMPLES, 255);
 
     // Initialize error accumulators
     double total_abs_error = 0.0, total_rel_error = 0.0;
