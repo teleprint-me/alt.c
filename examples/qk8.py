@@ -6,7 +6,7 @@ import struct
 from random import random, seed
 
 
-def float32_to_float8(value):
+def float32_to_float8(value: float) -> int:
     # Extract IEEE-754 components
     bits = struct.unpack("I", struct.pack("f", value))[0]
     sign = (bits >> 31) & 0x1
@@ -30,7 +30,7 @@ def float32_to_float8(value):
     return float8
 
 
-def float8_to_float32(float8):
+def float8_to_float32(float8: int) -> float:
     # Extract components from 8-bit representation
     sign = (float8 >> 7) & 0x1
     e_compressed = (float8 >> 4) & 0x7
