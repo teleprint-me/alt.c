@@ -8,7 +8,7 @@ from random import random, seed
 
 def float32_to_float8(value):
     # Extract IEEE-754 components
-    bits = struct.unpack(">I", struct.pack(">f", value))[0]
+    bits = struct.unpack("I", struct.pack("f", value))[0]
     sign = (bits >> 31) & 0x1
     exponent = (bits >> 23) & 0xFF
     mantissa = bits & 0x7FFFFF
@@ -48,7 +48,7 @@ def float8_to_float32(float8):
 
     # Reconstruct float
     value = ((-1) ** sign) * (2 ** (e_expanded - e_bias_32)) * (1 + m_expanded)
-    return struct.unpack(">f", struct.pack(">f", value))[0]
+    return struct.unpack("f", struct.pack("f", value))[0]
 
 
 def sampler(max_elements: int, z: int) -> list[float]:
