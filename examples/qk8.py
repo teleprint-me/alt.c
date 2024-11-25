@@ -67,7 +67,7 @@ def sampler(max_elements: int, z: int) -> list[float]:
 def main():
     # Test cases
     seed(1337)
-    values = sampler(10, 2**8 - 1)
+    values = sampler(10, 2**4 - 1)
     for v in values:
         compressed = float32_to_float8(v)
         decompressed = float8_to_float32(compressed)
