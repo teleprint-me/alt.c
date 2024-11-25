@@ -1,4 +1,6 @@
 """
+Script: examples/q8.py
+
 Mirror the C implementation to the letter.
 
 Only one input and one output is allowed.
