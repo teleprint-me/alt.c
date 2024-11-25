@@ -18,7 +18,6 @@ typedef union {
 
 // Encode a float into an 8-bit floating-point representation
 uint8_t encode_float8(float value) {
-    // Handle zero explicitly
     if (value == 0.0f) {
         return 0; // Encoded as all zeros
     }
@@ -34,28 +33,26 @@ uint8_t encode_float8(float value) {
     uint32_t e_bias_32 = 127;
     uint32_t e_bias_8 = 3;
 
-    // Define exponent parameters
+    // Define exponent limits
     uint32_t e_max = 7;
     uint32_t e_min = 0;
 
     // Calculate compressed exponent
-    uint8_t e_compressed = fmaxf(fminf((exponent - e_bias_32 + e_bias_8), e_max), e_min);
+    int8_t e_compressed = fmaxf(fminf(exponent - e_bias_32 + e_bias_8, e_max), e_min);
 
-    // Calculate compressed mantissa (keep top 4 bits of 23-bit mantissa)
+    // Calculate compressed mantissa (top 4 bits of the 23-bit mantissa)
     uint8_t m_compressed = (mantissa >> 19) & 0xf;
 
     // Pack into an 8-bit integer
-    return (uint8_t) (sign << 7) | (e_compressed << 4) | m_compressed;
+    return (uint8_t) ((sign << 7) | (e_compressed << 4) | m_compressed);
 }
 
 // Decode an 8-bit floating-point representation back to a float
 float decode_float8(uint8_t bits) {
-    Float32 encoder = {.bits = bits};
-
     // Extract fields
-    uint8_t sign = (encoder.bits >> 7) & 0x01;
-    uint8_t exponent = (encoder.bits >> 4) & 0x07;
-    uint8_t mantissa = encoder.bits & 0x0F;
+    uint8_t sign = (bits >> 7) & 0x01;
+    uint8_t exponent = (bits >> 4) & 0x07;
+    uint8_t mantissa = bits & 0x0F;
 
     // Define parameters
     uint32_t e_bias_32 = 127;
@@ -64,11 +61,12 @@ float decode_float8(uint8_t bits) {
     // Expand exponent
     int32_t e_expanded = exponent - e_bias_8 + e_bias_32;
 
-    // Expand mantissa
-    int32_t m_expanded = mantissa / 16.0f;
+    // Expand mantissa with implicit leading 1
+    float m_expanded = 1.0f + (mantissa / 16.0f);
 
     // Reconstruct float
-    return powf(-1, sign) * powf(2, e_expanded - e_bias_32) * (1 + m_expanded);
+    float result = ldexpf(m_expanded, e_expanded - e_bias_32);
+    return sign ? -result : result;
 }
 
 // Function to sample floating-point values in the range [-n, n-1]
@@ -99,7 +97,7 @@ int main() {
     // Initialize error accumulators
     double total_abs_error = 0.0, total_rel_error = 0.0;
 
-    printf("\nRandomly Generated Samples:\n");
+    printf("Randomly Generated Samples:\n");
     for (int i = 0; i < MAX_SAMPLES; i++) {
         double x = sampled[i];
         printf("\nInput: %.6f\n", x);
