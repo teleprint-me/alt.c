@@ -14,100 +14,126 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 
-#include "data_types.h"
+#define MAX_SAMPLES 10
 
-void print_floats(const char* label, const float* values, int count) {
-    printf("%s: ", label);
-    for (int i = 0; i < count; ++i) {
-        printf("%.6f ", (double) values[i]);
+// Quantization structure
+typedef struct Quant {
+    float scalar; /**< Scaling factor for quantization of input */
+    uint8_t bits; /**< Quantized value */
+} Quant;
+
+typedef Quant Q8;
+
+// 8-bit integer quantization
+Q8 quantize_q8(float value) {
+    Q8 q8;
+
+    // Set the range for the integer domain [-128, 127]
+    int z_domain = 255;
+
+    // Calculate the dynamic range for the real domain [-value, value]
+    float r_domain = fabsf(value); // reflect and compound input
+
+    // if value is greater than z_max or value is less than z_min, otherwise 1
+    float squeeze = 1;
+    if (r_domain > z_domain) {
+        squeeze = z_domain / r_domain; // ratio of the effective range
     }
-    printf("\n\n");
+
+    // Calculate the scaling factor and preserve the sign
+    q8.scalar = (squeeze * r_domain) / z_domain;
+    q8.scalar = (value >= 0) ? q8.scalar : -q8.scalar;
+
+    // Quantize the value
+    q8.bits = (uint8_t) roundf(value / q8.scalar);
+
+    return q8;
 }
 
-void print_q8_row(const Q8Row row) {
-    printf("Q8 Row: ");
-    for (int i = 0; i < Q8_ELEMENTS; ++i) {
-        printf("%u ", (uint8_t) row[i].bits);
-    }
-    printf("\n\n");
+// Reconstruct the real value using the scalar
+float dequantize_q8(Q8 q8) {
+    return (float) (q8.scalar * q8.bits); // / q8.alpha;
 }
 
-void generate_random_values(float* values, int max_elements, int n) {
-    assert(values != NULL);
-    assert(max_elements > 0);
+// Function to sample floating-point values in the range [-n, n-1]
+void sampler(double* x, int length, int range) {
+    assert(x != NULL);
+    assert(length > 0);
+    assert(range > 1);
 
-    for (int i = 0; i < max_elements; ++i) {
-        // Generate a random value in the range [0, 1]
-        float normalized = (float) rand() / (float) RAND_MAX;
-
-        // Map the normalized value to the range [-n, n-1]
-        values[i] = -n + (normalized * (2 * n - 1));
+    for (int i = 0; i < length; ++i) {
+        double normalized = (double) rand() / (double) RAND_MAX;
+        x[i] = -(range + 1) + (normalized * ((2 * range) - 1));
     }
 }
 
-void compute_error(const float* original, const float* dequantized, int count) {
-    printf("Quantization Error: ");
-    for (int i = 0; i < count; ++i) {
-        printf("%.6f ", (double) fabsf(original[i] - dequantized[i]));
-    }
-    printf("\n");
+// Compute absolute and relative errors
+void error(double x, double x_prime, double* abs_error, double* rel_error) {
+    *abs_error = fabs(x - x_prime);
+    *rel_error = (fabs(x) > 1e-6) ? (*abs_error / fabs(x)) : 0.0;
 }
 
 // Stress test for validating out-of-bounds behavior
+#define TEST_COUNT 3
+
+typedef struct TestCase {
+    const char* label;
+    int exponent;
+} TestCase;
+
 void run_tests(int seed) {
     // initialize the rng
     srand(seed);
     printf("=== Running tests with seed: %d ===\n\n", seed);
 
     // Test parameters
-    float test_case_1[Q8_ELEMENTS];
-    float test_case_2[Q8_ELEMENTS];
-    float test_case_3[Q8_ELEMENTS];
-    generate_random_values(test_case_1, Q8_ELEMENTS, 127); // [-2^7-1, 2^7-1]
-    generate_random_values(test_case_2, Q8_ELEMENTS, 255); // [-2^8-1, 2^8-1]
-    generate_random_values(test_case_3, Q8_ELEMENTS, 32767); // [-2^15-1, 2^15-1]
+    double input[MAX_SAMPLES];
 
-    // @warn Calculating the test count dynamically is unreliable.
-    // @warn A variable cannot be used to statically allocate memory to the stack.
-    #define TEST_COUNT 3 // @warn Always use a macro for this.
-    struct {
-        const char* label;
-        int count;
-        int range;
-        float* input;
-    } test_cases[TEST_COUNT] = {
-        {"Test Case 1", Q8_ELEMENTS, 127, test_case_1},
-        {"Test Case 2", Q8_ELEMENTS, 255, test_case_2},
-        {"Test Case 3", Q8_ELEMENTS, 32767, test_case_3}
+    TestCase test_cases[TEST_COUNT] = {
+        {"8-bit Signed Test",  127 },
+        {"8-bit Unsigned Test", 255},
+        {"16-bit Signed Test", 32535}
     };
 
-    // Execute test cases
-    for (int t = 0; t < TEST_COUNT; ++t) {
-        fprintf(stdout, "=== %s (Range: [-%d, %d]) ===\n", test_cases[t].label, test_cases[t].range + 1, test_cases[t].range);
-        Q8Row q8_row = {0};
-        float dequantized[Q8_ELEMENTS] = {0};
+    // Initialize error accumulators
+    double total_abs_error = 0.0, total_rel_error = 0.0;
+    for (int t = 0; t < TEST_COUNT; t++) {
+        fprintf(
+            stdout,
+            "=== %s (Range: [%d, %d]) ===\n",
+            test_cases[t].label,
+            -(test_cases[t].exponent + 1),
+            test_cases[t].exponent
+        );
 
-        // Quantize and dequantize
-        quantize_row_q8(test_cases[t].input, q8_row, test_cases[t].count);
-        dequantize_row_q8(q8_row, dequantized, test_cases[t].count);
+        // Update the sampled inputs
+        sampler(input, MAX_SAMPLES, test_cases[t].exponent);
+        for (int sample = 0; sample < MAX_SAMPLES; sample++) {
+            // Get sample, calculate quant, and dequant
+            double x = input[sample];
+            Q8 q = quantize_q8(x);
+            double x_prime = dequantize_q8(q);
+            printf("Input: %.6f, Quant: %u, Prime: %.6f\n", x, q.bits, x_prime);
 
-        // Print results
-        print_floats("Input", test_cases[t].input, test_cases[t].count);
-        print_q8_row(q8_row);
-        print_floats("Dequantized Output", dequantized, test_cases[t].count);
-        compute_error(test_cases[t].input, dequantized, test_cases[t].count);
-        printf("\n");
+            // Calculate accumulated errors
+            double abs_error, rel_error;
+            error(x, x_prime, &abs_error, &rel_error);
+            total_abs_error += abs_error;
+            total_rel_error += rel_error;
+            printf("Absolute Error: %.6f, Relative Error: %.2f%%\n\n", abs_error, rel_error * 100);
+        }
     }
 
+    printf("Average Absolute Error: %.6f\n", total_abs_error / MAX_SAMPLES);
+    printf("Average Relative Error: %.2f%%\n", (total_rel_error / MAX_SAMPLES) * 100);
     printf("=== Completed %d test cases ===\n", TEST_COUNT);
 }
 
 int main(void) {
-    int seed = 1337;
-    run_tests(seed);
+    run_tests(1337);
     return 0;
 }
