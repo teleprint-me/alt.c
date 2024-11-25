@@ -20,43 +20,68 @@
 
 #define MAX_SAMPLES 10
 
+typedef struct QuantMetaData {
+    uint8_t bits;
+    float alpha;
+    float step_size;
+    float residual;
+} QuantMetaData;
+
 // Quantization structure
 typedef struct Quant {
-    float scalar; /**< Scaling factor for quantization of input */
-    uint8_t bits; /**< Quantized value */
+    uint8_t bits; /**< Quantized value with baked residual */
+    float scalar; /**< Scaling factor for quantization */
 } Quant;
 
 typedef Quant Q8;
 
-// 8-bit integer quantization
-Q8 quantize_q8(float value) {
-    Q8 q8;
+QuantMetaData quantize_meta_data(float value, float r_domain, int32_t z_domain) {
+    QuantMetaData m;
 
-    // Set the range for the integer domain [-128, 127]
-    int z_domain = 255;
+    // Calculate squeezing ratio
+    m.alpha = (r_domain > z_domain) ? z_domain / r_domain : 1.0f;
+    // Calculate the base step size
+    m.step_size = r_domain / z_domain; // Decoupled from scalar
+    // Quantize the value using the base step size
+    m.bits = roundf(value / m.step_size);
+    // Calculate the residual precision
+    m.residual = (value - (m.bits * m.step_size));
 
-    // Calculate the dynamic range for the real domain [-value, value]
-    float r_domain = fabsf(value); // reflect and compound input
-
-    // if value is greater than z_max or value is less than z_min, otherwise 1
-    float squeeze = 1;
-    if (r_domain > z_domain) {
-        squeeze = z_domain / r_domain; // ratio of the effective range
-    }
-
-    // Calculate the scaling factor and preserve the sign
-    q8.scalar = (squeeze * r_domain) / z_domain;
-    q8.scalar = (value >= 0) ? q8.scalar : -q8.scalar;
-
-    // Quantize the value
-    q8.bits = (uint8_t) roundf(value / q8.scalar);
-
-    return q8;
+    return m;
 }
 
-// Reconstruct the real value using the scalar
-float dequantize_q8(Q8 q8) {
-    return (float) (q8.scalar * q8.bits); // / q8.alpha;
+float quantize_scalar_input(QuantMetaData m) {
+    return m.step_size * m.alpha + m.residual;
+}
+
+// 8-bit quantization with residual baking
+Quant quantize_q8(float value) {
+    Quant q;
+    // Define integer domain
+    int z_domain = 255;
+    // Reflect and compute effective real domain
+    float r_domain = fabsf(value);
+
+    // Special case for zero
+    if (r_domain == 0.0f) {
+        q.scalar = 1.0f;
+        q.bits = 0;
+        return q;
+    }
+
+    // Extract the components from the input, real, and integer domains
+    QuantMetaData m = quantize_meta_data(value, r_domain, z_domain);
+    // Calculate the scalar based on the squeezed range
+    q.scalar = quantize_scalar_input(m);
+    // Quantize the value
+    q.bits = (uint8_t) (roundf(m.bits));
+
+    return q;
+}
+
+// Dequantize the value
+float dequantize_q8(Q8 q) {
+    return (float) (q.bits * q.scalar);
 }
 
 // Function to sample floating-point values in the range [-n, n-1]
@@ -94,9 +119,9 @@ void run_tests(int seed) {
     double input[MAX_SAMPLES];
 
     TestCase test_cases[TEST_COUNT] = {
-        {"8-bit Signed Test",  127 },
-        {"8-bit Unsigned Test", 255},
-        {"16-bit Signed Test", 32535}
+        {"8-bit Signed Test",   127  },
+        {"8-bit Unsigned Test", 255  },
+        {"16-bit Signed Test",  32535}
     };
 
     // Initialize error accumulators
