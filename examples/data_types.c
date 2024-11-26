@@ -83,8 +83,8 @@ int main(void) {
     // q4
     printf("\n-- Scalar Q4 Example --\n");
     Q4 q4 = quantize_scalar_q4(data[2], data[3]);
-    float q4_dequantized_0 = dequantize_scalar_q4(q4, 0);
-    float q4_dequantized_1 = dequantize_scalar_q4(q4, 1);
+    float q4_dequantized_0 = dequantize_scalar_q4_index(q4, 0);
+    float q4_dequantized_1 = dequantize_scalar_q4_index(q4, 1);
     printf("Q4 Quantized: %02x\n", q4.bits);
     printf("Q4 Dequantized (0): %.6f\n", (double) q4_dequantized_0);
     printf("Q4 Dequantized (1): %.6f\n", (double) q4_dequantized_1);
@@ -94,28 +94,28 @@ int main(void) {
     // f16
     printf("\n-- Row F16 Example --\n");
     unsigned short f16_row[BLOCK_SIZE];
-    quantize_row_fp16(data, f16_row, BLOCK_SIZE);
+    quantize_row_fp16(data, f16_row, BLOCK_SIZE, 1);
     print_f16_row(f16_row, BLOCK_SIZE);
     float f16_row_dequantized[BLOCK_SIZE];
-    dequantize_row_fp16(f16_row, f16_row_dequantized, BLOCK_SIZE);
+    dequantize_row_fp16(f16_row, f16_row_dequantized, BLOCK_SIZE, 1);
     print_floats("F16 Dequantized Row", f16_row_dequantized, BLOCK_SIZE);
 
     // q8
     printf("\n-- Row Q8 Example --\n");
     Q8Row q8_row;
-    quantize_row_q8(data, q8_row, BLOCK_SIZE);
+    quantize_row_q8(data, q8_row, BLOCK_SIZE, 1);
     print_q8_row(q8_row);
     float q8_row_dequantized[BLOCK_SIZE];
-    dequantize_row_q8(q8_row, q8_row_dequantized, BLOCK_SIZE);
+    dequantize_row_q8(q8_row, q8_row_dequantized, BLOCK_SIZE, 1);
     print_floats("Q8 Dequantized Row", q8_row_dequantized, BLOCK_SIZE);
 
     // q4
     printf("\n-- Row Q4 Example --\n");
     Q4Row q4_row;
-    quantize_row_q4(data, q4_row, BLOCK_SIZE);
+    quantize_row_q4(data, q4_row, BLOCK_SIZE, 1);
     print_q4_row(q4_row);
     float q4_row_dequantized[BLOCK_SIZE];
-    dequantize_row_q4(q4_row, q4_row_dequantized, BLOCK_SIZE);
+    dequantize_row_q4(q4_row, q4_row_dequantized, BLOCK_SIZE, 1);
     print_floats("Q4 Dequantized Row", q4_row_dequantized, BLOCK_SIZE);
 
     return 0;
