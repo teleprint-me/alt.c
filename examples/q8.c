@@ -31,9 +31,9 @@ typedef struct QuantMetaData {
 typedef struct Quant {
     uint8_t bits; /**< Quantized value with baked residual */
     float scalar; /**< Scaling factor for quantization */
-} Quant;
+} QuantBits;
 
-typedef Quant Q8;
+typedef QuantBits Q8;
 
 QuantMetaData quantize_meta_data(float value, float r_domain, int32_t z_domain) {
     QuantMetaData m;
@@ -55,8 +55,8 @@ float quantize_scalar_input(QuantMetaData m) {
 }
 
 // 8-bit quantization with residual baking
-Quant quantize_q8(float value) {
-    Quant q;
+Q8 quantize_q8(float value) {
+    Q8 q;
     // Define integer domain
     int z_domain = 255;
     // Reflect and compute effective real domain
