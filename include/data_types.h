@@ -113,12 +113,12 @@ typedef struct QuantMetaData {
 typedef struct Quant {
     uint8_t bits; /**< Quantized value with baked residual */
     uint16_t scalar; /**< Scaling factor for quantization */
-} QuantData;
+} QuantBits;
 
-typedef QuantData Q8;
-typedef QuantData Q4; // /**< Packed nibble (4 bits) */
-typedef QuantData Q8Row[Q8_ELEMENTS];
-typedef QuantData Q4Row[Q4_NIBBLES];
+typedef QuantBits Q8;
+typedef QuantBits Q4; // /**< Packed nibble (4 bits) */
+typedef QuantBits Q8Row[Q8_ELEMENTS];
+typedef QuantBits Q4Row[Q4_NIBBLES];
 
 // Scalar Conversions
 
@@ -136,21 +136,24 @@ float dequantize_scalar_q8(Q8 q8);
 
 // 4-bit integer quantization (packed)
 Q4 quantize_scalar_q4(float a, float b);
-float dequantize_scalar_q4(Q4 q4, int index);
+// By-Value API: Use for single-value dequantization.
+float dequantize_scalar_q4_index(Q4 q4, uint32_t index);
+// By-Reference API: Use for batch processing or when both values are typically needed.
+void dequantize_scalar_q4_reference(Q4 q4, float* a, float* b);
 
 // Vector Conversions (1D arrays)
 
 // Half-precision floating-point quantization
-void quantize_row_fp16(const float* input, uint16_t* output, int count);
-void dequantize_row_fp16(const uint16_t* input, float* output, int count);
+void quantize_row_fp16(const float* input, uint16_t* output, uint32_t length, uint32_t step_size);
+void dequantize_row_fp16(const uint16_t* input, float* output, uint32_t length, uint32_t step_size);
 
 // 8-bit integer quantization (unpacked)
-void quantize_row_q8(const float* input, Q8Row output, int count);
-void dequantize_row_q8(const Q8Row input, float* output, int count);
+void quantize_row_q8(const float* input, Q8Row output, uint32_t length, uint32_t step_size);
+void dequantize_row_q8(const Q8Row input, float* output, uint32_t length, uint32_t step_size);
 
 // 4-bit integer quantization (packed)
-void quantize_row_q4(const float* input, Q4Row output, int count);
-void dequantize_row_q4(const Q4Row input, float* output, int count);
+void quantize_row_q4(const float* input, Q4Row output, uint32_t length, uint32_t step_size);
+void dequantize_row_q4(const Q4Row input, float* output, uint32_t length, uint32_t step_size);
 
 #ifdef __cplusplus
 }

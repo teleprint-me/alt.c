@@ -95,151 +95,202 @@ float dequantize_scalar_fp16(uint16_t bits) {
     return decode_scalar_fp32(result);
 }
 
-// 8-bit integer quantization
+// Quantization utilties
+QuantMetaData quantize_meta_data(float value, float r_domain, int32_t z_domain) {
+    QuantMetaData m;
+
+    // Calculate squeezing ratio
+    m.alpha = (r_domain > z_domain) ? z_domain / r_domain : 1.0f;
+    // Calculate the base step size
+    m.step_size = r_domain / z_domain; // Decoupled from scalar
+    // Quantize the value using the base step size (exponent/mantissa?)
+    m.bits = roundf(value / m.step_size);
+    // Calculate the residual precision (bias?)
+    m.residual = (value - (m.bits * m.step_size));
+
+    return m;
+}
+
+float quantize_scalar_input(QuantMetaData m) {
+    return m.step_size * m.alpha + m.residual;
+}
+
+// 8-bit quantization with residual baking
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
 
-    // Set the range for the integer domain
-    int z_max = 127;
-    int z_min = -128;
+    // Define integer domain
+    uint32_t z_domain = 255;
+    // Reflect and compute effective real domain
+    float r_domain = fabsf(value);
 
-    // Clamp the real input value to the integer domain
-    float clamped = CLAMP(value, z_min, z_max);
+    // Special case for zero
+    if (r_domain == 0.0f) {
+        q8.scalar = quantize_scalar_fp16(1.0f);
+        q8.bits = 0;
+        return q8;
+    }
 
-    // Calculate the dynamic range for the real domain
-    float r_max = fabsf(clamped); // Use the absolute value for max
-    float r_min = -r_max;         // Reflect the max as min in the negative domain
-
-    // Calculate the scaling factor and preserve the sign
-    q8.scalar = (r_max - r_min) / (z_max - z_min);
-    q8.scalar = (value >= 0) ? q8.scalar : -q8.scalar;
-
+    // Extract the components from the input, real, and integer domains
+    QuantMetaData m = quantize_meta_data(value, r_domain, z_domain);
+    // Calculate the scalar based on the squeezed range
+    float scalar = quantize_scalar_input(m);
+    // Quantize to scalar to half-precision
+    q8.scalar = quantize_scalar_fp16(scalar);
     // Quantize the value
-    q8.bits = (uint8_t) roundf(clamped / q8.scalar);
+    q8.bits = m.bits;
 
     return q8;
 }
 
-// Reconstruct the real value using the scalar
+// Dequantize the value
 float dequantize_scalar_q8(Q8 q8) {
-    return (float) q8.bits * q8.scalar;
+    // Dequantize the scalar value
+    float scalar = dequantize_scalar_fp16(q8.scalar);
+    // Scale the bits proportionally back to original float
+    return (float) (q8.bits * scalar);
 }
 
-// 4-bit integer quantization
+// 4-bit integer quantization (packed)
 Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
-    // Set the range for the integer domain
-    int z_max = 7;
-    int z_min = -8;
+    // Define integer domain for Q4
+    uint32_t z_domain = 15; // [-8, 7] for signed
+    float r_domain_a = fabsf(a);
+    float r_domain_b = fabsf(b);
 
-    // Clamp the real input values to the integer domain
-    float a_clamped = CLAMP(a, z_min, z_max);
-    float b_clamped = CLAMP(b, z_min, z_max);
+    // Special case for zero
+    if (r_domain_a == 0.0f && r_domain_b == 0.0f) {
+        q4.scalar = quantize_scalar_fp16(1.0f);
+        q4.bits = 0;
+        return q4;
+    }
 
-    // Calculate the dynamic range for the real domain
-    float a_max = fabsf(a_clamped);
-    float a_min = -a_max;
-    float a_scalar = (a_max - a_min) / (z_max - z_min);
-    float b_max = fabsf(b_clamped);
-    float b_min = fabsf(b_clamped);
-    float b_scalar = (b_max - b_min) / (z_max - z_min);
+    // Quantize each value
+    QuantMetaData m_a = quantize_meta_data(a, r_domain_a, z_domain);
+    QuantMetaData m_b = quantize_meta_data(b, r_domain_b, z_domain);
 
-    // Calculate the scaling factor
-    q4.scalar = (a_scalar + b_scalar) / 2; // Use the mean of the scalars
+    float scalar_a = quantize_scalar_input(m_a);
+    float scalar_b = quantize_scalar_input(m_b);
 
-    // Quantize by scaling and rounding
-    int8_t quant1 = (int8_t) roundf(a_clamped / q4.scalar);
-    int8_t quant2 = (int8_t) roundf(b_clamped / q4.scalar);
+    // Combine scalars into one (optional: take the larger scalar for simplicity)
+    float max_scalar = fmaxf(scalar_a, scalar_b); // biased towards the larger value
+    // Dynamic weighting based on scalar difference
+    float diff_ratio = fabsf(scalar_a - scalar_b) / fmaxf(scalar_a, scalar_b);
+    float weighted_scalar = (diff_ratio < 0.2)
+        ? (max_scalar + scalar_a + scalar_b) / 3  // Balanced
+        : (max_scalar + fmaxf(scalar_a, scalar_b)) / 2; // Larger bias
+    q4.scalar = quantize_scalar_fp16(weighted_scalar);
 
-    // Pack two quantized values into a single byte
-    q4.bits = ((uint8_t) quant2 << 4) | ((uint8_t) quant1 & 0x0F);
+    // Quantize values into 4 bits each
+    uint8_t q_a = m_a.bits & 0x0F;
+    uint8_t q_b = m_b.bits & 0x0F;
+
+    // Pack the two 4-bit values into one byte
+    q4.bits = (q_a << 4) | q_b;
 
     return q4;
 }
 
-float dequantize_scalar_q4(Q4 q4, int index) {
-    int8_t bits;
+// Dequantize packed Q4 values
 
-    if (index == 0) { // Lower nibble
-        bits = q4.bits & 0x0F;
-        if (bits & 0x08) {
-            bits -= 16; // Sign extension for 4-bit negative values
-        }
-    } else { // Upper nibble
-        bits = (q4.bits >> 4) & 0x0F;
-        if (bits & 0x08) {
-            bits -= 16;
-        }
-    }
+// By-Value API: Use for single-value dequantization.
+float dequantize_scalar_q4_index(Q4 q4, uint32_t index) {
+    // Dequantize the scalar
+    float scalar = dequantize_scalar_fp16(q4.scalar);
 
-    return bits * q4.scalar;
+    // Extract the 4-bit value
+    uint8_t q_value = (index == 0) ? (q4.bits >> 4) : (q4.bits & 0x0F);
+
+    // Convert back to float
+    return (float)(q_value * scalar);
+}
+
+// By-Reference API: Use for batch processing or when both values are typically needed.
+void dequantize_scalar_q4_reference(Q4 q4, float* a, float* b) {
+    // Dequantize the scalar
+    float scalar = dequantize_scalar_fp16(q4.scalar);
+
+    // Extract 4-bit values
+    uint8_t qa = q4.bits >> 4;
+    uint8_t qb = q4.bits & 0x0F;
+
+    // Convert back to float
+    *a = (float)(qa * scalar);
+    *b = (float)(qb * scalar);
 }
 
 // Vector Conversions (1D arrays)
 
 // Half-precision floating-point quantization
-void quantize_row_fp16(const float* input, uint16_t* output, int count) {
+void quantize_row_fp16(const float* input, uint16_t* output, uint32_t length, uint32_t step_size) {
     assert(input != NULL);
     assert(output != NULL);
+    assert(length > 0);
+    assert(step_size > 0);
 
-    for (int i = 0; i < count; ++i) {
-        output[i] = quantize_scalar_fp16(input[i]);
+    for (uint32_t i = 0, j = 0; i < length; i += step_size, ++j) {
+        output[j] = quantize_scalar_fp16(input[i]);
     }
 }
 
-void dequantize_row_fp16(const uint16_t* input, float* output, int count) {
+void dequantize_row_fp16(const uint16_t* input, float* output, uint32_t length, uint32_t step_size) {
     assert(input != NULL);
     assert(output != NULL);
+    assert(length > 0);
+    assert(step_size > 0);
 
-    for (int i = 0; i < count; ++i) {
-        output[i] = dequantize_scalar_fp16(input[i]);
+    for (uint32_t i = 0, j = 0; i < length; i += step_size, ++j) {
+        output[i] = dequantize_scalar_fp16(input[j]);
     }
 }
 
 // 8-bit integer quantization
-void quantize_row_q8(const float* input, Q8Row output, int count) {
+void quantize_row_q8(const float* input, Q8Row output, uint32_t length, uint32_t step_size) {
     assert(input != NULL);
     assert(output != NULL);
-    assert(count % Q8_ELEMENTS == 0);
+    assert(length > 0);
+    assert(step_size > 0);
 
-    for (int i = 0; i < count / Q8_ELEMENTS; ++i) {
-        for (int j = 0; j < Q8_ELEMENTS; ++j) {
-            output[i * Q8_ELEMENTS + j] = quantize_scalar_q8(input[i * Q8_ELEMENTS + j]);
-        }
+    for (uint32_t i = 0, j = 0; i < length; i += step_size, ++j) {
+        output[j] = quantize_scalar_q8(input[i]);
     }
 }
 
-void dequantize_row_q8(const Q8Row input, float* output, int count) {
+void dequantize_row_q8(const Q8Row input, float* output, uint32_t length, uint32_t step_size) {
     assert(input != NULL);
     assert(output != NULL);
-    assert(count % Q8_ELEMENTS == 0);
+    assert(length > 0);
+    assert(step_size > 0);
 
-    for (int i = 0; i < count / Q8_ELEMENTS; ++i) {
-        for (int j = 0; j < Q8_ELEMENTS; ++j) {
-            output[i * Q8_ELEMENTS + j] = dequantize_scalar_q8(input[i * Q8_ELEMENTS + j]);
-        }
+    for (uint32_t i = 0, j = 0; i < length; i += step_size, ++j) {
+        output[i] = dequantize_scalar_q8(input[j]);
     }
 }
 
 // 4-bit integer quantization
-void quantize_row_q4(const float* input, Q4Row output, int count) {
+void quantize_row_q4(const float* input, Q4Row output, uint32_t length, uint32_t step_size) {
     assert(input != NULL);
     assert(output != NULL);
-    assert(count % Q4_NIBBLES == 0); // Ensure input size is even
+    assert(length > 0);
+    assert(step_size > 0);
+    assert((length / step_size) % 2 == 0); // Ensure input size is even for Q4
 
-    for (int i = 0; i < count / 2; ++i) {
-        output[i] = quantize_scalar_q4(input[2 * i], input[2 * i + 1]);
+    for (uint32_t i = 0, j = 0; i < length; i += 2 * step_size, ++j) {
+        output[j] = quantize_scalar_q4(input[i], input[i + step_size]);
     }
 }
 
-void dequantize_row_q4(const Q4Row input, float* output, int count) {
+void dequantize_row_q4(const Q4Row input, float* output, uint32_t length, uint32_t step_size) {
     assert(input != NULL);
     assert(output != NULL);
-    assert(count % Q4_NIBBLES == 0); // Ensure output size is even
+    assert(length > 0);
+    assert(step_size > 0);
+    assert((length / step_size) % 2 == 0); // Ensure output size is even for Q4
 
-    for (int i = 0; i < count / 2; ++i) {
-        output[2 * i] = dequantize_scalar_q4(input[i], 0); // Lower nibble
-        output[2 * i + 1] = dequantize_scalar_q4(input[i], 1); // Upper nibble
+    for (uint32_t i = 0, j = 0; i < length; i += 2 * step_size, ++j) {
+        // Extract lower and upper nibbles at the same time
+        dequantize_scalar_q4_reference(input[j], &output[i], &output[i + step_size]);
     }
 }
