@@ -95,26 +95,6 @@ float dequantize_scalar_fp16(uint16_t bits) {
     return decode_scalar_fp32(result);
 }
 
-// Quantization utilties
-QuantMetaData quantize_meta_data(float value, float r_domain, int32_t z_domain) {
-    QuantMetaData m;
-
-    // Calculate squeezing ratio
-    m.alpha = (r_domain > z_domain) ? z_domain / r_domain : 1.0f;
-    // Calculate the base step size
-    m.step_size = r_domain / z_domain; // Decoupled from scalar
-    // Quantize the value using the base step size (exponent/mantissa?)
-    m.bits = roundf(value / m.step_size);
-    // Calculate the residual precision (bias?)
-    m.residual = (value - (m.bits * m.step_size));
-
-    return m;
-}
-
-float quantize_scalar_input(QuantMetaData m) {
-    return m.step_size * m.alpha + m.residual;
-}
-
 // 8-bit quantization with residual baking
 Q8 quantize_scalar_q8(float value) {
     Q8 q8;
@@ -131,14 +111,22 @@ Q8 quantize_scalar_q8(float value) {
         return q8;
     }
 
-    // Extract the components from the input, real, and integer domains
-    QuantMetaData m = quantize_meta_data(value, r_domain, z_domain);
+    // Calculate squeezing ratio
+    float alpha = (r_domain > z_domain) ? z_domain / r_domain : 1.0f;
+    // Calculate the base step size
+    float step_size = r_domain / z_domain; // Decoupled from scalar
+    // Quantize the value using the base step size (exponent/mantissa?)
+    uint8_t bits = roundf(value / step_size);
+    // Calculate the residual precision (bias?)
+    float residual = (value - (bits * step_size));
+
     // Calculate the scalar based on the squeezed range
-    float scalar = quantize_scalar_input(m);
+    float scalar = step_size * alpha + residual;
+
     // Quantize to scalar to half-precision
     q8.scalar = quantize_scalar_fp16(scalar);
     // Quantize the value
-    q8.bits = m.bits;
+    q8.bits = bits;
 
     return q8;
 }

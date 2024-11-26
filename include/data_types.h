@@ -102,13 +102,6 @@ typedef union {
     uint32_t bits; /**< Raw bit representation */
 } FloatBits;
 
-typedef struct QuantMetaData {
-    uint8_t bits;
-    float alpha;
-    float step_size;
-    float residual;
-} QuantMetaData;
-
 // Quantization structure
 typedef struct QuantBits {
     uint8_t bits; /**< Quantized value with baked residual */
