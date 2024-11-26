@@ -47,11 +47,11 @@ int main() {
     dequantize_row_q4(output, dequantized, MAX_SAMPLES, step_size);
 
     // Print results
-     printf("==== Q4 Row Results ===\n");
-    printf("Index | Original   | Dequantized\n");
-    printf("-------------------------------\n");
+    printf("--- Q4 Row Results ---\n\n");
+    printf("| Index | Original   | Dequantized |\n");
+    printf("|-------|------------|-------------|\n");
     for (int i = 0; i < MAX_SAMPLES; ++i) {
-        printf("%5d | %10.4f | %12.4f\n", i, (double) input[i], (double) dequantized[i]);
+        printf("| %5d | %10.4f | %11.4f |\n", i, (double) input[i], (double) dequantized[i]);
     }
 
     return 0;

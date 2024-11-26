@@ -1,7 +1,7 @@
 /**
- * @file examples/q4row.c
+ * @file examples/q8row.c
  *
- * Demonstrates Q4 row quantization and dequantization.
+ * Demonstrates Q8 row quantization and dequantization.
  */
 
 #include <stdlib.h> // For rand() and srand()
@@ -47,12 +47,11 @@ int main() {
     dequantize_row_q8(output, dequantized, MAX_SAMPLES, step_size);
 
     // Print results
-    printf("==== Q8 Row Results ===\n");
-    printf("-------------------------------\n");
-    printf("Index | Original   | Dequantized\n");
-    printf("-------------------------------\n");
+    printf("--- Q8 Row Results ---\n\n");
+    printf("| Index | Original   | Dequantized |\n");
+    printf("|-------|------------|-------------|\n");
     for (int i = 0; i < MAX_SAMPLES; ++i) {
-        printf("%5d | %10.2f | %12.2f\n", i, (double) input[i], (double) dequantized[i]);
+        printf("| %5d | %10.4f | %11.4f |\n", i, (double) input[i], (double) dequantized[i]);
     }
 
     return 0;
