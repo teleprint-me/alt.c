@@ -89,16 +89,6 @@ const DataType* data_type_get(DataTypeId id);
 uint32_t data_type_size(DataTypeId id);
 const char* data_type_name(DataTypeId id);
 
-// Single precision conversions
-
-/**
- * @brief Union for floating-point bit manipulation.
- */
-typedef union {
-    float value; /**< Floating-point value */
-    uint32_t bits; /**< Raw bit representation */
-} FloatBits;
-
 // Quantized conversions
 
 // Block size definitions for quantization
@@ -106,29 +96,29 @@ typedef union {
 #define Q8_ELEMENTS BLOCK_SIZE /**< Elements in an 8-bit quantized block */
 #define Q4_NIBBLES (BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
 
-// Macro to clamp a value between a lower and upper bound
-#define CLAMP(value, lower, upper) fmaxf((lower), fminf((value), (upper)))
+// @brief Union for floating-point bit manipulation.
+typedef union {
+    float value; /**< Floating-point value */
+    uint32_t bits; /**< Raw bit representation */
+} FloatBits;
 
-/**
- * Digital Signal Processing
- *
- * scalar = ((f_max - f_min) / (i_max - i_min))
- * y = clamp(x, f_max, f_min)
- * q = round(x / scalar)
- * x' = q * scalar // approximate reconstruction of x
- * e = x - x' // abs error of reconstruction
- * r = e / x if x != 0 // rel error of reconstruction
- */
+typedef struct QuantMetaData {
+    uint8_t bits;
+    float alpha;
+    float step_size;
+    float residual;
+} QuantMetaData;
+
 // Quantization structure
 typedef struct Quant {
-    float scalar; /**< Scaling factor for quantization of input */
-    uint8_t bits; /**< Quantized value */
-} Quant;
+    uint8_t bits; /**< Quantized value with baked residual */
+    uint16_t scalar; /**< Scaling factor for quantization */
+} QuantData;
 
-typedef Quant Q8;
-typedef Quant Q4; // /**< Packed nibble (4 bits) */
-typedef Quant Q8Row[Q8_ELEMENTS];
-typedef Quant Q4Row[Q4_NIBBLES];
+typedef QuantData Q8;
+typedef QuantData Q4; // /**< Packed nibble (4 bits) */
+typedef QuantData Q8Row[Q8_ELEMENTS];
+typedef QuantData Q4Row[Q4_NIBBLES];
 
 // Scalar Conversions
 
