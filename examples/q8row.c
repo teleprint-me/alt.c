@@ -47,7 +47,7 @@ int main() {
     dequantize_row_q8(output, dequantized, MAX_SAMPLES, step_size);
 
     // Print results
-    printf("==== 8QRow Results ===\n");
+    printf("==== Q8 Row Results ===\n");
     printf("-------------------------------\n");
     printf("Index | Original   | Dequantized\n");
     printf("-------------------------------\n");

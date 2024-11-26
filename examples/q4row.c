@@ -47,6 +47,7 @@ int main() {
     dequantize_row_q4(output, dequantized, MAX_SAMPLES, step_size);
 
     // Print results
+     printf("==== Q4 Row Results ===\n");
     printf("Index | Original   | Dequantized\n");
     printf("-------------------------------\n");
     for (int i = 0; i < MAX_SAMPLES; ++i) {
