@@ -2,11 +2,7 @@
 set(EXAMPLES
     compare_float
     random
-    q8
-    qk8
     data_types
-    q8row
-    q4row
     # flex_array
     # tensors
     # perceptron

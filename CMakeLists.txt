@@ -52,6 +52,7 @@ target_include_directories("alt" PUBLIC include)
 
 # Add examples
 add_subdirectory(examples)
+add_subdirectory(examples/quants)
 
 # Link necessary libraries (e.g., math, real-time library, Vulkan if Linux)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
