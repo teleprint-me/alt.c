@@ -156,39 +156,30 @@ Q4 quantize_scalar_q4(float a, float b) {
     Q4 q4;
 
     // Define integer domain for Q4
-    uint32_t z_domain = 15; // [-8, 7] for signed
-    float r_domain_a = fabsf(a);
-    float r_domain_b = fabsf(b);
+    uint32_t z_domain = 7; // [-8, 7] for signed
+    float max_abs = fmaxf(fabsf(a), fabsf(b));
 
     // Special case for zero
-    if (r_domain_a == 0.0f && r_domain_b == 0.0f) {
+    if (max_abs == 0.0f) {
         q4.scalar = quantize_scalar_fp16(1.0f);
         q4.bits = 0;
         return q4;
     }
 
+    // Calculate step size and combined scalar
+    float step_size = max_abs / z_domain;
+    q4.scalar = quantize_scalar_fp16(step_size);
+
     // Quantize each value
-    QuantMetaData m_a = quantize_meta_data(a, r_domain_a, z_domain);
-    QuantMetaData m_b = quantize_meta_data(b, r_domain_b, z_domain);
+    int8_t q_a = (int8_t) roundf(a / step_size);
+    int8_t q_b = (int8_t) roundf(b / step_size);
 
-    float scalar_a = quantize_scalar_input(m_a);
-    float scalar_b = quantize_scalar_input(m_b);
-
-    // Combine scalars into one (optional: take the larger scalar for simplicity)
-    float max_scalar = fmaxf(scalar_a, scalar_b); // biased towards the larger value
-    // Dynamic weighting based on scalar difference
-    float diff_ratio = fabsf(scalar_a - scalar_b) / fmaxf(scalar_a, scalar_b);
-    float weighted_scalar = (diff_ratio < 0.2)
-        ? (max_scalar + scalar_a + scalar_b) / 3  // Balanced
-        : (max_scalar + fmaxf(scalar_a, scalar_b)) / 2; // Larger bias
-    q4.scalar = quantize_scalar_fp16(weighted_scalar);
-
-    // Quantize values into 4 bits each
-    uint8_t q_a = m_a.bits & 0x0F;
-    uint8_t q_b = m_b.bits & 0x0F;
+    // Clamp to Q4 range
+    q_a = fmaxf(fminf(q_a, 7), -8);
+    q_b = fmaxf(fminf(q_b, 7), -8);
 
     // Pack the two 4-bit values into one byte
-    q4.bits = (q_a << 4) | q_b;
+    q4.bits = ((q_a & 0x0F) << 4) | (q_b & 0x0F);
 
     return q4;
 }
@@ -198,13 +189,16 @@ Q4 quantize_scalar_q4(float a, float b) {
 // By-Value API: Use for single-value dequantization.
 float dequantize_scalar_q4_index(Q4 q4, uint32_t index) {
     // Dequantize the scalar
-    float scalar = dequantize_scalar_fp16(q4.scalar);
+    float step_size = dequantize_scalar_fp16(q4.scalar);
 
     // Extract the 4-bit value
-    uint8_t q_value = (index == 0) ? (q4.bits >> 4) : (q4.bits & 0x0F);
+    int8_t q_value = (index == 0) ? (q4.bits >> 4) & 0x0F : q4.bits & 0x0F;
+
+    // Convert to signed 4-bit
+    if (q_value & 0x08) q_value |= 0xF0; // Sign extend if negative
 
     // Convert back to float
-    return (float)(q_value * scalar);
+    return (float)(q_value * step_size);
 }
 
 // By-Reference API: Use for batch processing or when both values are typically needed.
@@ -213,8 +207,10 @@ void dequantize_scalar_q4_reference(Q4 q4, float* a, float* b) {
     float scalar = dequantize_scalar_fp16(q4.scalar);
 
     // Extract 4-bit values
-    uint8_t qa = q4.bits >> 4;
-    uint8_t qb = q4.bits & 0x0F;
+    int8_t qa = (q4.bits >> 4) & 0x0F; // upper nibble
+    if (qa & 0x08) qa |= 0xF0;         // Sign-extend if negative
+    int8_t qb = q4.bits & 0x0F;        // lower nibble
+    if (qb & 0x08) qb |= 0xF0;         // Sign-extend if negative
 
     // Convert back to float
     *a = (float)(qa * scalar);
@@ -290,7 +286,7 @@ void dequantize_row_q4(const Q4Row input, float* output, uint32_t length, uint32
     assert((length / step_size) % 2 == 0); // Ensure output size is even for Q4
 
     for (uint32_t i = 0, j = 0; i < length; i += 2 * step_size, ++j) {
-        // Extract lower and upper nibbles at the same time
-        dequantize_scalar_q4_reference(input[j], &output[i], &output[i + step_size]);
+        output[i] = dequantize_scalar_q4_index(input[j], 0);      // Lower nibble
+        output[i + step_size] = dequantize_scalar_q4_index(input[j], 1); // Upper nibble
     }
 }
