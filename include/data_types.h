@@ -110,7 +110,7 @@ typedef struct QuantMetaData {
 } QuantMetaData;
 
 // Quantization structure
-typedef struct Quant {
+typedef struct QuantBits {
     uint8_t bits; /**< Quantized value with baked residual */
     uint16_t scalar; /**< Scaling factor for quantization */
 } QuantBits;
