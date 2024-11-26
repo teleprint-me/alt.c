@@ -42,9 +42,9 @@ QuantMetaData quantize_meta_data(float value, float r_domain, int32_t z_domain) 
     m.alpha = (r_domain > z_domain) ? z_domain / r_domain : 1.0f;
     // Calculate the base step size
     m.step_size = r_domain / z_domain; // Decoupled from scalar
-    // Quantize the value using the base step size
+    // Quantize the value using the base step size (exponent/mantissa?)
     m.bits = roundf(value / m.step_size);
-    // Calculate the residual precision
+    // Calculate the residual precision (bias?)
     m.residual = (value - (m.bits * m.step_size));
 
     return m;
