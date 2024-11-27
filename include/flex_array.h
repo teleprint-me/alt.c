@@ -1,14 +1,20 @@
 /**
+ * Copyright © 2024 Austin Berrio
+ *
  * @file include/flex_array.h
  *
- * This implementation uses pure C with minimal dependencies on external libraries.
+ * @brief Dynamic, type-safe array implementation with bulk operations.
  *
- * - Keep the initial implementation simple.
- * - Only add methods on an as-needed basis.
+ * - Designed for simplicity and performance.
+ * - Supports both individual and bulk operations using metadata from DataType.
  */
 
 #ifndef ALT_FLEX_ARRAY_H
 #define ALT_FLEX_ARRAY_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 #include "data_types.h"
 
@@ -23,29 +29,30 @@ typedef enum FlexState {
 typedef struct FlexArray {
     // Member variables
     void* data; /**< Pointer to the array's data */
-    unsigned int element_size; /**< Size of each element in bytes */
-    unsigned int length; /**< Current number of elements */
-    unsigned int capacity; /**< Total allocated capacity */
-    DataType type; /**< Data type of the elements */
-
-    // Function pointers for methods
-    FlexState (*append)(struct FlexArray*, void* element); /**< Append an element */
-    FlexState (*pop)(struct FlexArray*, void* element); /**< Pop the last element */
-    FlexState (*get)(struct FlexArray*, unsigned int index, void* element); /**< Get an element by index */
-    FlexState (*set)(struct FlexArray*, unsigned int index, void* element); /**< Set an element */
+    uint32_t length; /**< Current number of elements */
+    uint32_t capacity; /**< Total allocated capacity */
+    const DataType* type; /**< Data type of the elements */
 } FlexArray;
 
 // Constructor and Destructor
-FlexArray* flex_array_create(unsigned int initial_capacity, DataType type, unsigned int element_size);
-void flex_array_destroy(FlexArray* array);
+FlexArray* flex_array_create(uint32_t initial_capacity, DataTypeId id);
+void flex_array_free(FlexArray* array);
 
 // Modifiers
-FlexState flex_array_append(FlexArray* array, void* element);
-FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity);
+FlexState flex_array_resize(FlexArray* array, uint32_t new_capacity);
+FlexState flex_array_clear(FlexArray* array);
 
 // Accessors
-FlexState flex_array_get(FlexArray* array, unsigned int index, void* element);
-FlexState flex_array_set(FlexArray* array, unsigned int index, void* element);
+FlexState flex_array_get(FlexArray* array, uint32_t index, void* element);
+FlexState flex_array_set(FlexArray* array, uint32_t index, void* element);
+FlexState flex_array_append(FlexArray* array, void* element);
 FlexState flex_array_pop(FlexArray* array, void* element);
+
+// Bulk Operations
+FlexState flex_array_set_bulk(FlexArray* array, const void* data, uint32_t length);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // ALT_FLEX_ARRAY_H

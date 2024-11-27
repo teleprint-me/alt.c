@@ -1,4 +1,6 @@
 /**
+ * Copyright © 2024 Austin Berrio
+ *
  * @file src/flex_array.c
  */
 
@@ -8,37 +10,34 @@
 #include <stdlib.h>
 
 // Create a new flexible array
-FlexArray* flex_array_create(unsigned int initial_capacity, DataType type, unsigned int element_size) {
-    // Allocate memory for the FlexArray structure
+FlexArray* flex_array_create(uint32_t initial_capacity, DataTypeId id) {
     FlexArray* array = (FlexArray*) malloc(sizeof(FlexArray));
     if (!array) {
+        LOG_ERROR("Failed to allocate memory for FlexArray structure.");
         return NULL;
     }
 
-    // Allocate memory for the array's data
-    array->data = malloc(initial_capacity * element_size);
+    const DataType* type = data_type_get(id);
+    array->data = malloc(initial_capacity * type->size);
     if (!array->data) {
+        LOG_ERROR("Failed to allocate memory for FlexArray data.");
         free(array);
         return NULL;
     }
 
-    // Initialize member variables
-    array->element_size = element_size;
     array->length = 0;
     array->capacity = initial_capacity;
     array->type = type;
+    memset(array->data, 0, initial_capacity * type->size);
 
-    // Assign method pointers
-    array->append = flex_array_append;
-    array->get = flex_array_get;
-    array->set = flex_array_set;
-    array->pop = flex_array_pop;
-
+    LOG_DEBUG(
+        "FlexArray created with initial capacity: %u, type: %s", initial_capacity, type->name
+    );
     return array;
 }
 
 // Free the array
-void flex_array_destroy(FlexArray* array) {
+void flex_array_free(FlexArray* array) {
     if (array) {
         if (array->data) {
             free(array->data); // Free the memory allocated for data
@@ -47,133 +46,127 @@ void flex_array_destroy(FlexArray* array) {
     }
 }
 
-int flex_null_guard(FlexArray* array) {
-    if (!array) {
-        return FLEX_ARRAY_ERROR; // Array is null
-    }
-    return FLEX_ARRAY_SUCCESS;
-}
-
-int flex_capacity_guard(FlexArray* array, unsigned int capacity) {
-    if (!array) {
-        return FLEX_ARRAY_ERROR; // Array is null
-    }
-    if (array->capacity == capacity) {
-        return FLEX_ARRAY_SUCCESS; // No resizing needed
-    }
-    return FLEX_ARRAY_RESIZE;
-}
-
-int flex_bounds_guard(FlexArray* array, unsigned int index) {
-    if (!array) {
-        return FLEX_ARRAY_ERROR; // Array is null
-    }
-    if (index >= array->length) {
-        return FLEX_ARRAY_OUT_OF_BOUNDS; // Index out of bounds
-    }
-    return FLEX_ARRAY_SUCCESS;
-}
-
 // Resize the array
-FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity) {
+FlexState flex_array_resize(FlexArray* array, uint32_t new_capacity) {
     if (!array || new_capacity == 0) {
-        return FLEX_ARRAY_ERROR; // Invalid parameters
+        return FLEX_ARRAY_ERROR;
     }
 
-    if (array->capacity == new_capacity) {
-        return FLEX_ARRAY_SUCCESS; // No need to resize
-    }
-
-    void* new_data = realloc(array->data, new_capacity * array->element_size);
+    void* new_data = realloc(array->data, new_capacity * array->type->size);
     if (!new_data) {
-        return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED; // Allocation failed
+        return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED;
+    }
+
+    if (new_capacity > array->capacity) {
+        // Zero-initialize new memory
+        memset(
+            (char*) new_data + (array->capacity * array->type->size),
+            0,
+            (new_capacity - array->capacity) * array->type->size
+        );
     }
 
     array->data = new_data;
     array->capacity = new_capacity;
     if (array->length > new_capacity) {
-        array->length = new_capacity; // Adjust length if reduced
+        array->length = new_capacity;
+    }
+    return FLEX_ARRAY_SUCCESS;
+}
+
+// Clear the array
+FlexState flex_array_clear(FlexArray* array) {
+    if (!array) {
+        return FLEX_ARRAY_ERROR;
+    }
+    array->length = 0;
+    memset(array->data, 0, array->capacity * array->type->size);
+    return FLEX_ARRAY_SUCCESS;
+}
+
+// Internal helper function
+static FlexState validate_array_and_index(FlexArray* array, uint32_t index) {
+    if (!array) {
+        return FLEX_ARRAY_ERROR;
+    }
+    if (index >= array->length) {
+        return FLEX_ARRAY_OUT_OF_BOUNDS;
     }
     return FLEX_ARRAY_SUCCESS;
 }
 
 // Get an element at a specific index
-FlexState flex_array_get(FlexArray* array, unsigned int index, void* element) {
-    // Step 1: Validate the array pointer
-    if (!array) {
-        return FLEX_ARRAY_ERROR; // Null pointer
+FlexState flex_array_get(FlexArray* array, uint32_t index, void* element) {
+    FlexState state = validate_array_and_index(array, index);
+    if (state != FLEX_ARRAY_SUCCESS) {
+        return state;
     }
 
-    // Step 2: Check if the index is within bounds
-    if (index >= array->length) {
-        return FLEX_ARRAY_OUT_OF_BOUNDS; // Index is out of bounds
-    }
-
-    // Step 3: Copy the element from the array to the provided buffer
-    memcpy(element, (char*)array->data + (index * array->element_size), array->element_size);
-
-    return FLEX_ARRAY_SUCCESS; // Operation successful
+    memcpy(element, (char*) array->data + (index * array->type->size), array->type->size);
+    return FLEX_ARRAY_SUCCESS;
 }
 
 // Set an element at a specific index
-FlexState flex_array_set(FlexArray* array, unsigned int index, void* element) {
-    if (!array) {
-        return FLEX_ARRAY_ERROR; // Null pointer
+FlexState flex_array_set(FlexArray* array, uint32_t index, void* element) {
+    FlexState state = validate_array_and_index(array, index);
+    if (state != FLEX_ARRAY_SUCCESS) {
+        return state;
     }
-    if (index >= array->length) {
-        return FLEX_ARRAY_OUT_OF_BOUNDS; // Index out of bounds
-    }
-    memcpy((char*)array->data + (index * array->element_size), element, array->element_size);
+
+    memcpy((char*) array->data + (index * array->type->size), element, array->type->size);
     return FLEX_ARRAY_SUCCESS;
 }
 
 // Append an element
 FlexState flex_array_append(FlexArray* array, void* element) {
     if (!array) {
-        return FLEX_ARRAY_ERROR; // Null pointer
+        return FLEX_ARRAY_ERROR;
     }
 
-    // Resize if necessary
     if (array->length == array->capacity) {
         FlexState resize_state = flex_array_resize(array, array->capacity * 2);
         if (resize_state != FLEX_ARRAY_SUCCESS) {
-            return resize_state; // Propagate resize error
+            return resize_state;
         }
     }
 
-    // Append the element
-    memcpy((char*)array->data + (array->length * array->element_size), element, array->element_size);
+    memcpy((char*) array->data + (array->length * array->type->size), element, array->type->size);
     array->length++;
     return FLEX_ARRAY_SUCCESS;
 }
 
+// Pop the last element
 FlexState flex_array_pop(FlexArray* array, void* element) {
-    // Step 1: Validate the array
-    if (!array) {
-        return FLEX_ARRAY_ERROR; // Null pointer
+    if (!array || array->length == 0) {
+        return FLEX_ARRAY_OUT_OF_BOUNDS;
     }
 
-    // Step 2: Check if the array is empty
-    if (array->length == 0) {
-        return FLEX_ARRAY_OUT_OF_BOUNDS; // No elements to pop
-    }
+    uint32_t last_index = array->length - 1;
+    void* last_element = (char*) array->data + (last_index * array->type->size);
 
-    // Step 3: Get the last element
-    unsigned int last_index = array->length - 1;
-    void* last_element = (char*)array->data + (last_index * array->element_size);
-
-    // Step 4: Optionally copy the value to element
     if (element) {
-        memcpy(element, last_element, array->element_size);
+        memcpy(element, last_element, array->type->size);
     }
-
-    // Step 5: Update the array metadata
     array->length--;
 
-    // Optional: Resize the array if its usage drops significantly
     if (array->length < array->capacity / 4) {
         flex_array_resize(array, array->capacity / 2);
     }
 
+    return FLEX_ARRAY_SUCCESS;
+}
+
+// Bulk set (initialize)
+FlexState flex_array_set_bulk(FlexArray* array, const void* data, uint32_t size) {
+    if (!array || !data || size == 0) {
+        return FLEX_ARRAY_ERROR;
+    }
+
+    if (flex_array_resize(array, size) != FLEX_ARRAY_SUCCESS) {
+        return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED;
+    }
+
+    memcpy(array->data, data, size * array->type->size);
+    array->length = size;
     return FLEX_ARRAY_SUCCESS;
 }
