@@ -41,7 +41,7 @@ set(
     C_SOURCES
     src/logger.c
     src/data_types.c
-    # src/flex_array.c
+    src/flex_array.c
     # src/activation.c
     # src/tensors.c
 )
