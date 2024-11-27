@@ -14,27 +14,27 @@ FlexArray* flex_array_create(uint32_t initial_capacity, DataTypeId id) {
     // Validate the initial capacity
     if (initial_capacity == 0) {
         initial_capacity = 1; // Default minimum capacity
-        LOG_WARN("Initial capacity set to default value: 1.");
+        LOG_WARN("Initial capacity set to default value: 1.\n");
     }
 
     // Validate the DataTypeId
     const DataType* type = data_type_get(id);
     if (!type) {
-        LOG_ERROR("Invalid DataTypeId passed to %s: id=%u.", __func__, id);
+        LOG_ERROR("Invalid DataTypeId passed to %s: id=%u.\n", __func__, id);
         return NULL;
     }
 
     // Allocate memory for the FlexArray structure
     FlexArray* array = (FlexArray*) malloc(sizeof(FlexArray));
     if (!array) {
-        LOG_ERROR("Failed to allocate memory for FlexArray structure.");
+        LOG_ERROR("Failed to allocate memory for FlexArray structure.\n");
         return NULL;
     }
 
     // Allocate memory for the array's data
     array->data = malloc(initial_capacity * type->size);
     if (!array->data) {
-        LOG_ERROR("Failed to allocate memory for FlexArray data.");
+        LOG_ERROR("Failed to allocate memory for FlexArray data.\n");
         free(array);
         return NULL;
     }
@@ -45,7 +45,7 @@ FlexArray* flex_array_create(uint32_t initial_capacity, DataTypeId id) {
     array->type = type;
     memset(array->data, 0, initial_capacity * type->size);
 
-    LOG_DEBUG("FlexArray created with initial capacity: %u, type: %s.", initial_capacity, type->name);
+    LOG_DEBUG("FlexArray created with initial capacity: %u, type: %s.\n", initial_capacity, type->name);
     return array;
 }
 
@@ -62,13 +62,13 @@ void flex_array_free(FlexArray* array) {
 // Resize the array
 FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity) {
     if (!array || new_capacity == 0) {
-        LOG_ERROR("Invalid parameters passed to flex_array_resize: array=%p, new_capacity=%u.", array, new_capacity);
+        LOG_ERROR("Invalid parameters passed to flex_array_resize: array=%p, new_capacity=%u.\n", array, new_capacity);
         return FLEX_ARRAY_ERROR;
     }
 
     void* new_data = realloc(array->data, new_capacity * array->type->size);
     if (!new_data) {
-        LOG_ERROR("Memory reallocation failed: requested capacity=%u.", new_capacity);
+        LOG_ERROR("Memory reallocation failed: requested capacity=%u.\n", new_capacity);
         return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED;
     }
 
@@ -80,18 +80,18 @@ FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity) {
     array->data = new_data;
     array->capacity = new_capacity;
     if (array->length > new_capacity) {
-        LOG_WARN("Array resized to smaller capacity. Truncating length from %u to %u.", array->length, new_capacity);
+        LOG_WARN("Array resized to smaller capacity. Truncating length from %u to %u.\n", array->length, new_capacity);
         array->length = new_capacity;
     }
 
-    LOG_DEBUG("FlexArray resized: new capacity=%u.", new_capacity);
+    LOG_DEBUG("FlexArray resized: new capacity=%u.\n", new_capacity);
     return FLEX_ARRAY_SUCCESS;
 }
 
 // Clear the array
 FlexState flex_array_clear(FlexArray* array) {
     if (!array) {
-        LOG_ERROR("Attempted to access FlexArray with a null pointer.");
+        LOG_ERROR("Attempted to access FlexArray with a null pointer.\n");
         return FLEX_ARRAY_ERROR;
     }
     array->length = 0;
@@ -102,12 +102,12 @@ FlexState flex_array_clear(FlexArray* array) {
 // Get an element at a specific index
 FlexState flex_array_get(FlexArray* array, uint32_t index, void* element) {
     if (!array) {
-        LOG_ERROR("Attempted to access FlexArray with a null pointer.");
+        LOG_ERROR("Attempted to access FlexArray with a null pointer.\n");
         return FLEX_ARRAY_ERROR;
     }
 
     if (index >= array->length) {
-        LOG_WARN("Out-of-bounds access attempted: index=%u, length=%u.", index, array->length);
+        LOG_WARN("Out-of-bounds access attempted: index=%u, length=%u.\n", index, array->length);
         return FLEX_ARRAY_OUT_OF_BOUNDS;
     }
 
@@ -118,12 +118,12 @@ FlexState flex_array_get(FlexArray* array, uint32_t index, void* element) {
 // Set an element at a specific index
 FlexState flex_array_set(FlexArray* array, uint32_t index, void* element) {
     if (!array) {
-        LOG_ERROR("Attempted to access FlexArray with a null pointer.");
+        LOG_ERROR("Attempted to access FlexArray with a null pointer.\n");
         return FLEX_ARRAY_ERROR;
     }
 
     if (index >= array->length) {
-        LOG_WARN("Out-of-bounds access attempted: index=%u, length=%u.", index, array->length);
+        LOG_WARN("Out-of-bounds access attempted: index=%u, length=%u.\n", index, array->length);
         return FLEX_ARRAY_OUT_OF_BOUNDS;
     }
 
@@ -134,7 +134,7 @@ FlexState flex_array_set(FlexArray* array, uint32_t index, void* element) {
 // Append an element
 FlexState flex_array_append(FlexArray* array, void* element) {
     if (!array) {
-        LOG_ERROR("Attempted to access FlexArray with a null pointer.");
+        LOG_ERROR("Attempted to access FlexArray with a null pointer.\n");
         return FLEX_ARRAY_ERROR;
     }
 
