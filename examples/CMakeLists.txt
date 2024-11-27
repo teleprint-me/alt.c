@@ -3,7 +3,7 @@ set(EXAMPLES
     compare_float
     random
     data_types
-    # flex_array
+    flex_array
     # tensors
     # perceptron
     mlp
