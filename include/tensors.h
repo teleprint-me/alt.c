@@ -30,7 +30,7 @@ typedef struct Tensor {
     uint32_t rank; /**< Number of dimensions */
     void* data; /**< N-dimensional data stored as a flattened array */
     FlexArray* shape; /**< Shape array defining dimensions */
-    DataType type; /**< Data type of the tensor elements (e.g., float, double, int) */
+    DataType* type; /**< Data type of the tensor elements (e.g., float, double, int) */
 } Tensor;
 
 Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id);
