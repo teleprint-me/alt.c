@@ -1,9 +1,9 @@
 /**
+ * Copyright © 2024 Austin Berrio
+ *
  * @file include/tensors.h
  *
- * @brief 32-bit implementation for tensor management.
- *
- * @note This implementation is intentionally kept as simple and minimalistic as possible.
+ * @brief N-Dimensional tensors.
  */
 
 #ifndef ALT_TENSORS_H
@@ -13,29 +13,35 @@
 extern "C" {
 #endif // __cplusplus
 
-// @brief Simplifies usage by mapping the tensor_compute_flat_index function call.
-#define TENSOR_IDX(tensor, indices) tensor_compute_flat_index((tensor), (indices))
+#include "data_types.h"
+#include "flex_array.h"
+
+typedef enum TensorState {
+    TENSOR_SUCCESS, /**< Operation succeeded */
+    TENSOR_ERROR, /**< General error */
+    TENSOR_INVALID_RANK, /**< Rank mismatch between tensor and indices */
+    TENSOR_RESIZE, /**< Resize operation performed */
+    TENSOR_TRANSPOSE, /**< Transpose operation performed */
+    TENSOR_OUT_OF_BOUNDS, /**< Index out of bounds */
+    TENSOR_MEMORY_ALLOCATION_FAILED /**< Memory allocation failure */
+} TensorState;
 
 typedef struct Tensor {
-    float* data; // Raw data stored in a flattened array.
-    unsigned int* shape; // Shape array (e.g., [4, 2] for 4x2 matrix).
-    unsigned int rank; // Number of dimensions.
+    uint32_t rank; /**< Number of dimensions */
+    void* data; /**< N-dimensional data stored as a flattened array */
+    FlexArray* shape; /**< Shape array defining dimensions */
+    DataType type; /**< Data type of the tensor elements (e.g., float, double, int) */
 } Tensor;
 
-// @brief Allocates memory for the tensor, its shape, and its data.
-Tensor* tensor_create(unsigned int* shape, unsigned int rank);
-// @brief Safely deallocates memory for the tensor, including its shape and data arrays.
+Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id);
 void tensor_free(Tensor* tensor);
 
-// @brief Converts multi-dimensional indices to a flat array index.
-unsigned int tensor_compute_flat_index(const Tensor* tensor, unsigned int* indices);
-// @brief Converts a flat index back to multi-dimensional indices.
-void tensor_compute_multi_indices(const Tensor* tensor, unsigned int* indices, unsigned int flat_index);
+TensorState tensor_compute_shape(const Tensor*, FlexArray* shape);
+TensorState tensor_compute_index(const Tensor* tensor, const FlexArray* indices, uint32_t* index);
+TensorState tensor_compute_array(const Tensor* tensor, FlexArray* indices, const uint32_t* index);
 
-// @brief Retrieves an element by its indices.
-float tensor_get_element(Tensor* tensor, unsigned int* indices);
-// @brief Sets an element at a specific set of indices.
-void tensor_set_element(Tensor* tensor, unsigned int* indices, float value);
+TensorState tensor_get_element(Tensor* tensor, const FlexArray* indices, void* value);
+TensorState tensor_set_element(Tensor* tensor, const FlexArray* indices, void* value);
 
 #ifdef __cplusplus
 }
