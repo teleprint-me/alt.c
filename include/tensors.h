@@ -20,6 +20,7 @@ typedef enum TensorState {
     TENSOR_SUCCESS, /**< Operation succeeded */
     TENSOR_ERROR, /**< General error */
     TENSOR_INVALID_RANK, /**< Rank mismatch between tensor and indices */
+    TENSOR_INVALID_SHAPE,
     TENSOR_RESIZE, /**< Resize operation performed */
     TENSOR_TRANSPOSE, /**< Transpose operation performed */
     TENSOR_OUT_OF_BOUNDS, /**< Index out of bounds */
@@ -28,15 +29,15 @@ typedef enum TensorState {
 
 typedef struct Tensor {
     uint32_t rank; /**< Number of dimensions */
-    void* data; /**< N-dimensional data stored as a flattened array */
     FlexArray* shape; /**< Shape array defining dimensions */
-    DataType* type; /**< Data type of the tensor elements (e.g., float, double, int) */
+    const DataType* type; /**< Data type of the tensor elements (e.g., float, double, int) */
+    void* data; /**< N-dimensional data stored as a flattened array */
 } Tensor;
 
 Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id);
 void tensor_free(Tensor* tensor);
 
-TensorState tensor_compute_shape(const Tensor*, FlexArray* shape);
+TensorState tensor_compute_shape(const Tensor* tensor, uint32_t* size);
 TensorState tensor_compute_index(const Tensor* tensor, const FlexArray* indices, uint32_t* index);
 TensorState tensor_compute_array(const Tensor* tensor, FlexArray* indices, const uint32_t* index);
 
