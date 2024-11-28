@@ -21,6 +21,7 @@ typedef enum TensorState {
     TENSOR_ERROR, /**< General error */
     TENSOR_INVALID_RANK, /**< Rank mismatch between tensor and indices */
     TENSOR_INVALID_SHAPE,
+    TENSOR_INVALID_INDICES,
     TENSOR_RESIZE, /**< Resize operation performed */
     TENSOR_TRANSPOSE, /**< Transpose operation performed */
     TENSOR_OUT_OF_BOUNDS, /**< Index out of bounds */
@@ -39,7 +40,7 @@ void tensor_free(Tensor* tensor);
 
 TensorState tensor_compute_shape(const Tensor* tensor, uint32_t* size);
 TensorState tensor_compute_index(const Tensor* tensor, const FlexArray* indices, uint32_t* index);
-TensorState tensor_compute_array(const Tensor* tensor, FlexArray* indices, const uint32_t* index);
+TensorState tensor_compute_array(const Tensor* tensor, FlexArray* indices, const uint32_t index);
 
 TensorState tensor_get_element(Tensor* tensor, const FlexArray* indices, void* value);
 TensorState tensor_set_element(Tensor* tensor, const FlexArray* indices, void* value);
