@@ -40,7 +40,7 @@ extern "C" {
 #define Q4_NIBBLES (BLOCK_SIZE / 2) /**< Nibbles in a 4-bit quantized block */
 
 // Union for floating-point bit manipulation
-typedef union {
+typedef union FloatBits {
     float value; /**< Floating-point value */
     uint32_t bits; /**< Bit-level representation */
 } FloatBits;
@@ -58,7 +58,7 @@ typedef QuantBits Q8Row[Q8_ELEMENTS]; /**< Array of 8-bit quantized values */
 typedef QuantBits Q4Row[Q4_NIBBLES]; /**< Array of 4-bit quantized values */
 
 // Supported data types
-typedef enum {
+typedef enum DataTypeId {
     TYPE_FLOAT32, /**< 32-bit floating-point (IEEE-754) */
     TYPE_FLOAT16, /**< 16-bit floating-point (IEEE-754) */
     TYPE_QUANT8, /**< 8-bit quantized integer */
@@ -76,14 +76,14 @@ typedef enum {
 } DataTypeId;
 
 // Data type sign
-typedef enum {
+typedef enum DataTypeSign {
     TYPE_NOT_APPLICABLE, /**< Not applicable (e.g., for packed types) */
     TYPE_IS_SIGNED, /**< Signed types */
     TYPE_IS_UNSIGNED /**< Unsigned types */
 } DataTypeSign;
 
 // Metadata for data types
-typedef struct {
+typedef struct DataType {
     const char* name; /**< Human-readable name */
     uint32_t alignment; /**< Memory alignment in bytes */
     uint32_t size; /**< Size in bytes */
