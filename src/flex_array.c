@@ -60,7 +60,7 @@ void flex_array_free(FlexArray* array) {
 }
 
 // Resize the array
-FlexState flex_array_resize(FlexArray* array, unsigned int new_capacity) {
+FlexState flex_array_resize(FlexArray* array, uint32_t new_capacity) {
     if (!array || new_capacity == 0) {
         LOG_ERROR("Invalid parameters passed to flex_array_resize: array=%p, new_capacity=%u.\n", array, new_capacity);
         return FLEX_ARRAY_ERROR;
