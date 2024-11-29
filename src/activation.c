@@ -7,39 +7,39 @@
 #include "activation.h"
 
 // Binary Step Activation Function
-double activate_binary_step(double x) {
-    return x >= 0.0 ? 1.0 : 0.0;
+float activate_binary_step(float x) {
+    return x >= 0.0f ? 1.0f : 0.0f;
 }
 
 // Sigmoid Activation Function
-double activate_sigmoid(double x) {
-    return 1.0 / (1.0 + exp(-x));
+float activate_sigmoid(float x) {
+    return 1.0f / (1.0f + expf(-x));
 }
 
 // Hyperbolic Tangent (Tanh) Activation Function
-double activate_tanh(double x) {
-    return tanh(x);
+float activate_tanh(float x) {
+    return tanhf(x);
 }
 
 // Rectified Linear Unit (ReLU)
-double activate_relu(double x) {
-    return x > 0.0 ? x : 0.0;
+float activate_relu(float x) {
+    return x > 0.0f ? x : 0.0f;
 }
 
 // Sigmoid-Weighted Linear Unit (SiLU) or Swish
-double activate_silu(double x) {
-    double sigmoid = 1.0 / (1.0 + exp(-x));
-    return x * sigmoid;
+float activate_silu(float x) {
+    return x * activate_sigmoid(x);
 }
 
 // Gaussian Error Linear Unit (GELU)
-double activate_gelu(double x, bool approximate) {
-    if (approximate) {
-        // Tanh-based approximation
-        double x_cubed = x * x * x;
-        return 0.5 * x * (1.0 + tanh(SQRT_2_PI * (x + 0.044715 * x_cubed)));
-    } else {
-        // Exact computation using Gaussian CDF
-        return 0.5 * x * (1.0 + erf(x / SQRT_2));
-    }
+float activate_gelu_exact(float x) {
+    // Exact computation using Gaussian CDF
+    return 0.5f * x * (1.0f + erff(x / SQRT_2));
+}
+
+// Approximate Gaussian Error Linear Unit (GELU)
+float activate_gelu_approximation(float x) {
+    // Tanh-based approximation
+    float x_cubed = x * x * x;
+    return 0.5f * x * (1.0f + tanhf(SQRT_2_PI * (x + 0.044715f * x_cubed)));
 }
