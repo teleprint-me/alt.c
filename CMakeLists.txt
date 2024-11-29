@@ -42,8 +42,8 @@ set(
     src/logger.c
     src/data_types.c
     src/flex_array.c
+    src/tensors.c
     # src/activation.c
-    # src/tensors.c
 )
 add_library("alt" ${C_SOURCES})
 

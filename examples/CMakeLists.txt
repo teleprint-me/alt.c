@@ -4,7 +4,7 @@ set(EXAMPLES
     random
     data_types
     flex_array
-    # tensors
+    tensors
     # perceptron
     mlp
 )
