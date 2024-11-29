@@ -69,6 +69,19 @@ void flex_array_free(FlexArray* array);
 FlexState flex_array_resize(FlexArray* array, uint32_t new_capacity);
 
 /**
+ * @brief Shrinks the capacity of the FlexArray to fit its current length.
+ *
+ * Frees unused memory by resizing the FlexArray's capacity to match its length.
+ *
+ * @param array Pointer to the FlexArray to shrink.
+ * @return FlexState indicating the result of the operation:
+ *         - FLEX_ARRAY_SUCCESS: Shrinking succeeded.
+ *         - FLEX_ARRAY_MEMORY_ALLOCATION_FAILED: Memory reallocation failed.
+ *         - FLEX_ARRAY_ERROR: Null array or other error.
+ */
+FlexState flex_array_shrink_to_fit(FlexArray* array);
+
+/**
  * @brief Clears all elements from the FlexArray without resizing it.
  *
  * @param array Pointer to the FlexArray to clear.
