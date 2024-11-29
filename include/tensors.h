@@ -35,11 +35,18 @@ typedef struct Tensor {
     void* data; /**< N-dimensional data stored as a flattened array */
 } Tensor;
 
+// Tensors take ownership of their shape objects and are freed upon failure
 Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id);
+// A helper function for creating shape objects dynamically
+FlexArray* tensor_create_shape(uint32_t rank, const void* dimensions);
+// Tensors owned shapes are freed alongside one another
 void tensor_free(Tensor* tensor);
 
+// Computes the product of a tensors shape as size
 TensorState tensor_compute_shape(const Tensor* tensor, uint32_t* size);
+// Computes the tensor shape as a flat index
 TensorState tensor_compute_index(const Tensor* tensor, const FlexArray* indices, uint32_t* index);
+// Inverse of computing the tensors flat index
 TensorState tensor_compute_array(const Tensor* tensor, FlexArray* indices, const uint32_t index);
 
 TensorState tensor_get_element(Tensor* tensor, const FlexArray* indices, void* value);
