@@ -2,6 +2,14 @@
  * Copyright © 2024 Austin Berrio
  *
  * @file src/flex_array.c
+ *
+ * @brief Dynamic, type-safe array implementation with bulk operations.
+ *
+ * - Provides dynamic resizing and type safety using metadata from DataType.
+ * - Supports individual and bulk operations for flexible array management.
+ *
+ * @note The difficulty level for this is high.
+ * @warning Do not underestimate the difficulty in properly managing memory reallocation.
  */
 
 #include "flex_array.h"
@@ -85,6 +93,21 @@ FlexState flex_array_resize(FlexArray* array, uint32_t new_capacity) {
     }
 
     LOG_DEBUG("FlexArray resized: new capacity=%u.\n", new_capacity);
+    return FLEX_ARRAY_SUCCESS;
+}
+
+// Shrink the array
+FlexState flex_array_shrink_to_fit(FlexArray* array) {
+    if (!array) {
+        return FLEX_ARRAY_ERROR;
+    }
+
+    if (array->length < array->capacity) {
+        if (flex_array_resize(array, array->length) != FLEX_ARRAY_SUCCESS) {
+            return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED;
+        }
+    }
+
     return FLEX_ARRAY_SUCCESS;
 }
 
@@ -177,11 +200,16 @@ FlexState flex_array_set_bulk(FlexArray* array, const void* data, uint32_t size)
         return FLEX_ARRAY_ERROR;
     }
 
-    if (flex_array_resize(array, size) != FLEX_ARRAY_SUCCESS) {
-        return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED;
+    // Resize only if the new size exceeds the current capacity
+    if (size > array->capacity) {
+        if (flex_array_resize(array, size) != FLEX_ARRAY_SUCCESS) {
+            return FLEX_ARRAY_MEMORY_ALLOCATION_FAILED;
+        }
     }
 
+    // If size is smaller, adjust the length but do not resize
     memcpy(array->data, data, size * array->type->size);
     array->length = size;
+
     return FLEX_ARRAY_SUCCESS;
 }
