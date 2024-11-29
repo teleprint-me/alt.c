@@ -62,6 +62,28 @@ Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id) {
     return tensor;
 }
 
+FlexArray* tensor_create_shape(uint32_t rank, const void* dimensions) {
+    if (!dimensions || rank == 0) {
+        LOG_ERROR("Invalid parameters: rank=%u, dimensions=%p.", rank, dimensions);
+        return NULL;
+    }
+
+    FlexArray* shape = flex_array_create(rank, TYPE_UINT32);
+    if (!shape) {
+        LOG_ERROR("Failed to allocate FlexArray for shape.");
+        return NULL;
+    }
+
+    if (flex_array_set_bulk(shape, dimensions, rank) != FLEX_ARRAY_SUCCESS) {
+        LOG_ERROR("Failed to initialize FlexArray with dimensions.");
+        flex_array_free(shape); // Free allocated shape
+        return NULL;
+    }
+
+    LOG_DEBUG("FlexArray for tensor shape created successfully.");
+    return shape;
+}
+
 void tensor_free(Tensor* tensor) {
     if (tensor) {
         if (tensor->shape) {
