@@ -9,6 +9,7 @@
  */
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,13 +17,23 @@
 #include "logger.h"
 #include "tensors.h"
 
-Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id) {
-    if (!shape || !shape->data || rank == 0) {
-        LOG_ERROR("Invalid Tensor shape or rank provided.\n");
+Tensor* tensor_create(DataTypeId id, uint32_t rank, ...) {
+    if (rank == 0) {
+        LOG_ERROR("Rank must be greater than 0.\n");
         return NULL;
     }
 
-    const DataType* type = data_type_get(id);
+    // Extract dimensions from variable arguments
+    va_list args;
+    va_start(args, rank);
+    FlexArray* shape = tensor_create_shape(rank, args);
+    va_end(args);
+    if (!shape) {
+        return NULL; // tensor_create_shape logs errors to stderr
+    }
+
+    // Reference the data type
+    const DataType* type = data_type_get(id); // statically allocated to stack
     if (!type) {
         LOG_ERROR("Invalid Tensor data type provided.\n");
         return NULL;
@@ -34,23 +45,17 @@ Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id) {
         return NULL;
     }
 
-    tensor->shape = shape; // Tensor takes ownership of the shape
+    // Tensor takes ownership of rank, shape, and type
     tensor->rank = rank;
+    tensor->shape = shape; // Only shape needs to be freed
     tensor->type = type;
 
-    uint32_t total_size = 1;
-    for (uint32_t i = 0; i < rank; i++) {
-        uint32_t dim = ((uint32_t*) shape->data)[i];
-        if (dim == 0) {
-            LOG_ERROR("Zero dimension detected in tensor shape at dimension %u.\n", i);
-            flex_array_free(shape); // Free the shape if tensor creation fails
-            free(tensor);
-            return NULL;
-        }
-        total_size *= dim;
+    uint32_t size;
+    if (tensor_compute_shape(tensor, &size) != TENSOR_SUCCESS) {
+        return NULL; // tensor_compute_shape logs errors to stderr
     }
 
-    tensor->data = malloc(total_size * type->size);
+    tensor->data = malloc(size * type->size);
     if (!tensor->data) {
         LOG_ERROR("Failed to allocate memory for Tensor data.\n");
         flex_array_free(shape); // Free the shape if tensor creation fails
@@ -58,30 +63,8 @@ Tensor* tensor_create(FlexArray* shape, uint32_t rank, DataTypeId id) {
         return NULL;
     }
 
-    memset(tensor->data, 0, total_size * type->size); // Zero-initialize data
+    memset(tensor->data, 0, size * type->size); // Zero-initialize data
     return tensor;
-}
-
-FlexArray* tensor_create_shape(uint32_t rank, const void* dimensions) {
-    if (!dimensions || rank == 0) {
-        LOG_ERROR("Invalid parameters: rank=%u, dimensions=%p.", rank, dimensions);
-        return NULL;
-    }
-
-    FlexArray* shape = flex_array_create(rank, TYPE_UINT32);
-    if (!shape) {
-        LOG_ERROR("Failed to allocate FlexArray for shape.");
-        return NULL;
-    }
-
-    if (flex_array_set_bulk(shape, dimensions, rank) != FLEX_ARRAY_SUCCESS) {
-        LOG_ERROR("Failed to initialize FlexArray with dimensions.");
-        flex_array_free(shape); // Free allocated shape
-        return NULL;
-    }
-
-    LOG_DEBUG("FlexArray for tensor shape created successfully.");
-    return shape;
 }
 
 void tensor_free(Tensor* tensor) {
@@ -96,6 +79,70 @@ void tensor_free(Tensor* tensor) {
     }
 }
 
+FlexArray* tensor_create_shape(uint32_t rank, ...) {
+    if (rank == 0) {
+        LOG_ERROR("Rank must be greater than 0.\n");
+        return NULL;
+    }
+
+    FlexArray* shape = flex_array_create(rank, TYPE_UINT32);
+    if (!shape) {
+        LOG_ERROR("Failed to allocate FlexArray for shape.\n");
+        return NULL;
+    }
+
+    // Extract dimensions from variable arguments
+    va_list args;
+    va_start(args, rank);
+    uint32_t dimensions[rank];
+    for (uint32_t i = 0; i < rank; i++) {
+        dimensions[i] = va_arg(args, uint32_t);
+        if (dimensions[i] == 0) {
+            LOG_ERROR("Dimension %u must be greater than 0.\n", i);
+            va_end(args);
+            return NULL;
+        }
+    }
+    va_end(args);
+
+    if (flex_array_set_bulk(shape, dimensions, rank) != FLEX_ARRAY_SUCCESS) {
+        LOG_ERROR("Failed to initialize FlexArray with dimensions.\n");
+        flex_array_free(shape); // Free allocated shape
+        return NULL;
+    }
+
+    return shape;
+}
+
+FlexArray* tensor_create_indices(uint32_t rank, ...) {
+    if (rank == 0) {
+        LOG_ERROR("Rank must be greater than 0.\n");
+        return NULL;
+    }
+
+    FlexArray* indices = flex_array_create(rank, TYPE_UINT32);
+    if (!indices) {
+        LOG_ERROR("Failed to allocate memory for indices.\n");
+        return NULL;
+    }
+
+    va_list args;
+    va_start(args, rank);
+    uint32_t dimensions[rank];
+    for (uint32_t i = 0; i < rank; i++) {
+        dimensions[i] = va_arg(args, uint32_t);
+    }
+    va_end(args);
+
+    if (flex_array_set_bulk(indices, dimensions, rank) != FLEX_ARRAY_SUCCESS) {
+        LOG_ERROR("Failed to set dimensions for indices.\n");
+        flex_array_free(indices);
+        return NULL;
+    }
+
+    return indices;
+}
+
 TensorState tensor_compute_shape(const Tensor* tensor, uint32_t* size) {
     // Validate inputs
     if (!tensor || !tensor->shape || !tensor->shape->data || !size) {
@@ -108,16 +155,16 @@ TensorState tensor_compute_shape(const Tensor* tensor, uint32_t* size) {
 
     // Multiply all dimensions in the shape
     for (uint32_t i = 0; i < tensor->rank; ++i) {
-        uint32_t dim = ((uint32_t*) tensor->shape->data)[i];
-        if (dim == 0) {
+        uint32_t dimensions = ((uint32_t*) tensor->shape->data)[i];
+        if (dimensions == 0) {
             LOG_ERROR("Zero dimension detected in tensor shape at dimension %u.\n", i);
             return TENSOR_INVALID_SHAPE; // Reject zero dimensions
         }
-        if (*size > UINT32_MAX / dim) {
+        if (*size > UINT32_MAX / dimensions) {
             LOG_ERROR("Index overflow detected during computation.\n");
             return TENSOR_ERROR; // Overflow prevention
         }
-        *size *= dim;
+        *size *= dimensions;
     }
 
     return TENSOR_SUCCESS;
@@ -143,14 +190,14 @@ TensorState tensor_compute_index(const Tensor* tensor, const FlexArray* indices,
     uint32_t flat_index = 0, stride = 1;
     for (int i = tensor->rank - 1; i >= 0; --i) {
         uint32_t offset = ((uint32_t*) indices->data)[i];
-        uint32_t dim = ((uint32_t*) tensor->shape->data)[i];
+        uint32_t dimensions = ((uint32_t*) tensor->shape->data)[i];
 
-        if (dim == 0) {
+        if (dimensions == 0) {
             LOG_ERROR("Zero dimension detected in tensor shape at dimension %u.", i);
             return TENSOR_INVALID_SHAPE;
         }
-        if (offset >= dim) {
-            LOG_WARN("Index out of bounds in dimension %u: offset=%u, dim=%u.", i, offset, dim);
+        if (offset >= dimensions) {
+            LOG_WARN("Index out of bounds in dimension %u: offset=%u, dim=%u.", i, offset, dimensions);
             return TENSOR_OUT_OF_BOUNDS;
         }
         if (flat_index > UINT32_MAX - (offset * stride)) {
@@ -159,7 +206,7 @@ TensorState tensor_compute_index(const Tensor* tensor, const FlexArray* indices,
         }
 
         flat_index += offset * stride;
-        stride *= dim;
+        stride *= dimensions;
     }
 
     *index = flat_index;
@@ -198,9 +245,9 @@ TensorState tensor_compute_array(const Tensor* tensor, FlexArray* indices, const
     // Compute multi-dimensional indices
     uint32_t flat_index_remaining = index;
     for (int i = tensor->rank - 1; i >= 0; --i) {
-        uint32_t dim = ((uint32_t*)tensor->shape->data)[i];
-        ((uint32_t*)indices->data)[i] = flat_index_remaining % dim;
-        flat_index_remaining /= dim;
+        uint32_t dimensions = ((uint32_t*)tensor->shape->data)[i];
+        ((uint32_t*)indices->data)[i] = flat_index_remaining % dimensions;
+        flat_index_remaining /= dimensions;
     }
 
     return TENSOR_SUCCESS;
@@ -235,5 +282,21 @@ TensorState tensor_set_element(Tensor* tensor, const FlexArray* indices, void* v
     }
 
     memcpy((char*)tensor->data + flat_index * tensor->type->size, value, tensor->type->size);
+    return TENSOR_SUCCESS;
+}
+
+TensorState tensor_set_bulk(Tensor* tensor, const void* data) {
+    if (!tensor || !tensor->data || !data) {
+        LOG_ERROR("Invalid arguments provided to tensor_initialize.");
+        return TENSOR_ERROR;
+    }
+
+    uint32_t size;
+    TensorState state = tensor_compute_shape(tensor, &size);
+    if (state != TENSOR_SUCCESS) {
+        return state;
+    }
+
+    memcpy(tensor->data, data, size * tensor->type->size);
     return TENSOR_SUCCESS;
 }
