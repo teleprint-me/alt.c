@@ -17,53 +17,52 @@
 #include "logger.h"
 #include "tensors.h"
 
-Tensor* tensor_create(DataTypeId id, uint32_t rank, ...) {
+Tensor* tensor_create(DataTypeId id, uint32_t rank, uint32_t* dimensions) {
     if (rank == 0) {
         LOG_ERROR("Rank must be greater than 0.\n");
         return NULL;
     }
 
-    // Extract dimensions from variable arguments
-    va_list args;
-    va_start(args, rank);
-    FlexArray* shape = tensor_create_shape(rank, args);
-    va_end(args);
-    if (!shape) {
-        return NULL; // tensor_create_shape logs errors to stderr
+    const DataType* type = data_type_get(id); // stack allocated ref
+    if (!type) { // NULL on invalid id
+        LOG_ERROR("%s: Invalid data type given using id=%u.\n", __func__, id);
+        return NULL;
     }
 
-    // Reference the data type
-    const DataType* type = data_type_get(id); // statically allocated to stack
-    if (!type) {
-        LOG_ERROR("Invalid Tensor data type provided.\n");
-        return NULL;
+    // Extract dimensions from variable arguments
+    FlexArray* shape = tensor_create_shape(rank, dimensions);
+    if (!shape) {
+        LOG_ERROR("%s: Failed to create shape using rank=%u.\n", __func__, rank);
+        return NULL; // tensor_create_shape logs errors
     }
 
     Tensor* tensor = (Tensor*) malloc(sizeof(Tensor));
     if (!tensor) {
-        LOG_ERROR("Failed to allocate memory for Tensor structure.\n");
+        LOG_ERROR("%s: Failed to allocate memory for Tensor structure.\n", __func__);
+        flex_array_free(shape); // Free the shape if tensor allocation fails
         return NULL;
     }
 
     // Tensor takes ownership of rank, shape, and type
     tensor->rank = rank;
-    tensor->shape = shape; // Only shape needs to be freed
+    tensor->shape = shape;
     tensor->type = type;
 
     uint32_t size;
     if (tensor_compute_shape(tensor, &size) != TENSOR_SUCCESS) {
-        return NULL; // tensor_compute_shape logs errors to stderr
-    }
-
-    tensor->data = malloc(size * type->size);
-    if (!tensor->data) {
-        LOG_ERROR("Failed to allocate memory for Tensor data.\n");
-        flex_array_free(shape); // Free the shape if tensor creation fails
-        free(tensor);
+        LOG_ERROR("%s: Failed to compute tensor shape.\n", __func__);
+        tensor_free(tensor); // Use centralized cleanup
         return NULL;
     }
 
-    memset(tensor->data, 0, size * type->size); // Zero-initialize data
+    tensor->data = malloc(size * tensor->type->size);
+    if (!tensor->data) {
+        LOG_ERROR("%s: Failed to allocate memory for Tensor data.\n", __func__);
+        tensor_free(tensor); // Use centralized cleanup
+        return NULL;
+    }
+
+    memset(tensor->data, 0, size * tensor->type->size); // Zero-initialize data
     return tensor;
 }
 
@@ -79,34 +78,29 @@ void tensor_free(Tensor* tensor) {
     }
 }
 
-FlexArray* tensor_create_shape(uint32_t rank, ...) {
+FlexArray* tensor_create_shape(uint32_t rank, uint32_t* dimensions) {
     if (rank == 0) {
-        LOG_ERROR("Rank must be greater than 0.\n");
+        LOG_ERROR("%s: Rank must be greater than 0.\n", __func__);
         return NULL;
     }
 
-    FlexArray* shape = flex_array_create(rank, TYPE_UINT32);
-    if (!shape) {
-        LOG_ERROR("Failed to allocate FlexArray for shape.\n");
-        return NULL;
-    }
-
-    // Extract dimensions from variable arguments
-    va_list args;
-    va_start(args, rank);
-    uint32_t dimensions[rank];
     for (uint32_t i = 0; i < rank; i++) {
-        dimensions[i] = va_arg(args, uint32_t);
         if (dimensions[i] == 0) {
-            LOG_ERROR("Dimension %u must be greater than 0.\n", i);
-            va_end(args);
+            LOG_ERROR("%s: Dimension %u must be greater than 0.\n", __func__, i);
             return NULL;
         }
     }
-    va_end(args);
+
+    /// @note create a flex array helper function for aggregating this logic.
+    /// @note it's not repeated often, but I can see this becoming the case.
+    FlexArray* shape = flex_array_create(rank, TYPE_UINT32);
+    if (!shape) {
+        LOG_ERROR("%s: Failed to allocate FlexArray for shape with rank=%u.\n", __func__, rank);
+        return NULL;
+    }
 
     if (flex_array_set_bulk(shape, dimensions, rank) != FLEX_ARRAY_SUCCESS) {
-        LOG_ERROR("Failed to initialize FlexArray with dimensions.\n");
+        LOG_ERROR("%s: Failed to initialize FlexArray with dimensions.\n", __func__);
         flex_array_free(shape); // Free allocated shape
         return NULL;
     }
@@ -114,7 +108,7 @@ FlexArray* tensor_create_shape(uint32_t rank, ...) {
     return shape;
 }
 
-FlexArray* tensor_create_indices(uint32_t rank, ...) {
+FlexArray* tensor_create_indices(uint32_t rank, uint32_t* dimensions) {
     if (rank == 0) {
         LOG_ERROR("Rank must be greater than 0.\n");
         return NULL;
@@ -125,14 +119,6 @@ FlexArray* tensor_create_indices(uint32_t rank, ...) {
         LOG_ERROR("Failed to allocate memory for indices.\n");
         return NULL;
     }
-
-    va_list args;
-    va_start(args, rank);
-    uint32_t dimensions[rank];
-    for (uint32_t i = 0; i < rank; i++) {
-        dimensions[i] = va_arg(args, uint32_t);
-    }
-    va_end(args);
 
     if (flex_array_set_bulk(indices, dimensions, rank) != FLEX_ARRAY_SUCCESS) {
         LOG_ERROR("Failed to set dimensions for indices.\n");
@@ -154,13 +140,15 @@ TensorState tensor_compute_shape(const Tensor* tensor, uint32_t* size) {
     *size = 1;
 
     // Multiply all dimensions in the shape
+    uint32_t dimensions;
     for (uint32_t i = 0; i < tensor->rank; ++i) {
-        uint32_t dimensions = ((uint32_t*) tensor->shape->data)[i];
+        flex_array_get(tensor->shape, i, &dimensions);
+        LOG_DEBUG("%s: size=%u dimensions=%u\n", __func__, *size, dimensions);
         if (dimensions == 0) {
-            LOG_ERROR("Zero dimension detected in tensor shape at dimension %u.\n", i);
-            return TENSOR_INVALID_SHAPE; // Reject zero dimensions
+            LOG_ERROR("%s: Zero dimension detected in tensor shape at dimension %u.\n", __func__, i);
+            return TENSOR_INVALID_SHAPE; // Reject zero dimension
         }
-        if (*size > UINT32_MAX / dimensions) {
+        if (*size > (uint32_t)(UINT32_MAX / 2)) { // Respect the upper boundary
             LOG_ERROR("Index overflow detected during computation.\n");
             return TENSOR_ERROR; // Overflow prevention
         }

@@ -44,16 +44,16 @@ typedef struct Tensor {
 } Tensor;
 
 /**
- * @brief Creates a new tensor with the specified shape, rank, and data type.
+ * @brief Creates a new tensor with the specified data type, rank, and shape.
  *
  * The tensor takes ownership of the provided shape and frees it on failure.
  *
  * @param id Data type identifier for the tensor elements.
  * @param rank Number of dimensions.
- * @param args Variable arguments specifying the shape (of type uint32_t).
+ * @param dimensions Array of length rank defining the shape.
  * @return Pointer to the created tensor or NULL on failure.
  */
-Tensor* tensor_create(DataTypeId id, uint32_t rank, ...);
+Tensor* tensor_create(DataTypeId id, uint32_t rank, uint32_t* dimensions);
 
 /**
  * @brief Frees a tensor and its owned resources.
@@ -65,37 +65,26 @@ Tensor* tensor_create(DataTypeId id, uint32_t rank, ...);
 void tensor_free(Tensor* tensor);
 
 /**
- * @brief Creates a shape object dynamically.
+ * @brief Dynamically creates a shape object as a FlexArray.
  *
+ * Shape dimensions must be 1 or greater.
+ * 
  * @param rank Number of dimensions.
- * @param args Variable arguments specifying the shape (of type uint32_t).
+ * @param dimensions Array of length rank defining the shape.
  * @return Pointer to the created FlexArray shape or NULL on failure.
  */
-FlexArray* tensor_create_shape(uint32_t rank, ...);
+FlexArray* tensor_create_shape(uint32_t rank, uint32_t* dimensions);
 
 /**
- * @brief Creates a FlexArray of indices for a tensor with the specified rank.
- * 
- * Allocates and initializes a FlexArray containing the provided indices.
- * 
- * @param rank Number of indices to create.
- * @param args Variable arguments specifying the indices (of type uint32_t).
+ * @brief Dynamically creates a indices object as a FlexArray.
+ *
+ * Indice values must be 0 or greater.
+ *
+ * @param rank Number of indices.
+ * @param dimensions Array of length rank defining the indices.
  * @return Pointer to the created FlexArray or NULL on failure.
- * 
- * @details
- * - The function uses variadic arguments to populate the indices array.
- * - Memory allocation or bulk operation failures return NULL.
- * 
- * Example Usage:
- * @code
- * FlexArray* indices = tensor_create_indices(3, 1, 2, 3);
- * if (indices) {
- *     // Use the indices
- *     flex_array_free(indices);
- * }
- * @endcode
  */
-FlexArray* tensor_create_indices(uint32_t rank, ...);
+FlexArray* tensor_create_indices(uint32_t rank, uint32_t* dimensions);
 
 /**
  * @brief Computes the size of the tensor based on its shape.
@@ -148,27 +137,27 @@ TensorState tensor_set_element(Tensor* tensor, const FlexArray* indices, void* v
 
 /**
  * @brief Sets the tensor's data using the provided bulk data.
- * 
+ *
  * Copies the provided data buffer into the tensor's internal storage.
- * 
+ *
  * @param tensor Pointer to the Tensor to initialize.
  * @param data Pointer to the source data buffer.
  * @return TensorState indicating the result of the operation:
  *         - TENSOR_SUCCESS: Data successfully copied.
  *         - TENSOR_ERROR: Invalid arguments provided.
  *         - TENSOR_INVALID_SHAPE: Tensor size could not be computed.
- * 
+ *
  * @details
  * - Ensures the provided `tensor` and `data` are valid.
  * - Calculates the size of the tensor's data using its shape and rank.
  * - Copies the data using `memcpy` for efficient bulk transfer.
- * 
+ *
  * Example Usage:
  * @code
  * uint32_t dimensions[] = {3, 3};
  * FlexArray* shape = tensor_create_shape(2, dimensions);
  * Tensor* tensor = tensor_create(shape, 2, TYPE_FLOAT32);
- * 
+ *
  * float data[] = {1.0, 2.0, 3.0, ..., 9.0}; // Example data
  * if (tensor_set_bulk(tensor, data) == TENSOR_SUCCESS) {
  *     // Data successfully copied
