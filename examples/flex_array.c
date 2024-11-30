@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 int main() {
-    global_logger.log_level = LOG_LEVEL_INFO;
+    global_logger.log_level = LOG_LEVEL_DEBUG;
 
     // Step 1: Create a FlexArray for floats
     FlexArray* array = flex_array_create(5, TYPE_FLOAT32);
