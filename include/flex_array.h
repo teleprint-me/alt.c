@@ -7,6 +7,9 @@
  *
  * - Provides dynamic resizing and type safety using metadata from DataType.
  * - Supports individual and bulk operations for flexible array management.
+ *
+ * @note The difficulty level for this is high.
+ * @warning Do not underestimate the difficulty in properly managing memory reallocation.
  */
 
 #ifndef ALT_FLEX_ARRAY_H
