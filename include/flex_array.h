@@ -47,11 +47,11 @@ typedef struct FlexArray {
 /**
  * @brief Creates a new FlexArray with the specified initial capacity and data type.
  *
- * @param initial_capacity Initial number of elements the array can hold.
+ * @param capacity Initial number of elements the array can hold.
  * @param id Data type identifier for the array elements.
  * @return Pointer to the created FlexArray or NULL on failure.
  */
-FlexArray* flex_array_create(uint32_t initial_capacity, DataTypeId id);
+FlexArray* flex_array_create(uint32_t capacity, DataTypeId id);
 
 /**
  * @brief Frees a FlexArray and its associated resources.
@@ -66,10 +66,10 @@ void flex_array_free(FlexArray* array);
  * Existing data is preserved, and new memory is allocated as needed.
  *
  * @param array Pointer to the FlexArray to resize.
- * @param new_capacity New capacity for the array.
+ * @param capacity New capacity for the array.
  * @return FlexState indicating the result of the operation.
  */
-FlexState flex_array_resize(FlexArray* array, uint32_t new_capacity);
+FlexState flex_array_resize(FlexArray* array, uint32_t capacity);
 
 /**
  * @brief Shrinks the capacity of the FlexArray to fit its current length.
