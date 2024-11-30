@@ -29,6 +29,24 @@ extern "C" {
 #include <stdint.h>
 #include <wchar.h>
 
+// Common mathematical constants
+
+#ifndef M_PI
+    #define M_PI 3.141592653589793f // circumference / diameter
+#endif
+
+#ifndef PI
+    #define PI M_PI
+#endif
+
+#ifndef SQRT_2_PI
+    #define SQRT_2_PI 0.7978845608028654f // sqrt(2 / pi)
+#endif
+
+#ifndef SQRT_2
+    #define SQRT_2 1.4142135623730951f // sqrt(2)
+#endif
+
 // Safe type casting macros
 #define TYPE_CAST(ptr, type) ((type*) (ptr))
 #define TYPE_CAST_SAFE(ptr, type, type_object) \
