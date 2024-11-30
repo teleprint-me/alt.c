@@ -23,10 +23,12 @@
 extern "C" {
 #endif // __cplusplus
 
+#include <assert.h>
 #include <math.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <wchar.h>
 
 // Common mathematical constants

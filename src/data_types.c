@@ -13,10 +13,6 @@
 
 #include "data_types.h"
 
-#include <assert.h>
-#include <math.h>
-#include <string.h>
-
 // Data type management
 
 const DataType* data_type_get(DataTypeId id) {
