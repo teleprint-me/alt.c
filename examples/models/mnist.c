@@ -1,17 +1,25 @@
 /**
  * @file examples/models/mnist.c
- * 
+ *
  * @ref https://yann.lecun.com/exdb/mnist/
+ * @ref https://github.com/myleott/mnist_png.git
+ *
+ * @paths
+ *    - data/mnist/training
+ *    - data/mnist/testing
+ *
+ * @note Normalized weight initialization for weights is fine.
+ *
+ * Potential Options are:
+ *    - He: Var(W) = mu + (2 / n)
+ *    - Glorot and Bengio: Var(W) = mu + (2 / (n_in + n_out))
  */
 
+#include <dirent.h>
 #include <math.h>
+#include <stb/stb_image.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#define INPUT_NEURONS 2
-#define HIDDEN_NEURONS 2
-#define OUTPUT_NEURONS 1
-#define LEARNING_RATE 0.1
 
 int main() {
     srand(42); // Seed for reproducibility
