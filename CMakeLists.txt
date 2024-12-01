@@ -46,7 +46,7 @@ set(
     src/data_types.c
     src/flex_array.c
     src/tensors.c
-    # src/activation.c
+    src/activation.c
 )
 add_library("alt" ${C_SOURCES})
 
@@ -55,7 +55,9 @@ target_include_directories("alt" PUBLIC include)
 
 # Add examples
 add_subdirectory(examples)
+add_subdirectory(examples/scratchpad)
 add_subdirectory(examples/quants)
+add_subdirectory(examples/models)
 
 # Link necessary libraries (e.g., math, real-time library, Vulkan if Linux)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

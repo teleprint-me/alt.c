@@ -7,11 +7,12 @@ set(EXAMPLES
     types
 )
 
-# Create executables for simple ALT examples
-# Loop over each example and create an executable
+set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/quants)
+set(OUTPUT_DIR ${PROJECT_SOURCE_DIR}/build/examples/quants)
+
 foreach(example IN LISTS EXAMPLES)
-    add_executable(${example} ${PROJECT_SOURCE_DIR}/examples/quants/${example}.c)
+    add_executable(${example} ${INPUT_DIR}/${example}.c)
     target_link_libraries(${example} alt)
     target_include_directories(${example} PRIVATE ${PROJECT_SOURCE_DIR}/include)
-    set_target_properties(${example} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build/examples/quants)
+    set_target_properties(${example} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 endforeach()
