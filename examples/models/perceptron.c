@@ -1,5 +1,7 @@
 /**
  * @file examples/models/perceptron.c
+ * 
+ * @ref 1957 The Perceptron: A Percieving and Recognizing Automaton
  */
 
 #include <stdio.h>

@@ -1,5 +1,7 @@
 /**
  * @file examples/models/xor.c
+ * 
+ * @ref 1989 Multilayer Feedforward Networks are Universal Approximators
  */
 
 #include <math.h>
