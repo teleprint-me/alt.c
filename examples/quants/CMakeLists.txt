@@ -4,6 +4,7 @@ set(EXAMPLES
     fp8
     q8row
     q4row
+    types
 )
 
 # Create executables for simple ALT examples
