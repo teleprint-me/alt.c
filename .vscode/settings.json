@@ -1,0 +1,111 @@
+{
+  "editor.defaultFormatter": null,
+  "editor.stickyTabStops": true,
+  "editor.tabCompletion": "on",
+  "editor.wordWrap": "off",
+  "editor.fontSize": 12,
+  "editor.lightbulb.enabled": "off",
+  "editor.wordWrapColumn": 80,
+  "editor.fontFamily": "'Noto Sans Mono', 'Source Code Pro', 'Droid Sans Mono'",
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/.venv/bin",
+    "${workspaceFolder}/.venv/lib/python3.11/site-packages"
+  ],
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.languageServer": "Jedi",
+  "python.analysis.typeCheckingMode": "strict",
+  "black-formatter.args": [
+    "--line-length=100"
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "isort.args": [
+    "--profile",
+    "black"
+  ],
+  // C/C++ specific settings
+  "clang-format.executable": "/usr/bin/clang-format",
+  // Enable clang-format on save for C/C++ code
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "[makefile]": {
+    "editor.defaultFormatter": "vscode.markdown-language-features",
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": false,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    "editor.trimAutoWhitespace": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit"
+    }
+  },
+  "[c]": {
+    "editor.defaultFormatter": "xaver.clang-format",
+    "editor.tabSize": 4,
+    "editor.formatOnSave": false,
+    "editor.insertSpaces": true
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "xaver.clang-format",
+    "editor.tabSize": 4,
+    "editor.formatOnSave": false,
+    "editor.insertSpaces": true
+  },
+  "files.associations": {
+    "*.tcss": "jinja-css",
+    "*.h": "c",
+    "*.ipp": "c",
+    "random": "c",
+    "compare": "c",
+    "cstdint": "c",
+    "charconv": "c",
+    "chrono": "c",
+    "optional": "c",
+    "format": "c",
+    "ratio": "c",
+    "system_error": "c",
+    "array": "c",
+    "functional": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "utility": "c",
+    "limits": "c",
+    "valarray": "c",
+    "semaphore": "c",
+    "cmath": "c",
+    "bitset": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "ranges": "c",
+    "span": "c",
+    "regex": "c",
+    "any": "c",
+    "complex": "c",
+    "variant": "c"
+  }
+}
