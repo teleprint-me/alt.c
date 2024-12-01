@@ -1,10 +1,10 @@
 /**
- * @file examples/mlp.c
+ * @file examples/models/xor.c
  */
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
 // Sigmoid activation function and its derivative
 double sigmoid(double x) {
@@ -27,22 +27,22 @@ double outputs[4] = {0, 1, 1, 0}; // Expected XOR outputs
 
 // Weights and biases
 double weights_input_hidden[2][2]; // 2 inputs -> 2 hidden neurons
-double weights_hidden_output[2];  // 2 hidden neurons -> 1 output neuron
+double weights_hidden_output[2]; // 2 hidden neurons -> 1 output neuron
 double bias_hidden[2];
 double bias_output;
 
 void initialize_weights() {
     for (int i = 0; i < 2; i++) {
-        bias_hidden[i] = (double)rand() / RAND_MAX;
-        weights_hidden_output[i] = (double)rand() / RAND_MAX;
+        bias_hidden[i] = (double) rand() / RAND_MAX;
+        weights_hidden_output[i] = (double) rand() / RAND_MAX;
         for (int j = 0; j < 2; j++) {
-            weights_input_hidden[i][j] = (double)rand() / RAND_MAX;
+            weights_input_hidden[i][j] = (double) rand() / RAND_MAX;
         }
     }
-    bias_output = (double)rand() / RAND_MAX;
+    bias_output = (double) rand() / RAND_MAX;
 }
 
-void forward(double input[], double hidden[], double *output) {
+void forward(double input[], double hidden[], double* output) {
     // Hidden layer computation
     for (int i = 0; i < 2; i++) {
         hidden[i] = bias_hidden[i];
@@ -106,8 +106,13 @@ void test() {
     for (int i = 0; i < 4; i++) {
         double hidden[2], output;
         forward(inputs[i], hidden, &output);
-        printf("Input: %f, %f, Predicted: %f, Actual: %f\n",
-               inputs[i][0], inputs[i][1], output, outputs[i]);
+        printf(
+            "Input: %f, %f, Predicted: %f, Actual: %f\n",
+            inputs[i][0],
+            inputs[i][1],
+            output,
+            outputs[i]
+        );
     }
 }
 
