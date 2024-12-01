@@ -20,6 +20,7 @@
 #include <stb/stb_image.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 int main() {
     srand(42); // Seed for reproducibility
