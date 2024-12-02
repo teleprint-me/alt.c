@@ -18,12 +18,6 @@ float random_uniform(float min, float max) {
     return min + ((float) rand() / (float) RAND_MAX) * (max - min);
 }
 
-float random_range(float interval) {
-    assert(interval > 0.0f);
-    float normalized = (float) rand() / (float) RAND_MAX;
-    return -interval + normalized * 2.0f * interval;
-}
-
 // Box–Muller transform
 float random_gaussian(float mean, float stddev) {
     float u1 = random_linear();
