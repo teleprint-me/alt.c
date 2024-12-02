@@ -37,124 +37,170 @@ float silu_derivative(float x) {
     return sigmoid_x * (1.0f + x * (1.0f - sigmoid_x));
 }
 
+// Initialize weights and biases in [-1, 1]
 void initialize_weights(
-    float hidden_weights[INPUT_SIZE][HIDDEN_SIZE],
-    float output_weights[HIDDEN_SIZE][OUTPUT_SIZE],
+    float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
+    float hidden_weights_output[HIDDEN_SIZE],
     float hidden_biases[HIDDEN_SIZE],
-    float output_biases[OUTPUT_SIZE]
+    float* output_bias
 ) {
-    // Randomize weights and biases between -1 and 1
-    for (int i = 0; i < INPUT_SIZE; i++) {
-        for (int j = 0; j < HIDDEN_SIZE; j++) {
-            hidden_weights[i][j] = ((float) rand() / RAND_MAX) * 2 - 1;
-        }
-    }
     for (int i = 0; i < HIDDEN_SIZE; i++) {
-        for (int j = 0; j < OUTPUT_SIZE; j++) {
-            output_weights[i][j] = ((float) rand() / RAND_MAX) * 2 - 1;
+        hidden_biases[i] = ((float) rand() / (float) RAND_MAX) * 2 - 1;
+        hidden_weights_output[i] = ((float) rand() / (float) RAND_MAX) * 2 - 1;
+        for (int j = 0; j < INPUT_SIZE; j++) {
+            hidden_weights_input[j][i] = ((float) rand() / (float) RAND_MAX) * 2 - 1;
         }
-        hidden_biases[i] = ((float) rand() / RAND_MAX) * 2 - 1;
     }
-    for (int j = 0; j < OUTPUT_SIZE; j++) {
-        output_biases[j] = ((float) rand() / RAND_MAX) * 2 - 1;
+    *output_bias = ((float) rand() / (float) RAND_MAX) * 2 - 1;
+}
+
+// Forward pass
+void forward(
+    float input[INPUT_SIZE],
+    float hidden[HIDDEN_SIZE],
+    float* output,
+    float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
+    float hidden_weights_output[HIDDEN_SIZE],
+    float hidden_biases[HIDDEN_SIZE],
+    float* output_bias
+) {
+    for (int i = 0; i < HIDDEN_SIZE; i++) {
+        hidden[i] = hidden_biases[i];
+        for (int j = 0; j < INPUT_SIZE; j++) {
+            hidden[i] += hidden_weights_input[j][i] * input[j];
+        }
+        hidden[i] = silu(hidden[i]);
+    }
+
+    *output = *output_bias;
+    for (int i = 0; i < HIDDEN_SIZE; i++) {
+        *output += hidden_weights_output[i] * hidden[i];
+    }
+    *output = silu(*output);
+}
+
+void backward(
+    double input[],
+    double hidden[],
+    double output,
+    double target,
+    float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
+    float hidden_weights_output[HIDDEN_SIZE],
+    float hidden_biases[HIDDEN_SIZE],
+    float* output_bias
+) {
+    double output_error = target - output; // Error at output layer
+    double output_gradient = output_error * silu_derivative(output);
+
+    // Update output weights and bias
+    for (int i = 0; i < HIDDEN_SIZE; i++) {
+        hidden_weights_output[i] += LEARNING_RATE * output_gradient * hidden[i];
+    }
+    *output_bias += LEARNING_RATE * output_gradient;
+
+    // Hidden layer gradients
+    for (int i = 0; i < HIDDEN_SIZE; i++) {
+        float hidden_error = output_gradient * hidden_weights_output[i];
+        float hidden_gradient = hidden_error * silu_derivative(hidden[i]);
+
+        // Update hidden weights and biases
+        for (int j = 0; j < INPUT_SIZE; j++) {
+            hidden_weights_input[j][i] += LEARNING_RATE * hidden_gradient * input[j];
+        }
+        hidden_biases[i] += LEARNING_RATE * hidden_gradient;
     }
 }
 
-// void forward(double input[], double hidden[], double* output) {
-//     // Hidden layer computation
-//     for (int i = 0; i < 2; i++) {
-//         hidden[i] = bias_hidden[i];
-//         for (int j = 0; j < 2; j++) {
-//             hidden[i] += weights_hidden_input[i][j] * input[j];
-//         }
-//         hidden[i] = sigmoid(hidden[i]); // Apply activation
-//     }
+void train(
+    float inputs[NUM_SAMPLES][INPUT_SIZE],
+    float targets[NUM_SAMPLES],
+    float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
+    float hidden_weights_output[HIDDEN_SIZE],
+    float hidden_biases[HIDDEN_SIZE],
+    float* output_bias,
+    int epochs
+) {
+    for (int epoch = 0; epoch < epochs; epoch++) {
+        float total_error = 0.0;
+        for (int i = 0; i < NUM_SAMPLES; i++) { // Iterate over all training examples
+            float hidden[HIDDEN_SIZE];
+            float output;
 
-//     // Output layer computation
-//     *output = bias_output;
-//     for (int i = 0; i < 2; i++) {
-//         *output += weights_hidden_output[i] * hidden[i];
-//     }
-//     *output = silu(*output); // Apply activation
-// }
+            forward(
+                inputs[i],
+                hidden,
+                &output,
+                hidden_weights_input,
+                hidden_weights_output,
+                hidden_biases,
+                output_bias
+            );
+            backward(
+                inputs[i],
+                hidden,
+                output,
+                targets[i],
+                hidden_weights_input,
+                hidden_weights_output,
+                hidden_biases,
+                output_bias
+            );
 
-// void backward(double input[], double hidden[], double output, double target) {
-//     double output_error = target - output; // Error at output layer
-//     double output_delta = output_error * sigmoid_derivative(output);
+            // Accumulate error
+            total_error += powf(targets[i] - output, 2);
+        }
 
-//     double hidden_error[2], hidden_delta[2];
-//     for (int i = 0; i < 2; i++) {
-//         hidden_error[i] = weights_hidden_output[i] * output_delta;
-//         hidden_delta[i] = hidden_error[i] * sigmoid_derivative(hidden[i]);
-//     }
+        // Report progress every 1000 epochs
+        if (epoch % 1000 == 0) {
+            printf("Epoch %d, Error: %.6f\n", epoch, (double) total_error / NUM_SAMPLES);
+        }
 
-//     // Update weights for hidden -> output
-//     for (int i = 0; i < 2; i++) {
-//         weights_hidden_output[i] += hidden[i] * output_delta * 0.1; // 0.1 = learning rate
-//     }
-//     bias_output += output_delta * 0.1;
+        // Early stopping condition
+        if (total_error / NUM_SAMPLES < ERROR_THRESHOLD) {
+            printf(
+                "Converged at epoch %d, Error: %.6f\n", epoch, (double) total_error / NUM_SAMPLES
+            );
+            break;
+        }
+    }
+}
 
-//     // Update weights for input -> hidden
-//     for (int i = 0; i < 2; i++) {
-//         for (int j = 0; j < 2; j++) {
-//             weights_hidden_input[i][j] += input[j] * hidden_delta[i] * 0.1;
-//         }
-//         bias_hidden[i] += hidden_delta[i] * 0.1;
-//     }
-// }
-
-// void train(int epochs) {
-//     for (int epoch = 0; epoch < epochs; epoch++) {
-//         double total_error = 0.0;
-//         for (int i = 0; i < 4; i++) { // Iterate over all training examples
-//             double hidden[2], output;
-//             forward(inputs[i], hidden, &output);
-//             backward(inputs[i], hidden, output, outputs[i]);
-
-//             total_error += pow(outputs[i] - output, 2); // Track error
-//         }
-//         if (epoch % 1000 == 0) {
-//             printf("Epoch %d, Error: %f\n", epoch, total_error);
-//         }
-//     }
-// }
-
-// void test() {
-//     printf("Testing the trained model:\n");
-//     for (int i = 0; i < 4; i++) {
-//         double hidden[2], output;
-//         forward(inputs[i], hidden, &output);
-//         printf(
-//             "Input: %f, %f, Predicted: %f, Actual: %f\n",
-//             inputs[i][0],
-//             inputs[i][1],
-//             output,
-//             outputs[i]
-//         );
-//     }
-// }
+void test() {
+    printf("Testing the trained model:\n");
+    for (int i = 0; i < 4; i++) {
+        double hidden[2], output;
+        forward(inputs[i], hidden, &output);
+        printf(
+            "Input: %f, %f, Predicted: %f, Actual: %f\n",
+            inputs[i][0],
+            inputs[i][1],
+            output,
+            outputs[i]
+        );
+    }
+}
 
 int main(void) {
     // Egg: The answer to life, the universe, and everything.
-    srand(42); // Seed for reproducibility
+    srand(42); // k = x^3 + y^3 + z^3
 
-    // // Dataset: Inputs and corresponding targets
-    // float inputs[NUM_SAMPLES][INPUT_SIZE] = {
-    //     {0.0f, 0.0f},
-    //     {0.0f, 1.0f},
-    //     {1.0f, 0.0f},
-    //     {1.0f, 1.0f}
-    // };
-    // float targets[NUM_SAMPLES] = {0.0f, 1.0f, 1.0f, 0.0f}; // XOR gate
+    // XOR dataset
+    float inputs[NUM_SAMPLES][INPUT_SIZE] = {
+        {0, 0},
+        {0, 1},
+        {1, 0},
+        {1, 1}
+    };
+    float targets[NUM_SAMPLES] = {0, 1, 1, 0}; // Expected XOR outputs
 
-    // Declare weights and biases
-    float hidden_weights[INPUT_SIZE][HIDDEN_SIZE];
-    float output_weights[HIDDEN_SIZE][OUTPUT_SIZE];
-    float hidden_biases[HIDDEN_SIZE];
-    float output_biases[OUTPUT_SIZE];
+    // Weights and biases
+    float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE]; // 2 inputs -> 2 hidden neurons
+    float hidden_weights_output[HIDDEN_SIZE]; // 2 hidden neurons -> 1 output neuron
+    float hidden_biases[HIDDEN_SIZE]; // 2 hidden neurons
+    float output_bias; // 1 output neuron
 
     // Initialize weights and biases
-    initialize_weights(hidden_weights, output_weights, hidden_biases, output_biases);
+    initialize_weights(hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias);
 
     // Debug print for weights and biases
     printf("Weights and Biases Initialized:\n");
