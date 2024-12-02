@@ -88,7 +88,11 @@ void train_perceptron(float inputs[][WEIGHTS], float* targets, float* weights, f
 
         // Early stopping
         if ((total_error / INPUTS) < ERROR_THRESHOLD) {
-            printf("Converged at epoch %d with average error %.5f\n", epoch, (double) (total_error / INPUTS));
+            printf(
+                "Converged at epoch %d with average error %.5f\n",
+                epoch,
+                (double) (total_error / INPUTS)
+            );
             break;
         }
     }
