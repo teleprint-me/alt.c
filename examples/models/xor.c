@@ -51,21 +51,32 @@ float relu_derivative(float x) {
     return x > 0 ? 1 : 0;
 }
 
+// Linear initialization for weights
+float linear_random(void) {
+    return (float) rand() / (float) RAND_MAX;
+}
+
+// Gaussian initialization for weights
+float gaussian_random(void) {
+    return linear_random() * sqrtf(2.0f / INPUT_SIZE);
+}
+
 // Initialize weights and biases in [-1, 1]
 void initialize_weights(
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
     float hidden_weights_output[HIDDEN_SIZE],
     float hidden_biases[HIDDEN_SIZE],
-    float* output_bias
+    float* output_bias,
+    float (*random)(void)
 ) {
     for (int i = 0; i < HIDDEN_SIZE; i++) {
-        hidden_biases[i] = (float) rand() / (float) RAND_MAX;
-        hidden_weights_output[i] = (float) rand() / (float) RAND_MAX;
+        hidden_biases[i] = random();
+        hidden_weights_output[i] = random();
         for (int j = 0; j < INPUT_SIZE; j++) {
-            hidden_weights_input[j][i] = (float) rand() / (float) RAND_MAX;
+            hidden_weights_input[j][i] = random();
         }
     }
-    *output_bias = (float) rand() / (float) RAND_MAX;
+    *output_bias = random();
 }
 
 // Forward pass
@@ -229,7 +240,9 @@ int main(void) {
     float output_bias; // 1 output neuron
 
     // Initialize weights and biases
-    initialize_weights(hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias);
+    initialize_weights(
+        hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias, gaussian_random
+    );
 
     // Train the XOR model
     train(
