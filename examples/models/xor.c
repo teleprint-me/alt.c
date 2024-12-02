@@ -26,6 +26,11 @@ float sigmoid(float x) {
     return 1.0f / (1.0f + expf(-x));
 }
 
+// Derivative of sigmoid for backpropagation
+float sigmoid_derivative(float x) {
+    return x * (1.0f - x);
+}
+
 // SiLU activation function
 float silu(float x) {
     return x * sigmoid(x);
@@ -37,6 +42,15 @@ float silu_derivative(float x) {
     return sigmoid_x * (1.0f + x * (1.0f - sigmoid_x));
 }
 
+// Relu breaks the model
+float relu(float x) {
+    return x > 0 ? x : 0;
+}
+
+float relu_derivative(float x) {
+    return x > 0 ? 1 : 0;
+}
+
 // Initialize weights and biases in [-1, 1]
 void initialize_weights(
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
@@ -45,13 +59,13 @@ void initialize_weights(
     float* output_bias
 ) {
     for (int i = 0; i < HIDDEN_SIZE; i++) {
-        hidden_biases[i] = ((float) rand() / (float) RAND_MAX) * 2 - 1;
-        hidden_weights_output[i] = ((float) rand() / (float) RAND_MAX) * 2 - 1;
+        hidden_biases[i] = (float) rand() / (float) RAND_MAX;
+        hidden_weights_output[i] = (float) rand() / (float) RAND_MAX;
         for (int j = 0; j < INPUT_SIZE; j++) {
-            hidden_weights_input[j][i] = ((float) rand() / (float) RAND_MAX) * 2 - 1;
+            hidden_weights_input[j][i] = (float) rand() / (float) RAND_MAX;
         }
     }
-    *output_bias = ((float) rand() / (float) RAND_MAX) * 2 - 1;
+    *output_bias = (float) rand() / (float) RAND_MAX;
 }
 
 // Forward pass
@@ -69,19 +83,19 @@ void forward(
         for (int j = 0; j < INPUT_SIZE; j++) {
             hidden[i] += hidden_weights_input[j][i] * input[j];
         }
-        hidden[i] = silu(hidden[i]);
+        hidden[i] = sigmoid(hidden[i]);
     }
 
     *output = *output_bias;
     for (int i = 0; i < HIDDEN_SIZE; i++) {
         *output += hidden_weights_output[i] * hidden[i];
     }
-    *output = silu(*output);
+    *output = sigmoid(*output);
 }
 
 void backward(
-    float input[],
-    float hidden[],
+    float input[HIDDEN_SIZE],
+    float hidden[HIDDEN_SIZE],
     float output,
     float target,
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
@@ -90,7 +104,7 @@ void backward(
     float* output_bias
 ) {
     float output_error = target - output; // Error at output layer
-    float output_gradient = output_error * silu_derivative(output);
+    float output_gradient = output_error * sigmoid_derivative(output);
 
     // Update output weights and bias
     for (int i = 0; i < HIDDEN_SIZE; i++) {
@@ -101,7 +115,7 @@ void backward(
     // Hidden layer gradients
     for (int i = 0; i < HIDDEN_SIZE; i++) {
         float hidden_error = output_gradient * hidden_weights_output[i];
-        float hidden_gradient = hidden_error * silu_derivative(hidden[i]);
+        float hidden_gradient = hidden_error * sigmoid_derivative(hidden[i]);
 
         // Update hidden weights and biases
         for (int j = 0; j < INPUT_SIZE; j++) {
