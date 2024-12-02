@@ -80,17 +80,17 @@ void forward(
 }
 
 void backward(
-    double input[],
-    double hidden[],
-    double output,
-    double target,
+    float input[],
+    float hidden[],
+    float output,
+    float target,
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
     float hidden_weights_output[HIDDEN_SIZE],
     float hidden_biases[HIDDEN_SIZE],
     float* output_bias
 ) {
-    double output_error = target - output; // Error at output layer
-    double output_gradient = output_error * silu_derivative(output);
+    float output_error = target - output; // Error at output layer
+    float output_gradient = output_error * silu_derivative(output);
 
     // Update output weights and bias
     for (int i = 0; i < HIDDEN_SIZE; i++) {
@@ -165,17 +165,32 @@ void train(
     }
 }
 
-void test() {
+void test(
+    float inputs[NUM_SAMPLES][INPUT_SIZE],
+    float targets[NUM_SAMPLES],
+    float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
+    float hidden_weights_output[HIDDEN_SIZE],
+    float hidden_biases[HIDDEN_SIZE],
+    float* output_bias
+) {
     printf("Testing the trained model:\n");
     for (int i = 0; i < 4; i++) {
-        double hidden[2], output;
-        forward(inputs[i], hidden, &output);
+        float hidden[HIDDEN_SIZE], output;
+        forward(
+            inputs[i],
+            hidden,
+            &output,
+            hidden_weights_input,
+            hidden_weights_output,
+            hidden_biases,
+            output_bias
+        );
         printf(
-            "Input: %f, %f, Predicted: %f, Actual: %f\n",
-            inputs[i][0],
-            inputs[i][1],
-            output,
-            outputs[i]
+            "Input: %.0f, %.0f, Predicted: %.6f, Actual: %.0f\n",
+            (double) inputs[i][0],
+            (double) inputs[i][1],
+            (double) output,
+            (double) targets[i]
         );
     }
 }
@@ -186,12 +201,12 @@ int main(void) {
 
     // XOR dataset
     float inputs[NUM_SAMPLES][INPUT_SIZE] = {
-        {0, 0},
-        {0, 1},
-        {1, 0},
-        {1, 1}
+        {0.0f, 0.0f},
+        {0.0f, 1.0f},
+        {1.0f, 0.0f},
+        {1.0f, 1.0f}
     };
-    float targets[NUM_SAMPLES] = {0, 1, 1, 0}; // Expected XOR outputs
+    float targets[NUM_SAMPLES] = {0.0f, 1.0f, 1.0f, 0.0f}; // Expected XOR outputs
 
     // Weights and biases
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE]; // 2 inputs -> 2 hidden neurons
@@ -202,19 +217,19 @@ int main(void) {
     // Initialize weights and biases
     initialize_weights(hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias);
 
-    // Debug print for weights and biases
-    printf("Weights and Biases Initialized:\n");
-    for (int i = 0; i < INPUT_SIZE; i++) {
-        for (int j = 0; j < HIDDEN_SIZE; j++) {
-            printf("Hidden[%d][%d]: %.2f ", i, j, (double) hidden_weights[i][j]);
-        }
-        printf("\n");
-    }
-    for (int i = 0; i < HIDDEN_SIZE; i++) {
-        printf("Hidden Bias[%d]: %.2f\n", i, (double) hidden_biases[i]);
-    }
+    // Train the XOR model
+    train(
+        inputs,
+        targets,
+        hidden_weights_input,
+        hidden_weights_output,
+        hidden_biases,
+        &output_bias,
+        EPOCHS // Train for 10,000 epochs
+    );
 
-    // train(10000); // Train for 10,000 epochs
-    // test();
+    // Test the XOR model
+    test(inputs, targets, hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias);
+
     return 0;
 }
