@@ -1,6 +1,8 @@
 /**
  * @file examples/models/perceptron.c
  *
+ * @brief Train and test the perceptron model using AND gates.
+ *
  * @ref 1957 The Perceptron: A Percieving and Recognizing Automaton
  */
 
@@ -14,6 +16,7 @@
 #define OUTPUTS 4 // 4x1 (n_samples, n_outputs)
 #define LEARNING_RATE 0.1f
 #define EPOCHS 10000
+#define ERROR_THRESHOLD 0.01f // Early stopping threshold
 
 // Sigmoid activation function
 float sigmoid_activation(float x) {
@@ -34,32 +37,79 @@ float dot_product(float inputs[][WEIGHTS], float* weights, float bias, int row) 
     return weighted_sum;
 }
 
-// Calculate activation
+// The forward pass
 float predict(float inputs[][WEIGHTS], float* weights, float bias, int row) {
     float weighted_sum = dot_product(inputs, weights, bias, row);
-    float activation = sigmoid_activation(weighted_sum);
-    return activation;
+    return sigmoid_activation(weighted_sum);
 }
 
-float error(float inputs[][WEIGHTS], float* targets, float* weights, float prediction, int row) {
-    // Compute error
-    float residual = targets[row] - prediction;
+// Compute error (residual)
+float compute_error(float* targets, float prediction, int row) {
+    return targets[row] - prediction;
+}
 
-    // Update weights and bias
-    for (int col = 0; col < WEIGHTS; ++col) {
-        weights[col] += LEARNING_RATE * residual * sigmoid_derivative(prediction) * inputs[row][col];
-    }
+// Update the bias
+float update_bias(float residual, float prediction) {
     return LEARNING_RATE * residual * sigmoid_derivative(prediction);
+}
+
+// Update the weights
+void update_weights(
+    float inputs[][WEIGHTS], float* weights, float residual, float prediction, int row
+) {
+    for (int col = 0; col < WEIGHTS; ++col) {
+        weights[col]
+            += LEARNING_RATE * residual * sigmoid_derivative(prediction) * inputs[row][col];
+    }
 }
 
 // Perceptron training function
 void train_perceptron(float inputs[][WEIGHTS], float* targets, float* weights, float* bias) {
     for (int epoch = 0; epoch < EPOCHS; ++epoch) {
+        float total_error = 0.0f;
+
         for (int row = 0; row < INPUTS; ++row) {
-            // Apply activation function
+            // Forward pass
             float prediction = predict(inputs, weights, *bias, row);
-            *bias += error(inputs, targets, weights, prediction, row);
+
+            // Compute residual and update weights/bias
+            float residual = compute_error(targets, prediction, row);
+            update_weights(inputs, weights, residual, prediction, row);
+            *bias += update_bias(residual, prediction);
+
+            // Accumulate error for early stopping
+            total_error += fabsf(residual);
         }
+
+        // Report progress
+        if (epoch % 1000 == 0) {
+            printf("Epoch %d: Average Error: %.5f\n", epoch, (double) (total_error / INPUTS));
+        }
+
+        // Early stopping
+        if ((total_error / INPUTS) < ERROR_THRESHOLD) {
+            printf("Converged at epoch %d with average error %.5f\n", epoch, (double) (total_error / INPUTS));
+            break;
+        }
+    }
+}
+
+// Test the perceptron
+void test_perceptron(float inputs[][WEIGHTS], float* weights, float bias) {
+    printf(
+        "Trained Weights: %.2f, %.2f | Bias: %.2f\n",
+        (double) weights[0],
+        (double) weights[1],
+        (double) bias
+    );
+    for (int row = 0; row < INPUTS; ++row) {
+        float prediction = predict(inputs, weights, bias, row) >= 0.5f ? 1.0f : 0.0f;
+        printf(
+            "Input: %.0f, %.0f -> Prediction: %.0f\n",
+            (double) inputs[row][0],
+            (double) inputs[row][1],
+            (double) prediction
+        );
     }
 }
 
@@ -85,25 +135,7 @@ int main() {
     train_perceptron(inputs, targets, weights, &bias);
 
     // Test the perceptron
-    printf(
-        "Trained Weights: %.2f, %.2f | Bias: %.2f\n",
-        (double) weights[0],
-        (double) weights[1],
-        (double) bias
-    );
-    for (int i = 0; i < INPUTS; ++i) {
-        float weighted_sum = bias;
-        for (int j = 0; j < WEIGHTS; ++j) {
-            weighted_sum += inputs[i][j] * weights[j];
-        }
-        float prediction = sigmoid_activation(weighted_sum) >= 0.5f ? 1.0f : 0.0f;
-        printf(
-            "Input: %.0f, %.0f -> Prediction: %.0f\n",
-            (double) inputs[i][0],
-            (double) inputs[i][1],
-            (double) prediction
-        );
-    }
+    test_perceptron(inputs, weights, bias);
 
     return 0;
 }
