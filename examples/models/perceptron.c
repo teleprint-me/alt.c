@@ -128,7 +128,7 @@ int main() {
     float weights[WEIGHTS];
     float bias = ((float) rand() / RAND_MAX) * 2 - 1; // Random value in [-1, 1]
     for (int i = 0; i < WEIGHTS; i++) {
-        weights[i] = ((float) rand() / RAND_MAX) * 2 - 1; // Random values in [-1, 1]
+        weights[i] = ((float) rand() / (float) RAND_MAX) * 2 - 1; // Random values in [-1, 1]
     }
 
     // Train perceptron
