@@ -27,7 +27,7 @@ float random_uniform(float min, float max) {
 float random_gaussian(float mean, float stddev) {
     float u1 = random_linear();
     float u2 = random_linear();
-    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * M_PI * u2);
+    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float) M_PI * u2);
     return mean + z0 * stddev;
 }
 
