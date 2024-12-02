@@ -33,8 +33,8 @@ float random_gaussian(float mean, float stddev) {
 }
 
 // @todo he initialization
-float random_gaussian_he(int hidden_size) {
-    return random_gaussian(0.0f, sqrtf(2.0f / (float) hidden_size));
+float random_he(int fan_in) {
+    return random_gaussian(0.0f, sqrtf(2.0f / (float) fan_in));
 }
 
 // @todo xavier and glorot initialization
