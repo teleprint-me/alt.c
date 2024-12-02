@@ -112,4 +112,13 @@ float activate_gelu_exact(float x);
  */
 float activate_gelu_approximation(float x);
 
+/**
+ * @brief Computes the softmax function for a 1D array.
+ *
+ * @param input The input array.
+ * @param output The output array (softmax probabilities).
+ * @param length The number of elements in the input/output arrays.
+ */
+void activate_softmax(const float *input, float *output, size_t length);
+
 #endif // ALT_ACTIVATION_H

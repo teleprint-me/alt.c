@@ -59,3 +59,29 @@ float activate_gelu_approximation(float x) {
     float x_cubed = x * x * x;
     return 0.5f * x * (1.0f + tanhf(SQRT_2_PI * (x + 0.044715f * x_cubed)));
 }
+
+// Computes the softmax function for a 1D array.
+void activate_softmax(const float *input, float *output, size_t length) {
+    assert(input != NULL && output != NULL);
+    assert(length > 0);
+
+    // Step 1: Find the maximum value for numerical stability
+    float max_val = input[0];
+    for (size_t i = 1; i < length; i++) {
+        if (input[i] > max_val) {
+            max_val = input[i];
+        }
+    }
+
+    // Step 2: Compute the exponentials and their sum
+    float sum = 0.0f;
+    for (size_t i = 0; i < length; i++) {
+        output[i] = expf(input[i] - max_val);
+        sum += output[i];
+    }
+
+    // Step 3: Normalize the exponentials
+    for (size_t i = 0; i < length; i++) {
+        output[i] /= sum;
+    }
+}
