@@ -6,10 +6,11 @@
  * @brief Functions for initializing model weights.
  */
 
-#include <assert.h> // For assert
-#include <stdlib.h> // For rand and RAND_MAX
+#include "random.h"
 
-#include "data_types.h" // For math.h and M_PI
+void random_seed(unsigned int seed) {
+    srand(seed);
+}
 
 // Linear initialization [0, 1]
 float random_linear(void) {
@@ -18,6 +19,7 @@ float random_linear(void) {
 
 // Uniform distribution
 float random_uniform(float min, float max) {
+    assert(max > min);
     return min + ((float) rand() / (float) RAND_MAX) * (max - min);
 }
 
@@ -31,10 +33,13 @@ float random_gaussian(float mean, float stddev) {
 
 // He initialization
 float random_he(int fan_in) {
+    assert(fan_in > 0);
     return random_gaussian(0.0f, sqrtf(2.0f / (float) fan_in));
 }
 
 // Xavier and Glorot initialization
 float random_glorot(int fan_in, int fan_out) {
+    assert(fan_in > 0);
+    assert(fan_out > 0);
     return random_gaussian(0.0f, sqrtf(2.0f / (float)(fan_in + fan_out)));
 }
