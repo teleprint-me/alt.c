@@ -78,11 +78,21 @@ cmake --build build --config Debug -j $(nproc)
 ### Sample Output
 
 ```text
-Trained Weights: 0.00, 0.00
-Input: 0, 0 -> Prediction: 0
-Input: 0, 1 -> Prediction: 0
-Input: 1, 0 -> Prediction: 0
-Input: 1, 1 -> Prediction: 1
+Epoch 0: Average Error: 0.50862
+Epoch 1000: Average Error: 0.15645
+Epoch 2000: Average Error: 0.10852
+Epoch 3000: Average Error: 0.08668
+Epoch 4000: Average Error: 0.07379
+Epoch 5000: Average Error: 0.06513
+Epoch 6000: Average Error: 0.05883
+Epoch 7000: Average Error: 0.05400
+Epoch 8000: Average Error: 0.05015
+Epoch 9000: Average Error: 0.04699
+Trained Weights: 5.48, 5.48 | Bias: -8.32
+Input: 0, 0 -> Prediction: 0.000
+Input: 0, 1 -> Prediction: 0.056
+Input: 1, 0 -> Prediction: 0.056
+Input: 1, 1 -> Prediction: 0.934
 ```
 
 ## License
