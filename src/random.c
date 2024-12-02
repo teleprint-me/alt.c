@@ -1,11 +1,13 @@
 /**
  * @file src/random.c
- * 
+ *
  * @brief Functions for initializing model weights.
  */
 
-#include <assert.h>
-#include <stdlib.h>
+#include <assert.h> // For assert
+#include <stdlib.h> // For rand and RAND_MAX
+
+#include "data_types.h" // For math.h and M_PI
 
 // Linear initialization [0, 1]
 float random_linear(void) {
@@ -22,11 +24,17 @@ float random_range(float interval) {
     return -interval + normalized * 2.0f * interval;
 }
 
-// Gaussian initialization
-float random_gaussian(int hidden_size) {
-    return linear_random() * sqrtf(2.0f / (float) hidden_size);
+// Box–Muller transform
+float random_gaussian(float mean, float stddev) {
+    float u1 = random_linear();
+    float u2 = random_linear();
+    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * M_PI * u2);
+    return mean + z0 * stddev;
 }
 
 // @todo he initialization
+float random_gaussian_he(int hidden_size) {
+    return random_gaussian(0.0f, sqrtf(2.0f / (float) hidden_size));
+}
 
 // @todo xavier and glorot initialization
