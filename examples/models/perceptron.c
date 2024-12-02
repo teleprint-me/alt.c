@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "activation.h"
+#include "random.h"
+
 // Define macros for input dimensions
 #define INPUTS 4 // 4x2 (n_samples, n_inputs)
 #define WEIGHTS 2 // 2x1 (n_inputs, n_outputs)
@@ -17,16 +20,6 @@
 #define LEARNING_RATE 0.1f
 #define EPOCHS 10000
 #define ERROR_THRESHOLD 0.01f // Early stopping threshold
-
-// Sigmoid activation function
-float sigmoid_activation(float x) {
-    return 1.0f / (1.0f + expf(-x));
-}
-
-// Derivative of sigmoid for backpropagation
-float sigmoid_derivative(float x) {
-    return x * (1.0f - x);
-}
 
 // Calculate weighted sum
 float dot_product(float inputs[][WEIGHTS], float* weights, float bias, int row) {
@@ -40,7 +33,7 @@ float dot_product(float inputs[][WEIGHTS], float* weights, float bias, int row) 
 // The forward pass
 float predict(float inputs[][WEIGHTS], float* weights, float bias, int row) {
     float weighted_sum = dot_product(inputs, weights, bias, row);
-    return sigmoid_activation(weighted_sum);
+    return activate_sigmoid(weighted_sum);
 }
 
 // Compute error (residual)
@@ -50,7 +43,7 @@ float compute_error(float* targets, float prediction, int row) {
 
 // Update the bias
 float update_bias(float residual, float prediction) {
-    return LEARNING_RATE * residual * sigmoid_derivative(prediction);
+    return LEARNING_RATE * residual * activate_sigmoid_prime(prediction);
 }
 
 // Update the weights
@@ -59,7 +52,7 @@ void update_weights(
 ) {
     for (int col = 0; col < WEIGHTS; ++col) {
         weights[col]
-            += LEARNING_RATE * residual * sigmoid_derivative(prediction) * inputs[row][col];
+            += LEARNING_RATE * residual * activate_sigmoid_prime(prediction) * inputs[row][col];
     }
 }
 
@@ -133,9 +126,9 @@ int main(void) {
 
     // Initialize weights and bias
     float weights[WEIGHTS];
-    float bias = ((float) rand() / RAND_MAX) * 2 - 1; // Random value in [-1, 1]
+    float bias = random_linear(); // Random value in [0, 1]
     for (int i = 0; i < WEIGHTS; i++) {
-        weights[i] = ((float) rand() / (float) RAND_MAX) * 2 - 1; // Random values in [-1, 1]
+        weights[i] = random_linear(); // Random values in [0, 1]
     }
 
     // Train perceptron
