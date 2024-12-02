@@ -1,4 +1,6 @@
 /**
+ * Copyright © 2024 Austin Berrio
+ *
  * @file src/random.c
  *
  * @brief Functions for initializing model weights.
