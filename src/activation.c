@@ -48,7 +48,7 @@ float activate_silu(float x) {
 
 // Derivative of SiLU for backpropagation
 float activate_silu_prime(float x) {
-    float sigmoid_x = sigmoid(x);
+    float sigmoid_x = activate_sigmoid(x);
     return sigmoid_x * (1.0f + x * (1.0f - sigmoid_x));
 }
 
