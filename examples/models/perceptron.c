@@ -103,9 +103,9 @@ void test_perceptron(float inputs[][WEIGHTS], float* weights, float bias) {
         (double) bias
     );
     for (int row = 0; row < INPUTS; ++row) {
-        float prediction = predict(inputs, weights, bias, row) >= 0.5f ? 1.0f : 0.0f;
+        float prediction = predict(inputs, weights, bias, row); // Don't cheat!
         printf(
-            "Input: %.0f, %.0f -> Prediction: %.0f\n",
+            "Input: %.0f, %.0f -> Prediction: %.3f\n", // Display raw prediction
             (double) inputs[row][0],
             (double) inputs[row][1],
             (double) prediction
