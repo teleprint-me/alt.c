@@ -16,6 +16,11 @@ float activate_sigmoid(float x) {
     return 1.0f / (1.0f + expf(-x));
 }
 
+// Derivative of sigmoid for backpropagation
+float activate_sigmoid_prime(float x) {
+    return x * (1.0f - x);
+}
+
 // Hyperbolic Tangent (Tanh) Activation Function
 float activate_tanh(float x) {
     return tanhf(x);
@@ -26,9 +31,20 @@ float activate_relu(float x) {
     return x > 0.0f ? x : 0.0f;
 }
 
+// Derivative of relu for backpropagation
+float activate_relu_prime(float x) {
+    return x > 0.0f ? 1.0f : 0.0f;
+}
+
 // Sigmoid-Weighted Linear Unit (SiLU) or Swish
 float activate_silu(float x) {
     return x * activate_sigmoid(x);
+}
+
+// Derivative of SiLU for backpropagation
+float activate_silu_prime(float x) {
+    float sigmoid_x = sigmoid(x);
+    return sigmoid_x * (1.0f + x * (1.0f - sigmoid_x));
 }
 
 // Gaussian Error Linear Unit (GELU)
