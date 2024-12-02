@@ -14,6 +14,7 @@ float random_linear(void) {
     return (float) rand() / (float) RAND_MAX;
 }
 
+// Uniform distribution
 float random_uniform(float min, float max) {
     return min + ((float) rand() / (float) RAND_MAX) * (max - min);
 }
@@ -26,9 +27,12 @@ float random_gaussian(float mean, float stddev) {
     return mean + z0 * stddev;
 }
 
-// @todo he initialization
+// He initialization
 float random_he(int fan_in) {
     return random_gaussian(0.0f, sqrtf(2.0f / (float) fan_in));
 }
 
-// @todo xavier and glorot initialization
+// Xavier and Glorot initialization
+float random_glorot(int fan_in, int fan_out) {
+    return random_gaussian(0.0f, sqrtf(2.0f / (float)(fan_in + fan_out)));
+}
