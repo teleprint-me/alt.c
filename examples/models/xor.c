@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "activation.h"
+#include "random.h"
+
 // Define the structure of the network
 #define INPUT_SIZE 2 // Number of input features (e.g., XOR has 2 inputs)
 #define HIDDEN_SIZE 2 // Number of neurons in the hidden layer
@@ -21,62 +24,21 @@
 #define EPOCHS 10000 // Maximum number of training epochs
 #define ERROR_THRESHOLD 0.01f // Early stopping threshold for average error
 
-// Sigmoid activation function
-float sigmoid(float x) {
-    return 1.0f / (1.0f + expf(-x));
-}
-
-// Derivative of sigmoid for backpropagation
-float sigmoid_derivative(float x) {
-    return x * (1.0f - x);
-}
-
-// SiLU activation function
-float silu(float x) {
-    return x * sigmoid(x);
-}
-
-// Derivative of SiLU for backpropagation
-float silu_derivative(float x) {
-    float sigmoid_x = sigmoid(x);
-    return sigmoid_x * (1.0f + x * (1.0f - sigmoid_x));
-}
-
-// Relu breaks the model
-float relu(float x) {
-    return x > 0 ? x : 0;
-}
-
-float relu_derivative(float x) {
-    return x > 0 ? 1 : 0;
-}
-
-// Linear initialization for weights [0, 1]
-float linear_random(void) {
-    return (float) rand() / (float) RAND_MAX;
-}
-
-// Gaussian initialization for weights
-float gaussian_random(void) {
-    return linear_random() * sqrtf(2.0f / INPUT_SIZE);
-}
-
 // Initialize weights and biases
 void initialize_weights(
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
     float hidden_weights_output[HIDDEN_SIZE],
     float hidden_biases[HIDDEN_SIZE],
-    float* output_bias,
-    float (*random)(void)
+    float* output_bias
 ) {
     for (int i = 0; i < HIDDEN_SIZE; i++) {
-        hidden_biases[i] = random();
-        hidden_weights_output[i] = random();
+        hidden_biases[i] = random_linear();
+        hidden_weights_output[i] = random_linear();
         for (int j = 0; j < INPUT_SIZE; j++) {
-            hidden_weights_input[j][i] = random();
+            hidden_weights_input[j][i] = random_linear();
         }
     }
-    *output_bias = random();
+    *output_bias = random_linear();
 }
 
 // Forward pass
@@ -94,14 +56,14 @@ void forward(
         for (int j = 0; j < INPUT_SIZE; j++) {
             hidden[i] += hidden_weights_input[j][i] * input[j];
         }
-        hidden[i] = sigmoid(hidden[i]);
+        hidden[i] = activate_sigmoid(hidden[i]);
     }
 
     *output = *output_bias;
     for (int i = 0; i < HIDDEN_SIZE; i++) {
         *output += hidden_weights_output[i] * hidden[i];
     }
-    *output = sigmoid(*output);
+    *output = activate_sigmoid(*output);
 }
 
 void backward(
@@ -115,7 +77,7 @@ void backward(
     float* output_bias
 ) {
     float output_error = target - output; // Error at output layer
-    float output_gradient = output_error * sigmoid_derivative(output);
+    float output_gradient = output_error * activate_sigmoid_prime(output);
 
     // Update output weights and bias
     for (int i = 0; i < HIDDEN_SIZE; i++) {
@@ -126,7 +88,7 @@ void backward(
     // Hidden layer gradients
     for (int i = 0; i < HIDDEN_SIZE; i++) {
         float hidden_error = output_gradient * hidden_weights_output[i];
-        float hidden_gradient = hidden_error * sigmoid_derivative(hidden[i]);
+        float hidden_gradient = hidden_error * activate_sigmoid_prime(hidden[i]);
 
         // Update hidden weights and biases
         for (int j = 0; j < INPUT_SIZE; j++) {
@@ -240,9 +202,7 @@ int main(void) {
     float output_bias; // 1 output neuron
 
     // Initialize weights and biases
-    initialize_weights(
-        hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias, gaussian_random
-    );
+    initialize_weights(hidden_weights_input, hidden_weights_output, hidden_biases, &output_bias);
 
     // Train the XOR model
     train(
