@@ -51,7 +51,7 @@ float relu_derivative(float x) {
     return x > 0 ? 1 : 0;
 }
 
-// Linear initialization for weights
+// Linear initialization for weights [0, 1]
 float linear_random(void) {
     return (float) rand() / (float) RAND_MAX;
 }
@@ -61,7 +61,7 @@ float gaussian_random(void) {
     return linear_random() * sqrtf(2.0f / INPUT_SIZE);
 }
 
-// Initialize weights and biases in [-1, 1]
+// Initialize weights and biases
 void initialize_weights(
     float hidden_weights_input[INPUT_SIZE][HIDDEN_SIZE],
     float hidden_weights_output[HIDDEN_SIZE],
