@@ -32,13 +32,13 @@ float random_gaussian(float mean, float stddev) {
 }
 
 // He initialization
-float random_he(int32_t fan_in) {
+float random_kaiming_he(int32_t fan_in) {
     assert(fan_in > 0);
     return random_gaussian(0.0f, sqrtf(2.0f / (float) fan_in));
 }
 
 // Xavier and Glorot initialization
-float random_glorot(int32_t fan_in, int32_t fan_out) {
+float random_xavier_glorot(int32_t fan_in, int32_t fan_out) {
     assert(fan_in > 0);
     assert(fan_out > 0);
     return random_gaussian(0.0f, sqrtf(2.0f / (float)(fan_in + fan_out)));

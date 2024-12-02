@@ -73,7 +73,7 @@ float random_gaussian(float mean, float stddev);
  * @return A random float initialized according to He initialization.
  * @note Asserts that `fan_in > 0`.
  */
-float random_he(int32_t fan_in);
+float random_kaiming_he(int32_t fan_in);
 
 /**
  * @brief Initializes weights using Xavier (Glorot) initialization.
@@ -86,6 +86,6 @@ float random_he(int32_t fan_in);
  * @return A random float initialized according to Xavier (Glorot) initialization.
  * @note Asserts that both `fan_in > 0` and `fan_out > 0`.
  */
-float random_glorot(int32_t fan_in, int32_t fan_out);
+float random_xavier_glorot(int32_t fan_in, int32_t fan_out);
 
 #endif // ALT_RANDOM_H
