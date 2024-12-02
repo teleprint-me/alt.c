@@ -114,7 +114,7 @@ void test_perceptron(float inputs[][WEIGHTS], float* weights, float bias) {
 }
 
 // Main function
-int main() {
+int main(void) {
     // Dataset: Inputs and corresponding targets
     float inputs[INPUTS][WEIGHTS] = {
         {0, 0},
