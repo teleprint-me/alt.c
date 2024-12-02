@@ -1,7 +1,12 @@
 /**
+ * Copyright © 2024 Austin Berrio
+ *
  * @file src/activation.c
  *
  * @brief Activation functions for neural networks.
+ *
+ * Includes common activation functions and their derivatives for backpropagation.
+ * Covers basic functions (e.g., Sigmoid, ReLU) and advanced ones (e.g., GELU, SiLU).
  */
 
 #include "activation.h"
