@@ -119,6 +119,9 @@ void test_perceptron(float inputs[][WEIGHTS], float* weights, float bias) {
 
 // Main function
 int main(void) {
+    // Egg: The answer to life, the universe, and everything.
+    srand(42); // k = x^3 + y^3 + z^3
+
     // Dataset: Inputs and corresponding targets
     float inputs[INPUTS][WEIGHTS] = {
         {0, 0},
