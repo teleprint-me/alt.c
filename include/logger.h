@@ -11,8 +11,8 @@
  * easily integrated into existing C projects.
  */
 
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef ALT_LOGGER_H
+#define ALT_LOGGER_H
 
 #include <errno.h>
 #include <pthread.h> // For including mutex functions
@@ -255,4 +255,4 @@ void initialize_global_logger(
 #define LOG_WARN(format, ...) LOG(&global_logger, LOG_LEVEL_WARN, format, ##__VA_ARGS__)
 #define LOG_ERROR(format, ...) LOG(&global_logger, LOG_LEVEL_ERROR, format, ##__VA_ARGS__)
 
-#endif // LOGGER_H
+#endif // ALT_LOGGER_H
