@@ -42,12 +42,13 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Define the core C library
 set(
     C_SOURCES
-    src/logger.c
-    src/data_types.c
-    src/activation.c
-    src/random.c
-    src/flex_array.c
-    src/tensors.c
+    "src/logger.c"
+    "src/data_types.c"
+    "src/path.c"
+    "src/random.c"
+    "src/flex_array.c"
+    "src/activation.c"
+    "src/tensors.c"
 )
 add_library("alt" ${C_SOURCES})
 
