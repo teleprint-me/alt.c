@@ -21,7 +21,15 @@
 #include "activation.h"
 #include "random.h"
 
-int main() {
+#define IMAGE_SIZE 28 * 28  // Flattened size of MNIST images
+
+// Struct to hold a single image and label
+typedef struct {
+    float *pixels;
+    int label;
+} MNISTSample;
+
+int main(int argc, char* argv[]) {
     srand(42); // Seed for reproducibility
     return 0;
 }
