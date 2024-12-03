@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stddef.h>
 
 // Represents directory entries from a traversal
 typedef struct PathEntity {
@@ -47,6 +48,7 @@ PathSplit* path_split(const char* path); // Splits a path into components
 void path_free_split(PathSplit* split); // Frees a PathSplit structure
 
 // Directory traversal functions
+PathEntity* path_create_entity(void);
 bool path_traverse(const char* base_path, PathEntity* entity, bool recursive); // Traverses a directory
 void path_free_entity(PathEntity* entity); // Frees a PathEntity structure
 
