@@ -1,9 +1,10 @@
 {
+  "window.zoomLevel": 0,
   "editor.defaultFormatter": null,
   "editor.stickyTabStops": true,
   "editor.tabCompletion": "on",
   "editor.wordWrap": "off",
-  "editor.fontSize": 12,
+  "editor.fontSize": 10,
   "editor.lightbulb.enabled": "off",
   "editor.wordWrapColumn": 80,
   "editor.fontFamily": "'Noto Sans Mono', 'Source Code Pro', 'Droid Sans Mono'",
