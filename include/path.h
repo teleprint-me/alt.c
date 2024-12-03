@@ -3,7 +3,7 @@
  *
  * @file include/path.h
  *
- * @brief
+ * @brief Path manipulation interface for C.
  */
 
 #ifndef ALT_PATH_H
@@ -34,13 +34,21 @@ typedef struct PathSplit {
     uint32_t length; // Number of components
 } PathSplit;
 
-// Check if a path exists
-bool path_exists(const char* path); // Returns true if the path exists, false otherwise
+// Path existence and checks
+bool path_exists(const char* path);
+bool path_has_leading_slash(const char* path);
+bool path_has_trailing_slash(const char* path);
 
-// Path manipulation functions
+// Path normalization
+char* path_add_leading_slash(const char* path);
+char* path_add_trailing_slash(const char* path);
+char* path_remove_leading_slash(const char* path);
+char* path_remove_trailing_slash(const char* path);
+
+// Path manipulation
 char* path_dir(const char* path); // Gets the directory part of a path (caller frees the result)
 char* path_base(const char* path); // Gets the base name of a path (caller frees the result)
-char* path_join(const char* root, const char* sub); // Joins two paths (caller frees the result)
+char* path_join(const char* root_path, const char* sub_path); // Joins two paths (caller frees the result)
 void path_free_string(char* path); // Frees a string returned by path manipulation functions
 
 // Path splitting functions
