@@ -4,7 +4,6 @@
  * @brief Scratchpad for experimenting with path objects.
  */
 
-#include <dirent.h>
 #include <stdio.h>
 
 #include "logger.h"
