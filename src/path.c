@@ -114,17 +114,7 @@ PathState path_exists(const char* path) {
     return access(path, F_OK) == 0 ? PATH_SUCCESS : PATH_ERROR;
 }
 
-bool path_has_leading_slash(const char* path) {
-    size_t length = strlen(path);
-    return (length > 0 && '/' == path[0]) ? true : false;
-}
-
-bool path_has_trailing_slash(const char* path) {
-    size_t length = strlen(path);
-    return (length > 0 && '/' == path[length - 1]) ? true : false;
-}
-
-char* path_dir(const char* path) {
+char* path_dirname(const char* path) {
     if (!path || *path == '\0') {
         return strdup(".");
     }
@@ -145,7 +135,7 @@ char* path_dir(const char* path) {
     return dir;
 }
 
-char* path_base(const char* path) {
+char* path_basename(const char* path) {
     if (!path || *path == '\0') {
         return strdup("");
     }
@@ -158,62 +148,66 @@ char* path_base(const char* path) {
     return strdup(last_slash + 1);
 }
 
-char* path_add_leading_slash(const char* path) {
-    return strdup(path); // @todo
+bool path_has_leading_slash(const char* path) {
+    size_t length = strlen(path);
+    return (length > 0 && '/' == path[0]) ? true : false;
 }
 
-char* path_add_trailing_slash(const char* path) {
-    if (!path || *path == '\0') {
-        return NULL;
-    }
+bool path_has_trailing_slash(const char* path) {
+    size_t length = strlen(path);
+    return (length > 0 && '/' == path[length - 1]) ? true : false;
+}
 
-    // If already has a trailing slash, return a duplicate
-    if (path_has_trailing_slash(path)) {
-        return strdup(path);
+char* path_normalize(const char* path, PathNormalize flags) {
+    if (!path || *path == '\0') {
+        return NULL; // Invalid input
     }
 
     size_t length = strlen(path);
-    char* normalized = malloc(length + 2); // Space for '/' and '\0'
+    bool add_leading = flags & PATH_NORMALIZE_ADD_LEADING_SLASH;
+    bool remove_leading = flags & PATH_NORMALIZE_REMOVE_LEADING_SLASH;
+    bool add_trailing = flags & PATH_NORMALIZE_ADD_TRAILING_SLASH;
+    bool remove_trailing = flags & PATH_NORMALIZE_REMOVE_TRAILING_SLASH;
+
+    // Calculate new length based on flags
+    size_t new_length = length;
+    if (add_leading && !path_has_leading_slash(path)) new_length++;
+    if (remove_leading && path_has_leading_slash(path)) new_length--;
+    if (add_trailing && !path_has_trailing_slash(path)) new_length++;
+    if (remove_trailing && path_has_trailing_slash(path)) new_length--;
+
+    char* normalized = malloc(new_length + 1); // Space for null terminator
     if (!normalized) {
-        return NULL;
+        return NULL; // Memory allocation failed
     }
 
-    strcpy(normalized, path);
-    strcat(normalized, "/");
-    return normalized;
-}
+    char* cursor = normalized;
 
-char* path_remove_leading_slash(const char* path) {
-    if (!path || *path == '\0') {
-        return NULL;
+    // Add leading slash if requested
+    if (add_leading && !path_has_leading_slash(path)) {
+        *cursor++ = '/';
     }
 
-    // If no leading slash, return a duplicate
-    if (!path_has_leading_slash(path)) {
-        return strdup(path);
+    // Skip leading slash if removing it
+    const char* start = path;
+    if (remove_leading && path_has_leading_slash(path)) {
+        start++;
     }
 
-    return strdup(path + 1); // Skip the leading slash
-}
+    // Copy main path content, excluding trailing slash if removing it
+    size_t copy_length = strlen(start);
+    if (remove_trailing && path_has_trailing_slash(start)) {
+        copy_length--; // Exclude trailing slash
+    }
+    strncpy(cursor, start, copy_length);
+    cursor += copy_length;
 
-char* path_remove_trailing_slash(const char* path) {
-    if (!path || *path == '\0') {
-        return NULL;
+    // Add trailing slash if requested
+    if (add_trailing && !path_has_trailing_slash(path)) {
+        *cursor++ = '/';
     }
 
-    // If no trailing slash, return a duplicate
-    if (!path_has_trailing_slash(path)) {
-        return strdup(path);
-    }
-
-    size_t length = strlen(path) - 1; // Exclude trailing slash
-    char* normalized = malloc(length + 1); // Space for '\0'
-    if (!normalized) {
-        return NULL;
-    }
-
-    strncpy(normalized, path, length);
-    normalized[length] = '\0';
+    *cursor = '\0'; // Null-terminate the string
     return normalized;
 }
 
@@ -222,20 +216,19 @@ char* path_join(const char* root_path, const char* sub_path) {
         return NULL; // Invalid inputs
     }
 
-    // Ensure root_path has a trailing slash
-    char* normalized_root = path_add_trailing_slash(root_path);
+    // Normalize root and sub paths
+    char* normalized_root = path_normalize(root_path, PATH_NORMALIZE_ADD_TRAILING_SLASH);
     if (!normalized_root) {
         return NULL;
     }
 
-    // Ensure sub_path does not have a leading slash
-    char* normalized_sub = path_remove_leading_slash(sub_path);
+    char* normalized_sub = path_normalize(sub_path, PATH_NORMALIZE_REMOVE_LEADING_SLASH);
     if (!normalized_sub) {
         free(normalized_root);
         return NULL;
     }
 
-    // Concatenate normalized paths
+    // Allocate and concatenate
     size_t new_length = strlen(normalized_root) + strlen(normalized_sub) + 1;
     char* joined_path = malloc(new_length);
     if (!joined_path) {

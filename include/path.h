@@ -10,6 +10,7 @@
 #define ALT_PATH_H
 
 #include <asm/unistd.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -41,6 +42,14 @@ typedef enum PathState {
     PATH_MEMORY_ALLOCATION,
     PATH_UNKNOWN
 } PathState;
+
+typedef enum PathNormalize {
+    PATH_NORMALIZE_NONE = 0,
+    PATH_NORMALIZE_ADD_LEADING_SLASH = 1 << 0,
+    PATH_NORMALIZE_REMOVE_LEADING_SLASH = 1 << 1,
+    PATH_NORMALIZE_ADD_TRAILING_SLASH = 1 << 2,
+    PATH_NORMALIZE_REMOVE_TRAILING_SLASH = 1 << 3
+} PathNormalize;
 
 typedef enum {
     FILE_TYPE_UNKNOWN, // Unknown file type
@@ -102,9 +111,9 @@ PathState path_is_symlink(const char* path); // Checks if a path is a symbolic l
 
 // Path normalization
 
-char* path_normalize(const char* path, bool add_leading, bool add_trailing); // Normalizes a path
 bool path_has_leading_slash(const char* path); // Checks if a path has a leading slash
 bool path_has_trailing_slash(const char* path); // Checks if a path has a trailing slash
+char* path_normalize(const char* path, PathNormalize flags) ; // Normalizes a path
 
 // Path manipulation
 
