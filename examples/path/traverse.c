@@ -1,5 +1,5 @@
 /**
- * @file examples/scratchpad/path_traverse.c
+ * @file examples/path/traverse.c
  */
 
 #include <stdio.h>

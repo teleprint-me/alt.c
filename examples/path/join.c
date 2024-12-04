@@ -1,5 +1,5 @@
 /**
- * @file examples/scratchpad/path_join.c
+ * @file examples/path/join.c
  */
 
 #include <stdio.h>
