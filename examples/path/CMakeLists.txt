@@ -1,6 +1,7 @@
 # Add ALT related examples
 set(EXAMPLES
     "info"
+    "list"
     # "join"
     # "traverse"
 )
