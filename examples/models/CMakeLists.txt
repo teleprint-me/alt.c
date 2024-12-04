@@ -2,7 +2,7 @@
 set(EXAMPLES
     perceptron
     xor
-    mnist
+    # mnist
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/models)
