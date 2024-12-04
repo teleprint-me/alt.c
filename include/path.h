@@ -16,8 +16,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
+
+#define PATH_ACCESS_READ 0x01 // Read permission
+#define PATH_ACCESS_WRITE 0x02 // Write permission
+#define PATH_ACCESS_EXEC 0x04 // Execute permission
 
 #define PATH_SEPARATOR_CHR '/'
 #define PATH_SEPARATOR_STR "/"
@@ -57,15 +63,15 @@ typedef struct {
     time_t atime; // Last access time
     time_t mtime; // Last modification time
     time_t ctime; // Creation (or metadata change) time
+    mode_t permissions; // File permissions (POSIX)
+    uint8_t access; // Access flags (PATH_ACCESS_READ, WRITE, EXEC)
 } PathInfo;
 
-// Represents directory entries from a traversal
 typedef struct PathEntry {
     PathInfo** info; // Array of PathInfo pointers
     uint32_t length; // Number of entries
 } PathEntry;
 
-// Represents components of a split path
 typedef struct PathSplit {
     char** parts; // Array of strings for path components
     uint32_t length; // Number of components
@@ -73,55 +79,43 @@ typedef struct PathSplit {
 
 // Lifecycle management
 
-// Retrieves metadata (caller must free the result)
-PathInfo* path_create_info(const char* path);
-// Frees a PathInfo object
-void path_free_info(PathInfo* info);
+PathInfo* path_create_info(const char* path); // Retrieves metadata (caller must free)
+void path_free_info(PathInfo* info); // Frees a PathInfo object
+void path_print_info(const PathInfo* info); // Prints a PathInfo object to stdout
 
-// Splits a path into components
-PathSplit* path_split(const char* path);
-// Frees a PathSplit object
-void path_free_split(PathSplit* split);
+PathSplit* path_split(const char* path); // Splits a path into components
+void path_free_split(PathSplit* split); // Frees a PathSplit object
 
-// Allocates a list of pointers to PathInfo objects
-PathEntry* path_create_entry(const char* path);
-// Frees a PathEntity structure
-void path_free_entry(PathEntry* entity);
+PathEntry* path_create_entry(const char* path, bool include_hidden); // Allocates directory entries
+void path_free_entry(PathEntry* entry); // Frees a PathEntry structure
 
-// Frees a string returned by path manipulation functions
-void path_free_string(char* path);
+void path_free_string(char* path); // Frees a string returned by path functions
 
 // Path existence and checks
 
-// Checks if a path exists
-bool path_exists(const char* path);
-// Checks if a path is a directory
-bool path_is_directory(const char* path);
-// Checks if a path is a directory
-bool path_is_file(const char* path);
-// Checks if a path is a symlink
-bool path_is_symlink(const char* path);
-// Checks if a path has a leading slash (utility)
-bool path_has_leading_slash(const char* path);
-// Checks if a path has a trailing slash (utility)
-bool path_has_trailing_slash(const char* path);
+PathState path_exists(const char* path); // Checks if a path exists
+PathState path_is_directory(const char* path); // Checks if a path is a directory
+PathState path_is_file(const char* path); // Checks if a path is a regular file
+PathState path_is_symlink(const char* path); // Checks if a path is a symbolic link
 
 // Path normalization
-char* path_add_leading_slash(const char* path); // caller frees the result
-char* path_add_trailing_slash(const char* path); // caller frees the result
-char* path_remove_leading_slash(const char* path); // caller frees the result
-char* path_remove_trailing_slash(const char* path); // caller frees the result
+
+char* path_normalize(const char* path, bool add_leading, bool add_trailing); // Normalizes a path
+bool path_has_leading_slash(const char* path); // Checks if a path has a leading slash
+bool path_has_trailing_slash(const char* path); // Checks if a path has a trailing slash
 
 // Path manipulation
 
-// Gets the directory part of a path (caller frees)
-char* path_dirname(const char* path);
-// Gets the basename of a path (caller frees)
-char* path_basename(const char* path);
-// Joins two paths (caller frees)
-char* path_join(const char* base, const char* sub);
+char* path_dirname(const char* path); // Gets the directory part of a path
+char* path_basename(const char* path); // Gets the basename of a path
+char* path_join(const char* base, const char* sub); // Joins two paths
 
-// Traverses a directory tree
-PathState path_traverse(const char* base_path, PathEntry* entry, bool recursive);
+// Directory traversal
+
+PathState path_traverse(const char* base_path, PathEntry* entry, bool recursive); // Traverses directories
+
+// Advanced utilities
+
+PathState path_resolve_symlink(const char* path, char** resolved_path); // Resolves a symlink
 
 #endif // ALT_PATH_H
