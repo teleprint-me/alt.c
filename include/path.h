@@ -83,11 +83,11 @@ PathInfo* path_create_info(const char* path); // Retrieves metadata (caller must
 void path_free_info(PathInfo* info); // Frees a PathInfo object
 void path_print_info(const PathInfo* info); // Prints a PathInfo object to stdout
 
-PathSplit* path_split(const char* path); // Splits a path into components
-void path_free_split(PathSplit* split); // Frees a PathSplit object
-
 PathEntry* path_create_entry(const char* path, bool include_hidden); // Allocates directory entries
 void path_free_entry(PathEntry* entry); // Frees a PathEntry structure
+
+PathSplit* path_split(const char* path); // Splits a path into components
+void path_free_split(PathSplit* split); // Frees a PathSplit object
 
 void path_free_string(char* path); // Frees a string returned by path functions
 
