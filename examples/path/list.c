@@ -21,16 +21,6 @@ int main(int argc, char* argv[]) {
 
     const char* path = argv[1];
 
-    // Check if the path is a directory
-    PathInfo* info = path_create_info(path);
-    if (!info || info->type != FILE_TYPE_DIRECTORY) {
-        fprintf(stderr, "Path '%s' is not a readable directory.\n", path);
-        if (info) {
-            path_free_info(info);
-        }
-        return EXIT_FAILURE;
-    }
-
     // Open the directory
     DIR* dir = opendir(path);
     if (!dir) {
@@ -43,13 +33,31 @@ int main(int argc, char* argv[]) {
     // Read the directory entries
     struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {
-        // Do not skip files
-        printf(" - %s\n", entry->d_name); // Output entry name
+        char* entry_path = path_join(path, entry->d_name);
+        PathInfo*info = path_create_info(entry_path);
+        if (!info) {
+            // Could not read entry metadata with stat
+            return EXIT_FAILURE;
+        }
+
+        printf("0x%7lx | ", info->inode);
+        if (info->access | PATH_ACCESS_READ) {
+            printf("r");
+        }
+        if (info->access | PATH_ACCESS_WRITE) {
+            printf("w");
+        }
+        if (info->access | PATH_ACCESS_EXEC) {
+            printf("x");
+        }
+        printf(" | ");
+        printf("%s\n", entry->d_name); // Output entry name
+        // cleanup
+        path_free_info(info);
+        path_free_string(entry_path);
     }
 
     // Clean up
     closedir(dir);
-    path_free_info(info);
-
     return EXIT_SUCCESS;
 }
