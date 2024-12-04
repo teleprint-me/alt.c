@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -112,7 +113,8 @@ char* path_join(const char* base, const char* sub); // Joins two paths
 
 // Directory traversal
 
-PathState path_traverse(const char* base_path, PathEntry* entry, bool recursive); // Traverses directories
+PathState
+path_traverse(const char* base_path, PathEntry* entry, bool recursive); // Traverses directories
 
 // Advanced utilities
 
