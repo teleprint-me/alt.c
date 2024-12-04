@@ -10,8 +10,10 @@
 #include "logger.h"
 #include "path.h"
 
-// Function to list contents of a directory
-void list_directory(const char* path, int depth) {
+// Function to list contents of a directory with depth limit
+void list_directory(const char* path, int current_depth, int max_depth) {
+    if (current_depth > max_depth) return;
+
     // Open the directory
     DIR* dir = opendir(path);
     if (!dir) {
@@ -38,7 +40,7 @@ void list_directory(const char* path, int depth) {
         }
 
         // Indent for recursive depth
-        for (int i = 1; i < depth; i++) {
+        for (int i = 0; i < current_depth; i++) {
             printf("  ");
         }
 
@@ -52,9 +54,9 @@ void list_directory(const char* path, int depth) {
         if (info->access & PATH_ACCESS_EXEC) printf("x");
         printf("\t%s\n", entry->d_name);
 
-        // Recursively list subdirectories
-        if (depth > 0 && info->type == FILE_TYPE_DIRECTORY) {
-            list_directory(entry_path, depth + 1);
+        // Recursively list subdirectories if within depth limit
+        if (info->type == FILE_TYPE_DIRECTORY) {
+            list_directory(entry_path, current_depth + 1, max_depth);
         }
 
         // Clean up
@@ -66,19 +68,15 @@ void list_directory(const char* path, int depth) {
 }
 
 int main(int argc, char* argv[]) {
-    if (!(argc > 1) || !argv[1]) {
-        fprintf(stderr, "Usage: %s <path> <depth>\n", argv[0]);
+    if (argc < 2 || !argv[1]) {
+        fprintf(stderr, "Usage: %s <path> [max_depth]\n", argv[0]);
         return EXIT_FAILURE;
     }
-    char* path = argv[1];
 
-    // get the depth if provided
-    int depth = 0;
-    if (argc == 3) {
-        depth = atoi(argv[2]);
-    }
+    const char* path = argv[1];
+    int max_depth = (argc == 3) ? atoi(argv[2]) : 0; // Default depth is 0 if not specified
 
-    printf("Contents of directory '%s':\n", argv[1]);
-    list_directory(path, depth);
+    printf("Contents of directory '%s':\n", path);
+    list_directory(path, 0, max_depth);
     return EXIT_SUCCESS;
 }
