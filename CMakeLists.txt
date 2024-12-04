@@ -58,6 +58,7 @@ target_include_directories("alt" PUBLIC include)
 # Add examples
 add_subdirectory(examples)
 add_subdirectory(examples/scratchpad)
+add_subdirectory(examples/path)
 add_subdirectory(examples/quants)
 add_subdirectory(examples/models)
 
