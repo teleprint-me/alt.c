@@ -3,8 +3,6 @@ set(EXAMPLES
     "array"
     "compare_float"
     "random"
-    "path_join"
-    "path_traverse"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/scratchpad)
