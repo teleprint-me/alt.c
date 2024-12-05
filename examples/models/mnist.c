@@ -11,16 +11,19 @@
  * @note Normalized weight initialization for weights is fine.
  */
 
+// stb
 #define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
+// libc
 #include <math.h>
 #include <pthread.h>
-#include <stb/stb_image.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+// alt
 #include "activation.h"
 #include "path.h"
 #include "random.h"
