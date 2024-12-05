@@ -171,17 +171,18 @@ void path_free_string(char* path) {
 
 // Path existence and checks
 
+bool path_is_valid(const char* path) {
+    return path && *path != '\0';
+}
+
 // Checks if a path exists
 bool path_exists(const char* path) {
-    if (!path || *path == '\0') {
-        return false;
-    }
-    return access(path, F_OK) == 0;
+    return path_is_valid(path) && access(path, F_OK) == 0;
 }
 
 // Checks if a path is a directory
 bool path_is_directory(const char* path) {
-    if (!path || *path == '\0') {
+    if (!path_is_valid(path)) {
         return false;
     }
 
@@ -195,7 +196,7 @@ bool path_is_directory(const char* path) {
 
 // Checks if a path is a regular file
 bool path_is_file(const char* path) {
-    if (!path || *path == '\0') {
+    if (!path_is_valid(path)) {
         return false;
     }
 
@@ -209,7 +210,7 @@ bool path_is_file(const char* path) {
 
 // Checks if a path is a symbolic link
 bool path_is_symlink(const char* path) {
-    if (!path || *path == '\0') {
+    if (!path_is_valid(path)) {
         return false;
     }
 
@@ -224,13 +225,11 @@ bool path_is_symlink(const char* path) {
 // Path normalization
 
 bool path_has_leading_slash(const char* path) {
-    size_t length = strlen(path);
-    return (length > 0 && '/' == path[0]) ? true : false;
+    return path_is_valid(path) && path[0] == '/';
 }
 
 bool path_has_trailing_slash(const char* path) {
-    size_t length = strlen(path);
-    return (length > 0 && '/' == path[length - 1]) ? true : false;
+    return path_is_valid(path) && path[strlen(path) - 1] == '/';
 }
 
 char* path_normalize(const char* path, PathNormalize flags) {
