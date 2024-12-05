@@ -339,7 +339,7 @@ char* path_basename(const char* path) {
 }
 
 char* path_join(const char* root_path, const char* sub_path) {
-    if (!root_path || !sub_path) {
+    if (!path_is_valid(root_path) || !path_is_valid(sub_path)) {
         return NULL; // Invalid inputs
     }
 
