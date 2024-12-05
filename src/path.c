@@ -293,20 +293,29 @@ char* path_normalize(const char* path, PathNormalize flags) {
     return normalized;
 }
 
+// Path manipulation
+
 char* path_dirname(const char* path) {
-    if (!path || *path == '\0') {
-        return strdup(".");
+    if (!path_is_valid(path)) {
+        return strdup(""); // Invalid input -> empty string
     }
 
-    char* last_slash = strrchr(path, '/');
+    // Find the last slash
+    const char* last_slash = strrchr(path, '/');
     if (!last_slash) {
-        return strdup(".");
+        return strdup("."); // No slash -> current directory
     }
 
+    // Handle root case (e.g., "/")
+    if (last_slash == path) {
+        return strdup("/");
+    }
+
+    // Extract the directory part
     size_t length = last_slash - path;
-    char* dir = malloc(length + 1); // Space for '\0'
+    char* dir = malloc(length + 1);
     if (!dir) {
-        return NULL;
+        return strdup(""); // Fallback on allocation failure
     }
 
     strncpy(dir, path, length);
@@ -315,15 +324,17 @@ char* path_dirname(const char* path) {
 }
 
 char* path_basename(const char* path) {
-    if (!path || *path == '\0') {
-        return strdup("");
+    if (!path_is_valid(path)) {
+        return strdup(""); // Invalid input -> empty string
     }
 
-    char* last_slash = strrchr(path, '/');
+    // Find the last slash
+    const char* last_slash = strrchr(path, '/');
     if (!last_slash) {
-        return strdup(path);
+        return strdup(path); // No slash -> whole path is basename
     }
 
+    // Return the part after the last slash
     return strdup(last_slash + 1);
 }
 
