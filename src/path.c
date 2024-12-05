@@ -9,6 +9,8 @@
 #include "path.h"
 #include "logger.h"
 
+// PathInfo lifecycle
+
 // Helper function to create a PathInfo object using stat
 PathInfo* path_create_info(const char* path) {
     if (!path) {
@@ -108,6 +110,51 @@ void path_print_info(const PathInfo* info) {
         printf("Execute");
     }
     printf("\n");
+}
+
+// PathEntry lifecycle
+
+PathEntry* path_create_entry(const char* path, bool include_hidden); // Allocates directory entries
+void path_free_entry(PathEntry* entry); // Frees a PathEntry structure
+
+// PathSplit lifecycle
+
+PathSplit* path_split(const char* path) {
+    if (!path || *path == '\0') {
+        return NULL;
+    }
+
+    PathSplit* split = (PathSplit*) malloc(sizeof(PathSplit));
+    if (!split) {
+        return NULL;
+    }
+    split->length = 0;
+    split->parts = NULL;
+
+    // Estimate components length and allocate memory
+    char* temp = strdup(path);
+    char* token = strtok(temp, "/");
+    while (token) {
+        split->parts = realloc(split->parts, (split->length + 1) * sizeof(char*));
+        split->parts[split->length] = strdup(token);
+        split->length += 1;
+        token = strtok(NULL, "/");
+    }
+
+    free(temp);
+    return split;
+}
+
+void path_free_split(PathSplit* split) {
+    if (split) {
+        if (split->parts) {
+            for (uint32_t i = 0; i < split->length; i++) {
+                free(split->parts[i]);
+            }
+            free(split->parts);
+        }
+        free(split);
+    }
 }
 
 PathState path_exists(const char* path) {
@@ -248,44 +295,6 @@ char* path_join(const char* root_path, const char* sub_path) {
 void path_free_string(char* path) {
     if (path) {
         free(path);
-    }
-}
-
-PathSplit* path_split(const char* path) {
-    if (!path || *path == '\0') {
-        return NULL;
-    }
-
-    PathSplit* split = (PathSplit*) malloc(sizeof(PathSplit));
-    if (!split) {
-        return NULL;
-    }
-    split->length = 0;
-    split->parts = NULL;
-
-    // Estimate components length and allocate memory
-    char* temp = strdup(path);
-    char* token = strtok(temp, "/");
-    while (token) {
-        split->parts = realloc(split->parts, (split->length + 1) * sizeof(char*));
-        split->parts[split->length] = strdup(token);
-        split->length += 1;
-        token = strtok(NULL, "/");
-    }
-
-    free(temp);
-    return split;
-}
-
-void path_free_split(PathSplit* split) {
-    if (split) {
-        if (split->parts) {
-            for (uint32_t i = 0; i < split->length; i++) {
-                free(split->parts[i]);
-            }
-            free(split->parts);
-        }
-        free(split);
     }
 }
 
