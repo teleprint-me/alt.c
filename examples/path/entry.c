@@ -37,6 +37,11 @@ PathEntry* path_create_entry(const char* path, int current_depth, int max_depth)
         }
 
         char* entry_path = path_join(path, dir_entry->d_name);
+        if (!entry_path) {
+            LOG_ERROR("Failed to join path for '%s'.\n", dir_entry->d_name);
+            continue;
+        }
+
         PathInfo* info = path_create_info(entry_path);
         if (!info) {
             LOG_ERROR("Failed to retrieve metadata for '%s'.\n", entry_path);
@@ -44,21 +49,36 @@ PathEntry* path_create_entry(const char* path, int current_depth, int max_depth)
             continue;
         }
 
+        // If it's a directory and within depth limit, recursively fetch sub-entries
         if (info->type == FILE_TYPE_DIRECTORY && current_depth < max_depth) {
             PathEntry* sub_entry = path_create_entry(entry_path, current_depth + 1, max_depth);
-            path_free_entry(sub_entry); // @todo aggregate sub-entries into the parent entry
+            if (sub_entry) {
+                // Append sub-entry items to the current entry
+                for (uint32_t i = 0; i < sub_entry->length; i++) {
+                    PathInfo** new_info
+                        = realloc(entry->info, sizeof(PathInfo*) * (entry->length + 1));
+                    if (!new_info) {
+                        path_free_info(sub_entry->info[i]);
+                        continue;
+                    }
+                    entry->info = new_info;
+                    entry->info[entry->length++] = sub_entry->info[i];
+                }
+                free(sub_entry->info);
+                free(sub_entry);
+            }
         }
 
-        // Expand the info array
+        // Append current `info` to `entry->info`
         PathInfo** new_info = realloc(entry->info, sizeof(PathInfo*) * (entry->length + 1));
         if (!new_info) {
             path_free_info(info);
             path_free_string(entry_path);
             continue;
         }
-
         entry->info = new_info;
         entry->info[entry->length++] = info;
+
         path_free_string(entry_path);
     }
 
@@ -68,16 +88,15 @@ PathEntry* path_create_entry(const char* path, int current_depth, int max_depth)
 
 // Frees a PathEntry structure
 void path_free_entry(PathEntry* entry) {
-    if (!entry) {
-        return;
+    if (entry) {
+        for (uint32_t i = 0; i < entry->length; i++) {
+            path_free_info(entry->info[i]);
+        }
+        if (entry->info) {
+            free(entry->info);
+        }
+        free(entry);
     }
-
-    for (uint32_t i = 0; i < entry->length; i++) {
-        path_free_info(entry->info[i]);
-    }
-
-    free(entry->info);
-    free(entry);
 }
 
 int main(int argc, char* argv[]) {
@@ -95,10 +114,12 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    for (int i = 0; i < entry->length; i++) {
-        printf("%d: %s\n", i, entry->info[i]->path);
+    // Print entries
+    for (uint32_t i = 0; i < entry->length; i++) {
+        const PathInfo* info = entry->info[i];
+        printf("Path: %s, Type: %d, Size: %ld\n",
+               info->path, info->type, info->size);
     }
-    // Print or process the entries (to be implemented)
     printf("Listed %u entries in directory '%s'.\n", entry->length, path);
 
     path_free_entry(entry);
