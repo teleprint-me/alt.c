@@ -2,8 +2,9 @@
 set(EXAMPLES
     "info"
     "list"
-    # "join"
-    # "traverse"
+    "base"
+    "join"
+    "entry"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/path)
