@@ -11,15 +11,19 @@ int main() {
     printf("Path exists: %d\n", path_exists("data/mnist/"));
 
     // Normalization
-    char* normalized = path_add_trailing_slash("data/mnist");
+    char* normalized = path_normalize("data/mnist", PATH_NORMALIZE_ADD_TRAILING_SLASH);
     printf("With trailing slash: %s\n", normalized);
     free(normalized);
 
-    normalized = path_remove_trailing_slash("data/mnist/");
+    normalized = path_normalize("data/mnist/", PATH_NORMALIZE_REMOVE_TRAILING_SLASH);
     printf("Without trailing slash: %s\n", normalized);
     free(normalized);
 
-    normalized = path_remove_leading_slash("/data/mnist");
+    normalized = path_normalize("/data/mnist", PATH_NORMALIZE_ADD_LEADING_SLASH);
+    printf("With leading slash: %s\n", normalized);
+    free(normalized);
+
+    normalized = path_normalize("/data/mnist", PATH_NORMALIZE_REMOVE_LEADING_SLASH);
     printf("Without leading slash: %s\n", normalized);
     free(normalized);
 
