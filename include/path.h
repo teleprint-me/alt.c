@@ -104,10 +104,11 @@ void path_free_string(char* path); // Frees a string returned by path functions
 
 // Path existence and checks
 
-PathState path_exists(const char* path); // Checks if a path exists
-PathState path_is_directory(const char* path); // Checks if a path is a directory
-PathState path_is_file(const char* path); // Checks if a path is a regular file
-PathState path_is_symlink(const char* path); // Checks if a path is a symbolic link
+bool path_is_valid(const char* path); // Checks if a path is valid
+bool path_exists(const char* path); // Checks if a path exists
+bool path_is_directory(const char* path); // Checks if a path is a directory
+bool path_is_file(const char* path); // Checks if a path is a regular file
+bool path_is_symlink(const char* path); // Checks if a path is a symbolic link
 
 // Path normalization
 
