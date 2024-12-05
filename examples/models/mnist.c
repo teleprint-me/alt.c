@@ -11,6 +11,8 @@
  * @note Normalized weight initialization for weights is fine.
  */
 
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <math.h>
 #include <pthread.h>
 #include <stb/stb_image.h>
@@ -45,13 +47,65 @@ MNISTSample* create_mnist_samples(uint32_t count) {
 }
 
 void free_mnist_samples(MNISTSample* samples, uint32_t count) {
-    if (!samples) {
-        return;
+    if (samples) {
+        for (uint32_t i = 0; i < count; i++) {
+            free(samples[i].pixels);
+        }
+        free(samples);
     }
-    for (uint32_t i = 0; i < count; i++) {
-        free(samples[i].pixels);
+}
+
+uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max_samples) {
+    PathEntry* entry
+        = path_create_entry(path, 0, 1); // Depth 1: labels are in immediate subdirectories
+    if (!entry) {
+        fprintf(stderr, "Failed to traverse path '%s'.\n", path);
+        return 0;
     }
-    free(samples);
+
+    uint32_t sample_count = 0;
+
+    for (uint32_t i = 0; i < entry->length && sample_count < max_samples; i++) {
+        PathInfo* info = entry->info[i];
+
+        // Skip non-file entries
+        if (info->type != FILE_TYPE_REGULAR) {
+            continue;
+        }
+
+        // Parse label from parent directory name
+        char* parent_dir = path_dirname(info->path);
+        int label = atoi(strrchr(parent_dir, '/') + 1); // Assume label is the directory name
+        free(parent_dir);
+
+        // Load image
+        int width, height, channels;
+        unsigned char* image_data
+            = stbi_load(info->path, &width, &height, &channels, 1); // Grayscale
+        if (!image_data) {
+            fprintf(stderr, "Failed to load image '%s'.\n", info->path);
+            continue;
+        }
+
+        // Ensure image dimensions match MNIST (28x28)
+        if (width != 28 || height != 28) {
+            fprintf(stderr, "Invalid image dimensions for '%s'.\n", info->path);
+            stbi_image_free(image_data);
+            continue;
+        }
+
+        // Convert image data to float and normalize to [0, 1]
+        for (int j = 0; j < IMAGE_SIZE; j++) {
+            samples[sample_count].pixels[j] = image_data[j] / 255.0f;
+        }
+        samples[sample_count].label = label;
+
+        stbi_image_free(image_data);
+        sample_count++;
+    }
+
+    path_free_entry(entry);
+    return sample_count;
 }
 
 int main(int argc, char* argv[]) {
@@ -66,9 +120,6 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Training path does not exist!\n");
         return EXIT_FAILURE;
     }
-
-    // path_traverse(training_path, training_entity, true);
-    // path_traverse(testing_path, testing_entity, true);
 
     path_free_string((char*) training_path);
 
