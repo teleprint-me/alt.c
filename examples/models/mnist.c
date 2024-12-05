@@ -114,14 +114,28 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const char* training_path = path_join(argv[1], "/training");
-
+    const char* training_path = path_join(argv[1], "training");
     if (!path_exists(training_path)) {
         fprintf(stderr, "Training path does not exist!\n");
+        path_free_string(training_path);
         return EXIT_FAILURE;
     }
 
-    path_free_string((char*) training_path);
+    const uint32_t max_samples = 60000; // Adjust as needed
+    MNISTSample* samples = create_mnist_samples(max_samples);
+    if (!samples) {
+        path_free_string(training_path);
+        return EXIT_FAILURE;
+    }
+
+    printf("Loading MNIST training data from '%s'...\n", training_path);
+    uint32_t loaded_samples = load_mnist_samples(training_path, samples, max_samples);
+
+    printf("Loaded %u samples.\n", loaded_samples);
+
+    // Cleanup
+    free_mnist_samples(samples, max_samples);
+    path_free_string(training_path);
 
     return EXIT_SUCCESS;
 }
