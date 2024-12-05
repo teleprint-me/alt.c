@@ -70,12 +70,22 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
     uint32_t sample_count = 0;
 
-    printf("> ");
+    const uint32_t blocks = 50; // 2% per increment
+    printf("Loading samples: ");
+    for (uint32_t i = 0; i < blocks; i++) {
+        printf("."); // preset gutter
+    }
+    printf("\rLoading samples: "); // redraw
+
     for (uint32_t i = 0; i < entry->length && sample_count < max_samples; i++) {
         float progress = (float) sample_count / (float) max_samples;
-        int interval = progress * 100;
-        int remainder = sample_count % max_samples;
-        printf("progress: %.6f, interval: %d, remainder: %d\n", (double) progress, interval, remainder);
+        uint32_t progress_blocks = progress * blocks; // 50 blocks for the bar
+
+        // Update progress bar
+        for (uint32_t j = 0; j < progress_blocks; j++) {
+            printf("#");
+        }
+        fflush(stdout); // flush symbols to stdout
 
         PathInfo* info = entry->info[i];
 
@@ -114,8 +124,11 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
         stbi_image_free(image_data);
         sample_count++;
+
+        // Move cursor back for the next update
+        printf("\rLoading samples: "); // redraw
     }
-    printf(" <\n");
+    printf("\n"); // \n implicitly flushes to stdout
 
     path_free_entry(entry);
     return sample_count;
