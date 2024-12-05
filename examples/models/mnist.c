@@ -1,14 +1,16 @@
 /**
  * @file examples/models/mnist.c
  *
- * @ref https://yann.lecun.com/exdb/mnist/
- * @ref https://github.com/myleott/mnist_png.git
+ * @brief MNIST implementation using the Multi-layer Perceptron
  *
+ * @dataset data/mnist.tar.gz
  * @paths
  *    - data/mnist/training
  *    - data/mnist/testing
  *
- * @note Normalized weight initialization for weights is fine.
+ * @ref https://dl.acm.org/doi/10.5555/70405.70408
+ * @ref https://yann.lecun.com/exdb/mnist/
+ * @ref https://github.com/myleott/mnist_png.git
  */
 
 // stb
@@ -59,8 +61,8 @@ void free_mnist_samples(MNISTSample* samples, uint32_t count) {
 }
 
 uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max_samples) {
-    PathEntry* entry
-        = path_create_entry(path, 0, 1); // Depth 1: labels are in immediate subdirectories
+    // Depth 1: labels are in immediate subdirectories
+    PathEntry* entry = path_create_entry(path, 0, 1);
     if (!entry) {
         fprintf(stderr, "Failed to traverse path '%s'.\n", path);
         return 0;
@@ -68,7 +70,13 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
     uint32_t sample_count = 0;
 
+    printf("> ");
     for (uint32_t i = 0; i < entry->length && sample_count < max_samples; i++) {
+        float progress = (float) sample_count / (float) max_samples;
+        int interval = progress * 100;
+        int remainder = sample_count % max_samples;
+        printf("progress: %.6f, interval: %d, remainder: %d\n", (double) progress, interval, remainder);
+
         PathInfo* info = entry->info[i];
 
         // Skip non-file entries
@@ -78,13 +86,14 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
         // Parse label from parent directory name
         char* parent_dir = path_dirname(info->path);
-        int label = atoi(strrchr(parent_dir, '/') + 1); // Assume label is the directory name
-        free(parent_dir);
+        // Assume label is the directory name
+        int label = atoi(strrchr(parent_dir, '/') + 1);
+        path_free_string(parent_dir);
 
         // Load image
         int width, height, channels;
-        unsigned char* image_data
-            = stbi_load(info->path, &width, &height, &channels, 1); // Grayscale
+        // Load in grayscale
+        unsigned char* image_data = stbi_load(info->path, &width, &height, &channels, 1);
         if (!image_data) {
             fprintf(stderr, "Failed to load image '%s'.\n", info->path);
             continue;
@@ -106,6 +115,7 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
         stbi_image_free(image_data);
         sample_count++;
     }
+    printf(" <\n");
 
     path_free_entry(entry);
     return sample_count;
@@ -117,7 +127,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const char* training_path = path_join(argv[1], "training");
+    char* training_path = path_join(argv[1], "training");
     if (!path_exists(training_path)) {
         fprintf(stderr, "Training path does not exist!\n");
         path_free_string(training_path);
