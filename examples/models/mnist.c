@@ -11,15 +11,16 @@
  * @note Normalized weight initialization for weights is fine.
  */
 
-#include <dirent.h>
 #include <math.h>
 #include <pthread.h>
 #include <stb/stb_image.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "activation.h"
+#include "path.h"
 #include "random.h"
 
 #define IMAGE_SIZE 28 * 28 // Flattened size of MNIST images
@@ -30,29 +31,27 @@ typedef struct {
     int label;
 } MNISTSample;
 
-// Joins two paths and allocates memory for the result
-char* path_join(const char* root_path, const char* sub_path) {
-    int path_size = strlen(root_path) + strlen(sub_path) + 1;
-    char* new_path = (char*)malloc(path_size);
-    if (!new_path) {
-        perror("Failed to allocate memory for path");
+MNISTSample* create_mnist_samples(uint32_t count) {
+    MNISTSample* samples = malloc(sizeof(MNISTSample) * count);
+    if (!samples) {
+        fprintf(stderr, "Failed to allocate MNIST samples.\n");
         return NULL;
     }
-    strcpy(new_path, root_path);
-    strcat(new_path, sub_path);
-    return new_path;
-}
-
-// Frees a dynamically allocated path
-void path_free(char* path) {
-    if (path) {
-        free(path);
+    for (uint32_t i = 0; i < count; i++) {
+        samples[i].pixels = malloc(sizeof(float) * IMAGE_SIZE);
+        samples[i].label = -1;
     }
+    return samples;
 }
 
-// Checks if a path exists
-int path_exists(const char* path) {
-    return access(path, F_OK) == 0;
+void free_mnist_samples(MNISTSample* samples, uint32_t count) {
+    if (!samples) {
+        return;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        free(samples[i].pixels);
+    }
+    free(samples);
 }
 
 int main(int argc, char* argv[]) {
@@ -61,35 +60,17 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const char* root_path = argv[1];
-    char* training_path = path_join(root_path, "/training");
-    char* testing_path = path_join(root_path, "/testing");
+    const char* training_path = path_join(argv[1], "/training");
 
-    if (training_path && testing_path) {
-        printf("Training Path: %s\n", training_path);
-        printf("Testing Path: %s\n", testing_path);
-
-        // Validate paths
-        if (path_exists(training_path)) {
-            printf("Training path exists!\n");
-        } else {
-            printf("Training path does not exist.\n");
-        }
-
-        if (path_exists(testing_path)) {
-            printf("Testing path exists!\n");
-        } else {
-            printf("Testing path does not exist.\n");
-        }
-    } else {
-        fprintf(stderr, "Failed to construct paths.\n");
-        path_free(training_path);
-        path_free(testing_path);
+    if (!path_exists(training_path)) {
+        fprintf(stderr, "Training path does not exist!\n");
         return EXIT_FAILURE;
     }
 
-    path_free(training_path);
-    path_free(testing_path);
+    // path_traverse(training_path, training_entity, true);
+    // path_traverse(testing_path, testing_entity, true);
+
+    path_free_string((char*) training_path);
 
     return EXIT_SUCCESS;
 }
