@@ -94,7 +94,9 @@ PathInfo* path_create_info(const char* path); // Retrieves metadata (caller must
 void path_free_info(PathInfo* info); // Frees a PathInfo object
 void path_print_info(const PathInfo* info); // Prints a PathInfo object to stdout
 
-PathEntry* path_create_entry(const char* path, bool include_hidden); // Allocates directory entries
+PathEntry* path_create_entry(
+    const char* path, int current_depth, int max_depth
+); // Allocates directory entries
 void path_free_entry(PathEntry* entry); // Frees a PathEntry structure
 
 PathSplit* path_split(const char* path); // Splits a path into components
@@ -103,7 +105,6 @@ void path_free_split(PathSplit* split); // Frees a PathSplit object
 void path_free_string(char* path); // Frees a string returned by path functions
 
 // Path existence and checks
-
 bool path_is_valid(const char* path); // Checks if a path is valid
 bool path_exists(const char* path); // Checks if a path exists
 bool path_is_directory(const char* path); // Checks if a path is a directory
@@ -111,24 +112,13 @@ bool path_is_file(const char* path); // Checks if a path is a regular file
 bool path_is_symlink(const char* path); // Checks if a path is a symbolic link
 
 // Path normalization
-
 bool path_has_leading_slash(const char* path); // Checks if a path has a leading slash
 bool path_has_trailing_slash(const char* path); // Checks if a path has a trailing slash
-char* path_normalize(const char* path, PathNormalize flags) ; // Normalizes a path
+char* path_normalize(const char* path, PathNormalize flags); // Normalizes a path
 
 // Path manipulation
-
 char* path_dirname(const char* path); // Gets the directory part of a path
 char* path_basename(const char* path); // Gets the basename of a path
 char* path_join(const char* base, const char* sub); // Joins two paths
-
-// Directory traversal
-
-PathState
-path_traverse(const char* base_path, PathEntry* entry, bool recursive); // Traverses directories
-
-// Advanced utilities
-
-PathState path_resolve_symlink(const char* path, char** resolved_path); // Resolves a symlink
 
 #endif // ALT_PATH_H
