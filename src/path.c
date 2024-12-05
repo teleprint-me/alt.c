@@ -115,8 +115,12 @@ void path_print_info(const PathInfo* info) {
 
 // PathEntry lifecycle
 
-PathEntry* path_create_entry(const char* path, bool include_hidden); // Allocates directory entries
-void path_free_entry(PathEntry* entry); // Frees a PathEntry structure
+// Allocates directory entries
+// PathEntry* path_create_entry(
+//     const char* path, int current_depth, int max_depth
+// ); 
+// Frees a PathEntry structure
+// void path_free_entry(PathEntry* entry);
 
 // PathSplit lifecycle
 
@@ -371,90 +375,3 @@ char* path_join(const char* root_path, const char* sub_path) {
     free(normalized_sub);
     return joined_path;
 }
-
-// PathEntity* path_create_entity(void) {
-//     PathEntity* entity = (PathEntity*) malloc(sizeof(PathEntity));
-//     if (!entity) {
-//         return NULL;
-//     }
-//     entity->entries = (struct dirent**) malloc(1 * sizeof(struct dirent*));
-//     entity->length = 0;
-//     return entity;
-// }
-
-// void path_free_entity(PathEntity* entity) {
-//     if (entity) {
-//         for (uint32_t i = 0; i < entity->length; i++) {
-//             free(entity->entries[i]); // Free each dirent
-//         }
-//         free(entity->entries); // Free the entries array
-//         free(entity); // Free the entity itself
-//     }
-// }
-
-// bool path_traverse(const char* base_path, PathEntity* entity, bool recursive) {
-//     if (!entity || !base_path) {
-//         return false; // Ensure valid inputs
-//     }
-
-//     DIR* dir = opendir(base_path);
-//     if (!dir) {
-//         LOG_ERROR("Failed to open directory: %s", base_path);
-//         return false;
-//     }
-
-//     struct dirent* entry;
-//     while ((entry = readdir(dir))) {
-//         // Skip "." and ".."
-//         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-//             continue;
-//         }
-
-//         // Calculate required size for struct dirent (including d_name)
-//         size_t entry_size = offsetof(struct dirent, d_name) + strlen(entry->d_name) + 1;
-
-//         // Reallocate entity entries array
-//         struct dirent** new_entries = realloc(entity->entries, (entity->length + 1) *
-//         sizeof(struct dirent*)); if (!new_entries) {
-//             LOG_ERROR("Memory allocation failed for dirent entries");
-//             closedir(dir);
-//             return false;
-//         }
-//         entity->entries = new_entries;
-
-//         // Allocate memory for the new entry
-//         entity->entries[entity->length] = malloc(entry_size);
-//         if (!entity->entries[entity->length]) {
-//             LOG_ERROR("Memory allocation failed for dirent entry");
-//             closedir(dir);
-//             return false;
-//         }
-
-//         // Copy the entry data
-//         memcpy(entity->entries[entity->length], entry, entry_size);
-//         entity->length++;
-
-//         // Handle recursion into subdirectories
-//         if (recursive && entry->d_type == DT_DIR) {
-//             // Construct the full path
-//             char* subpath = path_join(base_path, entry->d_name);
-//             if (!subpath) {
-//                 LOG_ERROR("Failed to construct subpath");
-//                 closedir(dir);
-//                 return false;
-//             }
-
-//             // Recurse into the subdirectory
-//             if (!path_traverse(subpath, entity, recursive)) {
-//                 free(subpath);
-//                 closedir(dir);
-//                 return false;
-//             }
-
-//             free(subpath);
-//         }
-//     }
-
-//     closedir(dir);
-//     return true;
-// }
