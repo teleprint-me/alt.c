@@ -11,7 +11,7 @@
 
 // PathInfo lifecycle
 
-// Helper function to create a PathInfo object using stat
+// Retrieves metadata (caller must free)
 PathInfo* path_create_info(const char* path) {
     if (!path) {
         LOG_ERROR("Path is NULL!\n");
@@ -66,6 +66,7 @@ PathInfo* path_create_info(const char* path) {
     return info;
 }
 
+// Frees a PathInfo object
 void path_free_info(PathInfo* info) {
     if (!info) {
         return;
@@ -119,6 +120,7 @@ void path_free_entry(PathEntry* entry); // Frees a PathEntry structure
 
 // PathSplit lifecycle
 
+// Splits a path into components
 PathSplit* path_split(const char* path) {
     if (!path || *path == '\0') {
         return NULL;
@@ -145,6 +147,7 @@ PathSplit* path_split(const char* path) {
     return split;
 }
 
+// Frees a PathSplit object
 void path_free_split(PathSplit* split) {
     if (split) {
         if (split->parts) {
@@ -157,43 +160,68 @@ void path_free_split(PathSplit* split) {
     }
 }
 
-PathState path_exists(const char* path) {
-    return access(path, F_OK) == 0 ? PATH_SUCCESS : PATH_ERROR;
+// String lifecycle
+
+// Frees a string returned by path functions
+void path_free_string(char* path) {
+    if (path) {
+        free(path);
+    }
 }
 
-char* path_dirname(const char* path) {
+// Path existence and checks
+
+// Checks if a path exists
+bool path_exists(const char* path) {
     if (!path || *path == '\0') {
-        return strdup(".");
+        return false;
     }
-
-    char* last_slash = strrchr(path, '/');
-    if (!last_slash) {
-        return strdup(".");
-    }
-
-    size_t length = last_slash - path;
-    char* dir = malloc(length + 1); // Space for '\0'
-    if (!dir) {
-        return NULL;
-    }
-
-    strncpy(dir, path, length);
-    dir[length] = '\0';
-    return dir;
+    return access(path, F_OK) == 0;
 }
 
-char* path_basename(const char* path) {
+// Checks if a path is a directory
+bool path_is_directory(const char* path) {
     if (!path || *path == '\0') {
-        return strdup("");
+        return false;
     }
 
-    char* last_slash = strrchr(path, '/');
-    if (!last_slash) {
-        return strdup(path);
+    struct stat buffer;
+    if (stat(path, &buffer) != 0) {
+        LOG_ERROR("Failed to stat path '%s': %s\n", path, strerror(errno));
+        return false;
     }
-
-    return strdup(last_slash + 1);
+    return S_ISDIR(buffer.st_mode);
 }
+
+// Checks if a path is a regular file
+bool path_is_file(const char* path) {
+    if (!path || *path == '\0') {
+        return false;
+    }
+
+    struct stat buffer;
+    if (stat(path, &buffer) != 0) {
+        LOG_ERROR("Failed to stat path '%s': %s\n", path, strerror(errno));
+        return false;
+    }
+    return S_ISREG(buffer.st_mode);
+}
+
+// Checks if a path is a symbolic link
+bool path_is_symlink(const char* path) {
+    if (!path || *path == '\0') {
+        return false;
+    }
+
+    struct stat buffer;
+    if (lstat(path, &buffer) != 0) {
+        LOG_ERROR("Failed to lstat path '%s': %s\n", path, strerror(errno));
+        return false;
+    }
+    return S_ISLNK(buffer.st_mode);
+}
+
+// Path normalization
 
 bool path_has_leading_slash(const char* path) {
     size_t length = strlen(path);
@@ -218,10 +246,18 @@ char* path_normalize(const char* path, PathNormalize flags) {
 
     // Calculate new length based on flags
     size_t new_length = length;
-    if (add_leading && !path_has_leading_slash(path)) new_length++;
-    if (remove_leading && path_has_leading_slash(path)) new_length--;
-    if (add_trailing && !path_has_trailing_slash(path)) new_length++;
-    if (remove_trailing && path_has_trailing_slash(path)) new_length--;
+    if (add_leading && !path_has_leading_slash(path)) {
+        new_length++;
+    }
+    if (remove_leading && path_has_leading_slash(path)) {
+        new_length--;
+    }
+    if (add_trailing && !path_has_trailing_slash(path)) {
+        new_length++;
+    }
+    if (remove_trailing && path_has_trailing_slash(path)) {
+        new_length--;
+    }
 
     char* normalized = malloc(new_length + 1); // Space for null terminator
     if (!normalized) {
@@ -258,6 +294,40 @@ char* path_normalize(const char* path, PathNormalize flags) {
     return normalized;
 }
 
+char* path_dirname(const char* path) {
+    if (!path || *path == '\0') {
+        return strdup(".");
+    }
+
+    char* last_slash = strrchr(path, '/');
+    if (!last_slash) {
+        return strdup(".");
+    }
+
+    size_t length = last_slash - path;
+    char* dir = malloc(length + 1); // Space for '\0'
+    if (!dir) {
+        return NULL;
+    }
+
+    strncpy(dir, path, length);
+    dir[length] = '\0';
+    return dir;
+}
+
+char* path_basename(const char* path) {
+    if (!path || *path == '\0') {
+        return strdup("");
+    }
+
+    char* last_slash = strrchr(path, '/');
+    if (!last_slash) {
+        return strdup(path);
+    }
+
+    return strdup(last_slash + 1);
+}
+
 char* path_join(const char* root_path, const char* sub_path) {
     if (!root_path || !sub_path) {
         return NULL; // Invalid inputs
@@ -290,12 +360,6 @@ char* path_join(const char* root_path, const char* sub_path) {
     free(normalized_root);
     free(normalized_sub);
     return joined_path;
-}
-
-void path_free_string(char* path) {
-    if (path) {
-        free(path);
-    }
 }
 
 // PathEntity* path_create_entity(void) {
@@ -340,8 +404,8 @@ void path_free_string(char* path) {
 //         size_t entry_size = offsetof(struct dirent, d_name) + strlen(entry->d_name) + 1;
 
 //         // Reallocate entity entries array
-//         struct dirent** new_entries = realloc(entity->entries, (entity->length + 1) * sizeof(struct dirent*));
-//         if (!new_entries) {
+//         struct dirent** new_entries = realloc(entity->entries, (entity->length + 1) *
+//         sizeof(struct dirent*)); if (!new_entries) {
 //             LOG_ERROR("Memory allocation failed for dirent entries");
 //             closedir(dir);
 //             return false;
