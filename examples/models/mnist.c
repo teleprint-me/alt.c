@@ -338,7 +338,13 @@ int main(int argc, char* argv[]) {
     uint32_t shuffled_samples = mnist_dataset_shuffle(dataset);
     printf("Shuffled %u samples.\n", shuffled_samples);
 
+    uint32_t input_size = 784; // MNIST images flattened
+    uint32_t hidden_size = 128; // Example hidden layer size
+    uint32_t output_size = 10; // 10 output classes
+    MLP* model = mlp_create(input_size, hidden_size, output_size);
+
     // Cleanup
+    mlp_free(model);
     mnist_dataset_free(dataset);
     path_free_string(training_path);
 
