@@ -60,6 +60,22 @@ void free_mnist_samples(MNISTSample* samples, uint32_t count) {
     }
 }
 
+// @ref https://stackoverflow.com/a/36315819/20035933
+void print_progress(float percentage, uint32_t width, char ch) {
+    char bar[width + 1];
+    for (uint32_t i = 0; i < width; i++) {
+        bar[i] = ch;
+    }
+    bar[width] = '\0'; // Null-terminate the bar for safety
+
+    uint32_t progress = (uint32_t) (percentage * 100 + 0.5f); // Round percentage
+    uint32_t left = (uint32_t) (percentage * width + 0.5f); // Round bar width
+    uint32_t right = width - left;
+
+    printf("\rLoading: %3u%% [%.*s%*s]", progress, left, bar, right, "");
+    fflush(stdout);
+}
+
 uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max_samples) {
     // Depth 1: labels are in immediate subdirectories
     PathEntry* entry = path_create_entry(path, 0, 1);
@@ -70,22 +86,10 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
     uint32_t sample_count = 0;
 
-    const uint32_t blocks = 50; // 2% per increment
-    printf("Loading samples: ");
-    for (uint32_t i = 0; i < blocks; i++) {
-        printf("."); // preset gutter
-    }
-    printf("\rLoading samples: "); // redraw
-
     for (uint32_t i = 0; i < entry->length && sample_count < max_samples; i++) {
-        float progress = (float) sample_count / (float) max_samples;
-        uint32_t progress_blocks = progress * blocks; // 50 blocks for the bar
-
         // Update progress bar
-        for (uint32_t j = 0; j < progress_blocks; j++) {
-            printf("#");
-        }
-        fflush(stdout); // flush symbols to stdout
+        float progress = (float) sample_count / (float) max_samples;
+        print_progress(progress, 50, '#');
 
         PathInfo* info = entry->info[i];
 
@@ -96,13 +100,11 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
         // Parse label from parent directory name
         char* parent_dir = path_dirname(info->path);
-        // Assume label is the directory name
         int label = atoi(strrchr(parent_dir, '/') + 1);
         path_free_string(parent_dir);
 
         // Load image
         int width, height, channels;
-        // Load in grayscale
         unsigned char* image_data = stbi_load(info->path, &width, &height, &channels, 1);
         if (!image_data) {
             fprintf(stderr, "Failed to load image '%s'.\n", info->path);
@@ -124,11 +126,8 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
         stbi_image_free(image_data);
         sample_count++;
-
-        // Move cursor back for the next update
-        printf("\rLoading samples: "); // redraw
     }
-    printf("\n"); // \n implicitly flushes to stdout
+    printf("\n");
 
     path_free_entry(entry);
     return sample_count;
@@ -147,7 +146,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const uint32_t max_samples = 60000; // Adjust as needed
+    const uint32_t max_samples = 60010; // Adjust as needed
     MNISTSample* samples = create_mnist_samples(max_samples);
     if (!samples) {
         path_free_string(training_path);
