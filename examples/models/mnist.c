@@ -67,7 +67,7 @@ void print_progress(float percentage, uint32_t width, char ch);
 MNISTDataset* mnist_dataset_create(uint32_t max_samples);
 void mnist_dataset_free(MNISTDataset* dataset);
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
-void mnist_dataset_shuffle(MNISTDataset* dataset);
+uint32_t mnist_dataset_shuffle(MNISTDataset* dataset);
 
 MLP* mlp_create(int input_size, int hidden_size, int output_size);
 void mlp_free(MLP* model);
@@ -201,17 +201,28 @@ uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
     return sample_count;
 }
 
-void mnist_dataset_shuffle(MNISTDataset* dataset) {
+uint32_t mnist_dataset_shuffle(MNISTDataset* dataset) {
+    uint32_t sample_count = 0;
+
     if (dataset && dataset->samples) {
         srand((unsigned int) time(NULL)); // Seed for randomness
-        for (uint32_t i = dataset->length - 1; i > 0; i--) {
-            uint32_t j = rand() % (i + 1); // Pick a random index
+        for (uint32_t i = 0; i < dataset->length - 1; i++) {
+            float progress = (float) i / (float) dataset->length;
+            print_progress(progress, 50, '#'); // Track progress
+
+            uint32_t j = rand() % (dataset->length - i); // Pick a random index
+
             // Swap samples[i] and samples[j]
             MNISTSample sample = dataset->samples[i];
             dataset->samples[i] = dataset->samples[j];
             dataset->samples[j] = sample;
+
+            sample_count++; // Track swaps
         }
+        printf("\n");
     }
+
+    return sample_count;
 }
 
 // MLP model implementation
@@ -241,8 +252,8 @@ MLP* mlp_create(int input_size, int hidden_size, int output_size) {
     input_hidden->biases = malloc(sizeof(float) * hidden_size);
     input_hidden->activations = malloc(sizeof(float) * hidden_size);
     input_hidden->gradients = malloc(sizeof(float) * hidden_size);
-    if (!input_hidden->weights || !input_hidden->biases || 
-        !input_hidden->activations || !input_hidden->gradients) {
+    if (!input_hidden->weights || !input_hidden->biases || !input_hidden->activations
+        || !input_hidden->gradients) {
         fprintf(stderr, "Failed to allocate memory for input->hidden layer.\n");
         mlp_free(model);
         return NULL;
@@ -264,8 +275,8 @@ MLP* mlp_create(int input_size, int hidden_size, int output_size) {
     hidden_output->biases = malloc(sizeof(float) * output_size);
     hidden_output->activations = malloc(sizeof(float) * output_size);
     hidden_output->gradients = malloc(sizeof(float) * output_size);
-    if (!hidden_output->weights || !hidden_output->biases || 
-        !hidden_output->activations || !hidden_output->gradients) {
+    if (!hidden_output->weights || !hidden_output->biases || !hidden_output->activations
+        || !hidden_output->gradients) {
         fprintf(stderr, "Failed to allocate memory for hidden->output layer.\n");
         mlp_free(model);
         return NULL;
@@ -322,6 +333,10 @@ int main(int argc, char* argv[]) {
     printf("Loading MNIST training data from '%s'...\n", training_path);
     uint32_t loaded_samples = mnist_dataset_load(training_path, dataset);
     printf("Loaded %u samples.\n", loaded_samples);
+
+    printf("Shuffling MNIST training data from '%s'...\n", training_path);
+    uint32_t shuffled_samples = mnist_dataset_shuffle(dataset);
+    printf("Shuffled %u samples.\n", shuffled_samples);
 
     // Cleanup
     mnist_dataset_free(dataset);
