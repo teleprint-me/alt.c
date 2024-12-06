@@ -45,12 +45,12 @@ typedef struct {
 } MNISTDataset;
 
 typedef struct {
-    float* weights;  // Flattened weight matrix
-    float* biases;   // Bias vector
+    float* weights; // Flattened weight matrix
+    float* biases; // Bias vector
+    float* activations; // Outputs of this layer
+    float* gradients; // Gradients for backpropagation
     uint32_t input_size;
     uint32_t output_size;
-    float* activations; // Outputs of this layer
-    float* gradients;   // Gradients for backpropagation
 } Layer;
 
 typedef struct {
@@ -191,6 +191,12 @@ void mnist_dataset_shuffle(MNISTDataset* dataset) {
         }
     }
 }
+
+MLP* mlp_create(int input_size, int hidden_size, int output_size);
+void mlp_free(MLP* model);
+
+void mlp_forward(MLP* model, float* input);
+void mlp_backward(MLP* model, float* target);
 
 int main(int argc, char* argv[]) {
     if (argc != 2 || !argv[1]) {
