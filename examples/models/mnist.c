@@ -403,6 +403,53 @@ void mlp_backward(MLP* model, float* target) {
     }
 }
 
+void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_threshold) {
+    for (uint32_t epoch = 0; epoch < epochs; epoch++) {
+        // Shuffle the dataset at the start of each epoch
+        mnist_dataset_shuffle(dataset);
+
+        float total_error = 0.0f;
+
+        // Iterate over each sample in the dataset
+        for (uint32_t i = 0; i < dataset->length; i++) {
+            MNISTSample* sample = &dataset->samples[i];
+
+            // Perform forward pass
+            mlp_forward(model, sample->pixels);
+
+            // Compute target vector (one-hot encoding)
+            float target[10] = {0};
+            target[sample->label] = 1.0f;
+
+            // Perform backward pass
+            mlp_backward(model, target);
+
+            // Accumulate error (mean squared error for simplicity)
+            for (uint32_t j = 0; j < 10; j++) {
+                float error = target[j] - model->layers[model->num_layers - 1].activations[j];
+                total_error += error * error;
+            }
+
+            // Progress tracking
+            float progress = (float) i / dataset->length;
+            print_progress("Training", progress, 50, '#');
+        }
+        printf("\n");
+
+        // Compute average error
+        total_error /= dataset->length;
+
+        // Report epoch metrics
+        printf("Epoch %u, Error: %.6f\n", epoch + 1, total_error);
+
+        // Early stopping condition
+        if (total_error < error_threshold) {
+            printf("Training converged at epoch %u, Error: %.6f\n", epoch + 1, total_error);
+            break;
+        }
+    }
+}
+
 // Multi-threaded operations
 
 void* parallel_forward_pass(void* args) {
