@@ -32,6 +32,7 @@
 #include "random.h" // For weight initialization
 
 #define IMAGE_SIZE 28 * 28 // Flattened size of MNIST images
+#define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN)
 
 // Structures
 
@@ -59,6 +60,17 @@ typedef struct {
     Layer* layers;
     uint32_t num_layers;
 } MLP;
+
+typedef struct {
+    float* matrix; // Weight matrix
+    float* vector; // Input vector
+    float* result; // Output vector
+    float* bias; // Bias vector
+    uint32_t rows; // Number of rows in the matrix
+    uint32_t cols; // Number of columns in the matrix
+    uint32_t thread_id; // Thread ID
+    uint32_t thread_count; // Total number of threads
+} Tensor;
 
 // Prototypes
 
@@ -309,6 +321,64 @@ void mlp_free(MLP* model) {
         }
         free(model);
     }
+}
+
+void mlp_forward(MLP* model, float* input) {
+    float* current_input = input;
+
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+        
+        // Prepare threading arguments
+        pthread_t threads[NUM_THREADS];
+        Tensor tensors[NUM_THREADS];
+
+        for (uint32_t thread = 0; thread < NUM_THREADS; thread++) {
+            tensors[thread] = (Tensor){
+                .matrix = layer->weights,
+                .vector = current_input,
+                .result = layer->activations,
+                .bias = layer->biases,
+                .rows = layer->output_size,
+                .cols = layer->input_size,
+                .thread_id = thread,
+                .thread_count = NUM_THREADS
+            };
+            pthread_create(&threads[thread], NULL, parallel_matrix_multiply, &tensors[thread]);
+        }
+
+        // Join threads
+        for (uint32_t thread = 0; thread < NUM_THREADS; thread++) {
+            pthread_join(threads[thread], NULL);
+        }
+
+        // Apply activation function
+        for (uint32_t j = 0; j < layer->output_size; j++) {
+            layer->activations[j] = activate_relu(layer->activations[j]);
+        }
+
+        // Set current input for the next layer
+        current_input = layer->activations;
+    }
+}
+
+// Multi-threaded tensor
+
+void* parallel_matrix_multiply(void* args) {
+    Tensor* tensor = (Tensor*) args;
+    uint32_t start = tensor->thread_id * (tensor->rows / tensor->thread_count);
+    uint32_t end = (tensor->thread_id + 1) * (tensor->rows / tensor->thread_count);
+    if (tensor->thread_id == tensor->thread_count - 1) {
+        end = tensor->rows; // Handle remainder
+    }
+
+    for (uint32_t i = start; i < end; i++) {
+        tensor->result[i] = tensor->bias[i]; // Start with bias
+        for (uint32_t j = 0; j < tensor->cols; j++) {
+            tensor->result[i] += tensor->matrix[i * tensor->cols + j] * tensor->vector[j];
+        }
+    }
+    return NULL;
 }
 
 int main(int argc, char* argv[]) {
