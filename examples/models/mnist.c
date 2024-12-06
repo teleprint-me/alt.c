@@ -198,6 +198,8 @@ void mlp_free(MLP* model);
 void mlp_forward(MLP* model, float* input);
 void mlp_backward(MLP* model, float* target);
 
+void* parallel_matrix_multiply(void* args);
+
 int main(int argc, char* argv[]) {
     if (argc != 2 || !argv[1]) {
         fprintf(stderr, "Usage: %s <path_to_mnist>\n", argv[0]);
