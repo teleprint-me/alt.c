@@ -44,6 +44,20 @@ typedef struct {
     uint32_t length; // Number of loaded samples
 } MNISTDataset;
 
+typedef struct {
+    float* weights;  // Flattened weight matrix
+    float* biases;   // Bias vector
+    uint32_t input_size;
+    uint32_t output_size;
+    float* activations; // Outputs of this layer
+    float* gradients;   // Gradients for backpropagation
+} Layer;
+
+typedef struct {
+    Layer* layers;
+    uint32_t num_layers;
+} MLP;
+
 MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
     MNISTDataset* dataset = malloc(sizeof(MNISTDataset));
     if (!dataset) {
