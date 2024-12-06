@@ -31,8 +31,12 @@
 #include "path.h" // For path management
 #include "random.h" // For weight initialization
 
+// Training parameters
 #define IMAGE_SIZE 28 * 28 // Flattened size of MNIST images
-#define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN)
+#define LEARNING_RATE 0.1f // Learning rate for gradient descent
+#define EPOCHS 10000 // Maximum number of training epochs
+#define ERROR_THRESHOLD 0.01f // Early stopping threshold for average error
+#define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN) // Number of CPU threads available at runtime
 
 // Structures
 
@@ -70,7 +74,15 @@ typedef struct {
     uint32_t cols; // Number of columns in the matrix
     uint32_t thread_id; // Thread ID
     uint32_t thread_count; // Total number of threads
-} Tensor;
+} ForwardPassArgs;
+
+typedef struct {
+    Layer* current_layer;   // Pointer to the current layer
+    Layer* next_layer;      // Pointer to the next layer (if applicable)
+    float* target;          // Target vector (for the output layer)
+    uint32_t start_neuron;  // Start index of neurons this thread handles
+    uint32_t end_neuron;    // End index of neurons this thread handles
+} BackwardPassArgs;
 
 // Prototypes
 
@@ -86,7 +98,8 @@ void mlp_free(MLP* model);
 void mlp_forward(MLP* model, float* input);
 void mlp_backward(MLP* model, float* target);
 
-void* parallel_matrix_multiply(void* args);
+void* parallel_forward_pass(void* args);
+void* parallel_backward_pass(void* args);
 
 // Progress utility
 
@@ -328,13 +341,13 @@ void mlp_forward(MLP* model, float* input) {
 
     for (uint32_t i = 0; i < model->num_layers; i++) {
         Layer* layer = &model->layers[i];
-        
+
         // Prepare threading arguments
         pthread_t threads[NUM_THREADS];
-        Tensor tensors[NUM_THREADS];
+        ForwardPassArgs tensors[NUM_THREADS];
 
         for (uint32_t thread = 0; thread < NUM_THREADS; thread++) {
-            tensors[thread] = (Tensor){
+            tensors[thread] = (ForwardPassArgs){
                 .matrix = layer->weights,
                 .vector = current_input,
                 .result = layer->activations,
@@ -344,7 +357,7 @@ void mlp_forward(MLP* model, float* input) {
                 .thread_id = thread,
                 .thread_count = NUM_THREADS
             };
-            pthread_create(&threads[thread], NULL, parallel_matrix_multiply, &tensors[thread]);
+            pthread_create(&threads[thread], NULL, parallel_forward_pass, &tensors[thread]);
         }
 
         // Join threads
@@ -352,32 +365,99 @@ void mlp_forward(MLP* model, float* input) {
             pthread_join(threads[thread], NULL);
         }
 
-        // Apply activation function
-        for (uint32_t j = 0; j < layer->output_size; j++) {
-            layer->activations[j] = activate_relu(layer->activations[j]);
-        }
-
         // Set current input for the next layer
         current_input = layer->activations;
     }
 }
 
-// Multi-threaded tensor
+void mlp_backward(MLP* model, float* target) {
+    pthread_t threads[NUM_THREADS];
+    BackwardPassArgs args[NUM_THREADS];
 
-void* parallel_matrix_multiply(void* args) {
-    Tensor* tensor = (Tensor*) args;
-    uint32_t start = tensor->thread_id * (tensor->rows / tensor->thread_count);
-    uint32_t end = (tensor->thread_id + 1) * (tensor->rows / tensor->thread_count);
-    if (tensor->thread_id == tensor->thread_count - 1) {
-        end = tensor->rows; // Handle remainder
-    }
+    for (int l = model->num_layers - 1; l >= 0; l--) {
+        Layer* current_layer = &model->layers[l];
+        Layer* next_layer = (l < model->num_layers - 1) ? &model->layers[l + 1] : NULL;
 
-    for (uint32_t i = start; i < end; i++) {
-        tensor->result[i] = tensor->bias[i]; // Start with bias
-        for (uint32_t j = 0; j < tensor->cols; j++) {
-            tensor->result[i] += tensor->matrix[i * tensor->cols + j] * tensor->vector[j];
+        uint32_t neurons_per_thread = current_layer->output_size / NUM_THREADS;
+        uint32_t remaining_neurons = current_layer->output_size % NUM_THREADS;
+
+        for (uint32_t t = 0; t < NUM_THREADS; t++) {
+            uint32_t start = t * neurons_per_thread;
+            uint32_t end = start + neurons_per_thread + (t == NUM_THREADS - 1 ? remaining_neurons : 0);
+
+            args[t] = (BackwardPassArgs){
+                .current_layer = current_layer,
+                .next_layer = next_layer,
+                .target = target,
+                .start_neuron = start,
+                .end_neuron = end,
+            };
+            pthread_create(&threads[t], NULL, parallel_backward_pass, &args[t]);
+        }
+
+        // Join threads
+        for (uint32_t t = 0; t < NUM_THREADS; t++) {
+            pthread_join(threads[t], NULL);
         }
     }
+}
+
+// Multi-threaded operations
+
+void* parallel_forward_pass(void* args) {
+    ForwardPassArgs* fargs = (ForwardPassArgs*) args;
+    uint32_t start = fargs->thread_id * (fargs->rows / fargs->thread_count);
+    uint32_t end = (fargs->thread_id + 1) * (fargs->rows / fargs->thread_count);
+    if (fargs->thread_id == fargs->thread_count - 1) {
+        end = fargs->rows; // Handle remainder
+    }
+
+    // Dot product
+    for (uint32_t i = start; i < end; i++) {
+        fargs->result[i] = fargs->bias[i]; // Start with bias
+        for (uint32_t j = 0; j < fargs->cols; j++) {
+            fargs->result[i] += fargs->matrix[i * fargs->cols + j] * fargs->vector[j];
+        }
+    }
+
+    // Apply activation function
+    for (uint32_t j = 0; j < fargs->rows; j++) {
+        fargs->result[j] = activate_relu(fargs->result[j]);
+    }
+
+    return NULL;
+}
+
+void* parallel_backward_pass(void* args) {
+    BackwardPassArgs* bargs = (BackwardPassArgs*)args;
+    Layer* current = bargs->current_layer;
+    Layer* next = bargs->next_layer;
+
+    for (uint32_t i = bargs->start_neuron; i < bargs->end_neuron; i++) {
+        if (next == NULL) {
+            // Output layer
+            float error = bargs->target[i] - current->activations[i];
+            current->gradients[i] = error * activate_sigmoid_prime(current->activations[i]);
+        } else {
+            // Hidden layer
+            float sum = 0.0f;
+            for (uint32_t j = 0; j < next->output_size; j++) {
+                sum += next->weights[j * current->output_size + i] * next->gradients[j];
+            }
+            current->gradients[i] = sum * activate_relu_prime(current->activations[i]);
+        }
+
+        // Update weights and biases
+        for (uint32_t j = 0; j < current->input_size; j++) {
+            float input_value = (next == NULL)
+                                    ? bargs->target[j]  // Output layer uses the target
+                                    : current->activations[j];
+            current->weights[i * current->input_size + j] +=
+                LEARNING_RATE * current->gradients[i] * input_value;
+        }
+        current->biases[i] += LEARNING_RATE * current->gradients[i];
+    }
+
     return NULL;
 }
 
@@ -414,7 +494,7 @@ int main(int argc, char* argv[]) {
     MLP* model = mlp_create(input_size, hidden_size, output_size);
 
     // Test predictions
-    for (uint32_t i = 0; i < dataset->length; i++){
+    for (uint32_t i = 0; i < dataset->length; i++) {
         float progress = (float) i / (float) dataset->length;
         print_progress("Forward", progress, 50, '#'); // Track progress
         mlp_forward(model, dataset->samples[i].pixels);
