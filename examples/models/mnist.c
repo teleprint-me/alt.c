@@ -13,17 +13,18 @@
  * @ref https://github.com/myleott/mnist_png.git
  */
 
-// stb
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
-
 // libc
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
+
+// stb
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 // alt
 #include "activation.h"
@@ -162,6 +163,19 @@ uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
 
     path_free_entry(entry);
     return sample_count;
+}
+
+void mnist_dataset_shuffle(MNISTDataset* dataset) {
+    if (dataset && dataset->samples) {
+        srand((unsigned int) time(NULL)); // Seed for randomness
+        for (uint32_t i = dataset->length - 1; i > 0; i--) {
+            uint32_t j = rand() % (i + 1); // Pick a random index
+            // Swap samples[i] and samples[j]
+            MNISTSample sample = dataset->samples[i];
+            dataset->samples[i] = dataset->samples[j];
+            dataset->samples[j] = sample;
+        }
+    }
 }
 
 int main(int argc, char* argv[]) {
