@@ -38,25 +38,53 @@ typedef struct {
     int label;
 } MNISTSample;
 
-MNISTSample* create_mnist_samples(uint32_t count) {
-    MNISTSample* samples = malloc(sizeof(MNISTSample) * count);
-    if (!samples) {
-        fprintf(stderr, "Failed to allocate MNIST samples.\n");
+typedef struct {
+    MNISTSample* samples; // Array of MNIST samples
+    uint32_t length; // Number of loaded samples
+} MNISTDataset;
+
+MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
+    MNISTDataset* dataset = malloc(sizeof(MNISTDataset));
+    if (!dataset) {
+        fprintf(stderr, "Failed to allocate MNISTDataset.\n");
         return NULL;
     }
-    for (uint32_t i = 0; i < count; i++) {
-        samples[i].pixels = malloc(sizeof(float) * IMAGE_SIZE);
-        samples[i].label = -1;
+
+    dataset->samples = malloc(sizeof(MNISTSample) * max_samples);
+    if (!dataset->samples) {
+        fprintf(stderr, "Failed to allocate MNIST samples.\n");
+        free(dataset);
+        return NULL;
     }
-    return samples;
+
+    dataset->length = max_samples;
+    for (uint32_t i = 0; i < max_samples; i++) {
+        dataset->samples[i].pixels = malloc(sizeof(float) * IMAGE_SIZE);
+        dataset->samples[i].label = -1;
+
+        if (!dataset->samples[i].pixels) {
+            fprintf(stderr, "Failed to allocate MNIST sample pixels.\n");
+            for (uint32_t j = 0; j < i; j++) {
+                free(dataset->samples[j].pixels);
+            }
+            free(dataset->samples);
+            free(dataset);
+            return NULL;
+        }
+    }
+
+    return dataset;
 }
 
-void free_mnist_samples(MNISTSample* samples, uint32_t count) {
-    if (samples) {
-        for (uint32_t i = 0; i < count; i++) {
-            free(samples[i].pixels);
+void mnist_dataset_free(MNISTDataset* dataset) {
+    if (dataset) {
+        if (dataset->samples) {
+            for (uint32_t i = 0; i < dataset->length; i++) {
+                free(dataset->samples[i].pixels);
+            }
+            free(dataset->samples);
         }
-        free(samples);
+        free(dataset);
     }
 }
 
@@ -76,8 +104,12 @@ void print_progress(float percentage, uint32_t width, char ch) {
     fflush(stdout);
 }
 
-uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max_samples) {
-    // Depth 1: labels are in immediate subdirectories
+uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
+    if (!dataset || !dataset->samples) {
+        fprintf(stderr, "Invalid MNIST dataset.\n");
+        return 0;
+    }
+
     PathEntry* entry = path_create_entry(path, 0, 1);
     if (!entry) {
         fprintf(stderr, "Failed to traverse path '%s'.\n", path);
@@ -85,10 +117,9 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
     }
 
     uint32_t sample_count = 0;
-
-    for (uint32_t i = 0; i < entry->length && sample_count < max_samples; i++) {
+    for (uint32_t i = 0; i < entry->length && sample_count < dataset->length; i++) {
         // Update progress bar
-        float progress = (float) sample_count / (float) max_samples;
+        float progress = (float) sample_count / (float) dataset->length;
         print_progress(progress, 50, '#');
 
         PathInfo* info = entry->info[i];
@@ -113,16 +144,16 @@ uint32_t load_mnist_samples(const char* path, MNISTSample* samples, uint32_t max
 
         // Ensure image dimensions match MNIST (28x28)
         if (width != 28 || height != 28) {
-            fprintf(stderr, "Invalid image dimensions for '%s'.\n", info->path);
+            fprintf(stderr, "Invalid dimensions for '%s'.\n", info->path);
             stbi_image_free(image_data);
             continue;
         }
 
         // Convert image data to float and normalize to [0, 1]
         for (int j = 0; j < IMAGE_SIZE; j++) {
-            samples[sample_count].pixels[j] = image_data[j] / 255.0f;
+            dataset->samples[sample_count].pixels[j] = image_data[j] / 255.0f;
         }
-        samples[sample_count].label = label;
+        dataset->samples[sample_count].label = label;
 
         stbi_image_free(image_data);
         sample_count++;
@@ -146,20 +177,18 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const uint32_t max_samples = 60010; // Adjust as needed
-    MNISTSample* samples = create_mnist_samples(max_samples);
-    if (!samples) {
+    MNISTDataset* dataset = mnist_dataset_create(60000); // Training has a max of 60000 samples
+    if (!dataset) {
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
 
     printf("Loading MNIST training data from '%s'...\n", training_path);
-    uint32_t loaded_samples = load_mnist_samples(training_path, samples, max_samples);
-
+    uint32_t loaded_samples = mnist_dataset_load(training_path, dataset);
     printf("Loaded %u samples.\n", loaded_samples);
 
     // Cleanup
-    free_mnist_samples(samples, max_samples);
+    mnist_dataset_free(dataset);
     path_free_string(training_path);
 
     return EXIT_SUCCESS;
