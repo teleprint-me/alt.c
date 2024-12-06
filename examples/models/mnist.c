@@ -33,6 +33,8 @@
 
 #define IMAGE_SIZE 28 * 28 // Flattened size of MNIST images
 
+// Structures
+
 // Struct to hold a single image and label
 typedef struct {
     float* pixels;
@@ -57,6 +59,42 @@ typedef struct {
     Layer* layers;
     uint32_t num_layers;
 } MLP;
+
+// Prototypes
+
+void print_progress(float percentage, uint32_t width, char ch);
+
+MNISTDataset* mnist_dataset_create(uint32_t max_samples);
+void mnist_dataset_free(MNISTDataset* dataset);
+uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
+void mnist_dataset_shuffle(MNISTDataset* dataset);
+
+MLP* mlp_create(int input_size, int hidden_size, int output_size);
+void mlp_free(MLP* model);
+void mlp_forward(MLP* model, float* input);
+void mlp_backward(MLP* model, float* target);
+
+void* parallel_matrix_multiply(void* args);
+
+// Progress utility
+
+// @ref https://stackoverflow.com/a/36315819/20035933
+void print_progress(float percentage, uint32_t width, char ch) {
+    char bar[width + 1];
+    for (uint32_t i = 0; i < width; i++) {
+        bar[i] = ch;
+    }
+    bar[width] = '\0'; // Null-terminate the bar for safety
+
+    uint32_t progress = (uint32_t) (percentage * 100 + 0.5f); // Round percentage
+    uint32_t left = (uint32_t) (percentage * width + 0.5f); // Round bar width
+    uint32_t right = width - left;
+
+    printf("\rLoading: %3u%% [%.*s%*s]", progress, left, bar, right, "");
+    fflush(stdout);
+}
+
+// MNIST dataset implementation
 
 MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
     MNISTDataset* dataset = malloc(sizeof(MNISTDataset));
@@ -101,22 +139,6 @@ void mnist_dataset_free(MNISTDataset* dataset) {
         }
         free(dataset);
     }
-}
-
-// @ref https://stackoverflow.com/a/36315819/20035933
-void print_progress(float percentage, uint32_t width, char ch) {
-    char bar[width + 1];
-    for (uint32_t i = 0; i < width; i++) {
-        bar[i] = ch;
-    }
-    bar[width] = '\0'; // Null-terminate the bar for safety
-
-    uint32_t progress = (uint32_t) (percentage * 100 + 0.5f); // Round percentage
-    uint32_t left = (uint32_t) (percentage * width + 0.5f); // Round bar width
-    uint32_t right = width - left;
-
-    printf("\rLoading: %3u%% [%.*s%*s]", progress, left, bar, right, "");
-    fflush(stdout);
 }
 
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
@@ -191,6 +213,8 @@ void mnist_dataset_shuffle(MNISTDataset* dataset) {
         }
     }
 }
+
+// MLP model implementation
 
 MLP* mlp_create(int input_size, int hidden_size, int output_size) {
     // Allocate memory for the MLP structure
@@ -275,11 +299,6 @@ void mlp_free(MLP* model) {
         free(model);
     }
 }
-
-void mlp_forward(MLP* model, float* input);
-void mlp_backward(MLP* model, float* target);
-
-void* parallel_matrix_multiply(void* args);
 
 int main(int argc, char* argv[]) {
     if (argc != 2 || !argv[1]) {
