@@ -74,7 +74,7 @@ typedef struct {
 
 // Prototypes
 
-void print_progress(float percentage, uint32_t width, char ch);
+void print_progress(char* title, float percentage, uint32_t width, char ch);
 
 MNISTDataset* mnist_dataset_create(uint32_t max_samples);
 void mnist_dataset_free(MNISTDataset* dataset);
@@ -91,7 +91,7 @@ void* parallel_matrix_multiply(void* args);
 // Progress utility
 
 // @ref https://stackoverflow.com/a/36315819/20035933
-void print_progress(float percentage, uint32_t width, char ch) {
+void print_progress(char* title, float percentage, uint32_t width, char ch) {
     char bar[width + 1];
     for (uint32_t i = 0; i < width; i++) {
         bar[i] = ch;
@@ -102,7 +102,7 @@ void print_progress(float percentage, uint32_t width, char ch) {
     uint32_t left = (uint32_t) (percentage * width + 0.5f); // Round bar width
     uint32_t right = width - left;
 
-    printf("\rLoading: %3u%% [%.*s%*s]", progress, left, bar, right, "");
+    printf("\r%s: %3u%% [%.*s%*s]", title, progress, left, bar, right, "");
     fflush(stdout);
 }
 
@@ -169,7 +169,7 @@ uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
     for (uint32_t i = 0; i < entry->length && sample_count < dataset->length; i++) {
         // Update progress bar
         float progress = (float) sample_count / (float) dataset->length;
-        print_progress(progress, 50, '#');
+        print_progress("Loading", progress, 50, '#');
 
         PathInfo* info = entry->info[i];
 
@@ -220,7 +220,7 @@ uint32_t mnist_dataset_shuffle(MNISTDataset* dataset) {
         srand((unsigned int) time(NULL)); // Seed for randomness
         for (uint32_t i = 0; i < dataset->length - 1; i++) {
             float progress = (float) i / (float) dataset->length;
-            print_progress(progress, 50, '#'); // Track progress
+            print_progress("Shuffling", progress, 50, '#'); // Track progress
 
             uint32_t j = rand() % (dataset->length - i); // Pick a random index
 
@@ -412,6 +412,14 @@ int main(int argc, char* argv[]) {
     uint32_t hidden_size = 128; // Example hidden layer size
     uint32_t output_size = 10; // 10 output classes
     MLP* model = mlp_create(input_size, hidden_size, output_size);
+
+    // Test predictions
+    for (uint32_t i = 0; i < dataset->length; i++){
+        float progress = (float) i / (float) dataset->length;
+        print_progress("Forward", progress, 50, '#'); // Track progress
+        mlp_forward(model, dataset->samples[i].pixels);
+    }
+    printf("\n");
 
     // Cleanup
     mlp_free(model);
