@@ -524,32 +524,19 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    MNISTDataset* dataset = mnist_dataset_create(60000); // Training has a max of 60000 samples
+    // Training has a max of 60000 samples
+    MNISTDataset* dataset = mnist_dataset_create(60000);
     if (!dataset) {
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
-
-    printf("Loading MNIST training data from '%s'...\n", training_path);
-    uint32_t loaded_samples = mnist_dataset_load(training_path, dataset);
-    printf("Loaded %u samples.\n", loaded_samples);
-
-    printf("Shuffling MNIST training data from '%s'...\n", training_path);
-    uint32_t shuffled_samples = mnist_dataset_shuffle(dataset);
-    printf("Shuffled %u samples.\n", shuffled_samples);
+    mnist_dataset_load(training_path, dataset);
 
     uint32_t input_size = 784; // MNIST images flattened
     uint32_t hidden_size = 128; // Example hidden layer size
     uint32_t output_size = 10; // 10 output classes
     MLP* model = mlp_create(input_size, hidden_size, output_size);
-
-    // Test predictions
-    for (uint32_t i = 0; i < dataset->length; i++) {
-        float progress = (float) i / (float) dataset->length;
-        print_progress("Forward", progress, 50, '#'); // Track progress
-        mlp_forward(model, dataset->samples[i].pixels);
-    }
-    printf("\n");
+    mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
 
     // Cleanup
     mlp_free(model);
