@@ -113,6 +113,9 @@ MagicState magic_apply_padding(MagicFile* magic_file);
 
 // Section handling functions
 
+MagicState magic_write_start_marker(MagicFile* magic_file, int32_t version, int32_t alignment);
+MagicState magic_read_start_marker(MagicFile* magic_file, int32_t* version, int32_t* alignment);
+
 /**
  * @brief Writes a section marker and its size to the model file.
  * @param magic_file Pointer to the MagicFile structure.
