@@ -43,9 +43,19 @@ typedef struct MagicFile {
     const char* mode; /**< File mode (e.g., "rb" for read binary) */
     FILE* model; /**< File pointer to the open model */
 
-    // Member function pointers
+    /**
+     * @brief Opens the model file based on the MagicFile structure.
+     */
     MagicState (*open)(struct MagicFile* self);
+
+    /**
+     * @brief Validates the model file, checking existence and permissions.
+     */
     MagicState (*validate)(struct MagicFile* self);
+
+    /**
+     * @brief Closes the model file.
+     */
     void (*close)(struct MagicFile* self);
 } MagicFile;
 
