@@ -41,6 +41,7 @@ MagicState magic_file_open(MagicFile* magic_file) {
     LOG_DEBUG("%s: File %s opened successfully.\n", __func__, magic_file->filepath);
     return MAGIC_SUCCESS;
 }
+
 /**
  * @brief Closes the model file.
  */
@@ -61,73 +62,14 @@ MagicState magic_file_validate(MagicFile* magic_file) {
         return MAGIC_ERROR;
     }
 
-    // Read the Start Marker fields
-    int64_t section_marker = 0;
-    int64_t section_size = 0;
+    // Read and validate the Start Marker
     int32_t magic_version = 0;
     int32_t magic_alignment = 0;
-    if (fread(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1
-        || fread(&section_size, sizeof(int64_t), 1, magic_file->model) != 1
-        || fread(&magic_version, sizeof(int32_t), 1, magic_file->model) != 1
-        || fread(&magic_alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read the Start Marker fields from the file.\n", __func__);
-        return MAGIC_ERROR;
+    MagicState state = magic_read_start_marker(magic_file, &magic_version, &magic_alignment);
+    if (state != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Start Marker validation failed.\n", __func__);
+        return state;
     }
-
-    // Validate the section marker
-    if (section_marker != MAGIC_ALT) {
-        LOG_ERROR(
-            "%s: Invalid section marker. Expected 0x%lx, got 0x%lx.\n",
-            __func__,
-            MAGIC_ALT,
-            section_marker
-        );
-        return MAGIC_INVALID_MARKER;
-    }
-
-    // Validate the section size; 24 bytes
-    const int64_t expected_size = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t);
-    if (section_size < expected_size) {
-        LOG_ERROR(
-            "%s: Invalid section size. Expected at least %ld bytes, got %ld bytes.\n",
-            __func__,
-            expected_size,
-            section_size
-        );
-        return MAGIC_ERROR;
-    }
-
-    // Validate the version
-    if (magic_version != MAGIC_VERSION) {
-        LOG_ERROR(
-            "%s: Unsupported version. Expected %d, got %d.\n",
-            __func__,
-            MAGIC_VERSION,
-            magic_version
-        );
-        return MAGIC_ERROR;
-    }
-
-    // Validate the alignment
-    if (magic_alignment != MAGIC_ALIGNMENT) {
-        LOG_ERROR(
-            "%s: Invalid alignment. Expected %d bytes, got %d bytes.\n",
-            __func__,
-            MAGIC_ALIGNMENT,
-            magic_alignment
-        );
-        return MAGIC_ERROR;
-    }
-
-    LOG_DEBUG(
-        "%s: File validated successfully. Section marker: 0x%lx, size: %ld, version: %d, "
-        "alignment: %d.\n",
-        __func__,
-        section_marker,
-        section_size,
-        magic_version,
-        magic_alignment
-    );
 
     // Reset the file pointer to the start
     if (fseek(magic_file->model, 0, SEEK_SET) != 0) {
@@ -135,6 +77,8 @@ MagicState magic_file_validate(MagicFile* magic_file) {
         return MAGIC_ERROR;
     }
 
+    LOG_DEBUG("%s: Model file validated successfully. Version: %d, Alignment: %d.\n",
+              __func__, magic_version, magic_alignment);
     return MAGIC_SUCCESS;
 }
 
@@ -194,19 +138,27 @@ MagicState magic_write_start_marker(MagicFile* magic_file, int32_t version, int3
 
     // Define the fields for the Start Marker section
     int64_t section_marker = MAGIC_ALT;
-    int64_t section_size = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t); // 24 bytes
+    int64_t section_size
+        = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t); // 24 bytes
 
     // Write the Start Marker section fields
-    if (fwrite(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1 ||
-        fwrite(&section_size, sizeof(int64_t), 1, magic_file->model) != 1 ||
-        fwrite(&version, sizeof(int32_t), 1, magic_file->model) != 1 ||
-        fwrite(&alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
+    if (fwrite(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1
+        || fwrite(&section_size, sizeof(int64_t), 1, magic_file->model) != 1
+        || fwrite(&version, sizeof(int32_t), 1, magic_file->model) != 1
+        || fwrite(&alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to write Start Marker section.\n", __func__);
         return MAGIC_ERROR;
     }
 
-    LOG_DEBUG("%s: Start Marker written successfully. Marker: 0x%lx, Size: %ld, Version: %d, Alignment: %d.\n",
-              __func__, section_marker, section_size, version, alignment);
+    LOG_DEBUG(
+        "%s: Start Marker written successfully. Marker: 0x%lx, Size: %ld, Version: %d, Alignment: "
+        "%d.\n",
+        __func__,
+        section_marker,
+        section_size,
+        version,
+        alignment
+    );
     return MAGIC_SUCCESS;
 }
 
@@ -222,26 +174,35 @@ MagicState magic_read_start_marker(MagicFile* magic_file, int32_t* version, int3
     int32_t magic_alignment = 0;
 
     // Read the Start Marker section fields
-    if (fread(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1 ||
-        fread(&section_size, sizeof(int64_t), 1, magic_file->model) != 1 ||
-        fread(&magic_version, sizeof(int32_t), 1, magic_file->model) != 1 ||
-        fread(&magic_alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
+    if (fread(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1
+        || fread(&section_size, sizeof(int64_t), 1, magic_file->model) != 1
+        || fread(&magic_version, sizeof(int32_t), 1, magic_file->model) != 1
+        || fread(&magic_alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to read Start Marker section.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Validate the section marker
     if (section_marker != MAGIC_ALT) {
-        LOG_ERROR("%s: Invalid Start Marker. Expected 0x%lx, got 0x%lx.\n",
-                  __func__, MAGIC_ALT, section_marker);
+        LOG_ERROR(
+            "%s: Invalid Start Marker. Expected 0x%lx, got 0x%lx.\n",
+            __func__,
+            MAGIC_ALT,
+            section_marker
+        );
         return MAGIC_INVALID_MARKER;
     }
 
     // Validate the section size
-    const int64_t expected_size = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t); // 24 bytes
+    const int64_t expected_size
+        = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t); // 24 bytes
     if (section_size != expected_size) {
-        LOG_ERROR("%s: Invalid Start Marker size. Expected %ld, got %ld.\n",
-                  __func__, expected_size, section_size);
+        LOG_ERROR(
+            "%s: Invalid Start Marker size. Expected %ld, got %ld.\n",
+            __func__,
+            expected_size,
+            section_size
+        );
         return MAGIC_ERROR;
     }
 
@@ -253,8 +214,15 @@ MagicState magic_read_start_marker(MagicFile* magic_file, int32_t* version, int3
         *alignment = magic_alignment;
     }
 
-    LOG_DEBUG("%s: Start Marker read successfully. Marker: 0x%lx, Size: %ld, Version: %d, Alignment: %d.\n",
-              __func__, section_marker, section_size, magic_version, magic_alignment);
+    LOG_DEBUG(
+        "%s: Start Marker read successfully. Marker: 0x%lx, Size: %ld, Version: %d, Alignment: "
+        "%d.\n",
+        __func__,
+        section_marker,
+        section_size,
+        magic_version,
+        magic_alignment
+    );
     return MAGIC_SUCCESS;
 }
 
