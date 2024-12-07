@@ -92,6 +92,8 @@ void mlp_free(MLP* model);
 void mlp_forward(MLP* model, float* input);
 void mlp_backward(MLP* model, float* input, float* target);
 void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_threshold);
+void mlp_save(MLP* model, const char* filepath);
+void mlp_load(MLP* model, const char* filepath);
 
 void* parallel_forward_pass(void* args);
 void* parallel_backward_pass(void* args);
