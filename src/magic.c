@@ -15,6 +15,7 @@
  */
 MagicState magic_file_open(MagicFile* magic_file) {
     if (magic_file == NULL) {
+        LOG_ERROR("%s: MagicFile is NULL.\n", __func__);
         return MAGIC_ERROR;
     }
     magic_file->model = fopen(magic_file->filepath, magic_file->mode);
@@ -22,6 +23,7 @@ MagicState magic_file_open(MagicFile* magic_file) {
         LOG_ERROR("%s: Unable to open file %s\n", __func__, magic_file->filepath);
         return MAGIC_FILE_ERROR;
     }
+    LOG_DEBUG("%s: File %s opened successfully.\n", __func__, magic_file->filepath);
     return MAGIC_SUCCESS;
 }
 
@@ -63,6 +65,7 @@ MagicState magic_file_validate(MagicFile* magic_file) {
         return MAGIC_ERROR;
     }
 
+    LOG_DEBUG("%s: File %s validated successfully.\n", __func__, magic_file->filepath);
     // Reset the file pointer for subsequent operations
     fseek(magic_file->model, 0, SEEK_SET);
 
@@ -76,6 +79,7 @@ void magic_file_close(MagicFile* magic_file) {
     if (magic_file && magic_file->model) {
         fclose(magic_file->model);
         magic_file->model = NULL;
+        LOG_DEBUG("%s: File closed successfully.\n", __func__);
     }
 }
 
@@ -90,6 +94,7 @@ MagicFile magic_file_create(const char* filepath, const char* mode) {
     magic_file.open = magic_file_open;
     magic_file.validate = magic_file_validate;
     magic_file.close = magic_file_close;
+    LOG_DEBUG("%s: MagicFile created for %s in mode %s.\n", __func__, filepath, mode);
     return magic_file;
 }
 
@@ -114,6 +119,7 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
 
     long current_offset = ftell(magic_file->model);
     if (current_offset < 0) {
+        LOG_ERROR("%s: Failed to get file offset.\n", __func__);
         return MAGIC_ALIGNMENT_ERROR;
     }
 
@@ -124,14 +130,18 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
         if (padding_needed > 0) {
             char padding[MAGIC_ALIGNMENT] = {0};
             if (fwrite(padding, 1, padding_needed, magic_file->model) != padding_needed) {
+                LOG_ERROR("%s: Failed to write padding bytes.\n", __func__);
                 return MAGIC_ALIGNMENT_ERROR;
             }
+            LOG_DEBUG("%s: Wrote %ld padding bytes.\n", __func__, padding_needed);
         }
     } else if (magic_file->mode[0] == 'r') {
         // Reading mode: Skip padding bytes
         if (fseek(magic_file->model, padding_needed, SEEK_CUR) != 0) {
+            LOG_ERROR("%s: Failed to skip padding bytes.\n", __func__);
             return MAGIC_ALIGNMENT_ERROR;
         }
+        LOG_DEBUG("%s: Skipped %ld padding bytes.\n", __func__, padding_needed);
     }
 
     return MAGIC_SUCCESS;
@@ -151,9 +161,11 @@ MagicState magic_write_section_marker(MagicFile* magic_file, int64_t marker, int
 
     if (fwrite(&marker, sizeof(int64_t), 1, magic_file->model) != 1 ||
         fwrite(&section_size, sizeof(int64_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to write section marker or size.\n", __func__);
         return MAGIC_ERROR;
     }
 
+    LOG_DEBUG("%s: Wrote section marker 0x%lx with size %ld.\n", __func__, marker, section_size);
     return MAGIC_SUCCESS;
 }
 
@@ -171,9 +183,11 @@ MagicState magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int
 
     if (fread(marker, sizeof(int64_t), 1, magic_file->model) != 1 ||
         fread(section_size, sizeof(int64_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to read section marker or size.\n", __func__);
         return MAGIC_ERROR;
     }
 
+    LOG_DEBUG("%s: Read section marker 0x%lx with size %ld.\n", __func__, *marker, *section_size);
     return MAGIC_SUCCESS;
 }
 
@@ -191,9 +205,11 @@ MagicState magic_write_end_marker(MagicFile* magic_file) {
 
     int32_t magic = MAGIC_END;
     if (fwrite(&magic, sizeof(int32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to write end marker.\n", __func__);
         return MAGIC_ERROR;
     }
 
+    LOG_DEBUG("%s: Wrote end marker.\n", __func__);
     return MAGIC_SUCCESS;
 }
 
@@ -215,5 +231,6 @@ MagicState magic_read_end_marker(MagicFile* magic_file) {
         return MAGIC_ERROR;
     }
 
+    LOG_DEBUG("%s: Read and validated end marker.\n", __func__);
     return MAGIC_SUCCESS;
 }
