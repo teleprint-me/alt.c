@@ -22,7 +22,7 @@ FILE* magic_file_open(MagicFile* magic_file) {
     return magic_file->model;
 }
 
-int magic_file_validate(MagicFile* magic_file) {
+MagicState magic_file_validate(MagicFile* magic_file) {
     if (magic_file == NULL || magic_file->model == NULL) {
         fprintf(stderr, "File error: Invalid file pointer.\n");
         return MAGIC_ERROR;
@@ -32,7 +32,7 @@ int magic_file_validate(MagicFile* magic_file) {
         return MAGIC_ERROR;
     }
 
-    // For read access, validate GGML magic number
+    // For read access, validate ALT magic number
     if (magic_file->mode[0] == 'r') {
         int32_t magic;
         if (fread(&magic, sizeof(int32_t), 1, magic_file->model) != 1) {
@@ -43,7 +43,7 @@ int magic_file_validate(MagicFile* magic_file) {
 
         // Validate the magic number
         if (magic != MAGIC_ALT) {
-            fprintf(stderr, "Error: Invalid GGML file (magic number mismatch) for file %s\n", magic_file->filepath);
+            fprintf(stderr, "Error: Invalid ALT file (magic number mismatch) for file %s\n", magic_file->filepath);
             fclose(magic_file->model);
             return MAGIC_ERROR;
         }
@@ -73,7 +73,7 @@ MagicFile magic_file_create(const char* filepath, const char* mode) {
 }
 
 // Helper function for guarding write and read functions
-int magic_file_guard(MagicFile* magic_file) {
+MagicState magic_file_guard(MagicFile* magic_file) {
     if (magic_file == NULL || magic_file->model == NULL) {
         fprintf(stderr, "File error: Invalid file pointer.\n");
         return MAGIC_ERROR;
@@ -101,14 +101,14 @@ void magic_write_align_offset(MagicFile* magic_file) {
     }
 }
 
-int magic_write_start_marker(MagicFile* magic_file) {
+MagicState magic_write_start_marker(MagicFile* magic_file) {
     if (magic_file_guard(magic_file) == MAGIC_ERROR) { return MAGIC_ERROR; }
     int32_t magic = MAGIC_ALT;
     fwrite(&magic, sizeof(int32_t), 1, magic_file->model);
     return MAGIC_SUCCESS;
 }
 
-int magic_write_end_marker(MagicFile* magic_file) {
+MagicState magic_write_end_marker(MagicFile* magic_file) {
     if (magic_file_guard(magic_file) == MAGIC_ERROR) { return MAGIC_ERROR; }
     magic_write_align_offset(magic_file);  // Align before writing the end marker
     int32_t magic = MAGIC_END;
@@ -116,7 +116,7 @@ int magic_write_end_marker(MagicFile* magic_file) {
     return MAGIC_SUCCESS;
 }
 
-int magic_write_section_marker(MagicFile* magic_file, int64_t marker, int64_t section_size) {
+MagicState magic_write_section_marker(MagicFile* magic_file, int64_t marker, int64_t section_size) {
     if (magic_file_guard(magic_file) == MAGIC_ERROR) { return MAGIC_ERROR; }
     magic_write_align_offset(magic_file);  // Align before writing section marker
     fwrite(&marker, sizeof(int64_t), 1, magic_file->model);
@@ -138,7 +138,7 @@ void magic_read_align_offset(MagicFile* magic_file) {
     }
 }
 
-int magic_read_start_marker(MagicFile* magic_file) {
+MagicState magic_read_start_marker(MagicFile* magic_file) {
     if (magic_file_guard(magic_file) == MAGIC_ERROR) { return MAGIC_ERROR; }
 
     long offset = ftell(magic_file->model);
@@ -158,7 +158,7 @@ int magic_read_start_marker(MagicFile* magic_file) {
     return MAGIC_SUCCESS;
 }
 
-int magic_read_end_marker(MagicFile* magic_file) {
+MagicState magic_read_end_marker(MagicFile* magic_file) {
     if (magic_file_guard(magic_file) == MAGIC_ERROR) { return MAGIC_ERROR; }
 
     long offset = ftell(magic_file->model);
@@ -182,7 +182,7 @@ int magic_read_end_marker(MagicFile* magic_file) {
     return MAGIC_SUCCESS;
 }
 
-int magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* section_size) {
+MagicState magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* section_size) {
     if (magic_file_guard(magic_file) == MAGIC_ERROR) {
         return MAGIC_ERROR;
     }
@@ -213,9 +213,10 @@ int magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* s
 
     // Validate the section marker against known values
     switch (*marker) {
+        case MAGIC_GENERAL:
         case MAGIC_PARAMETERS:
         case MAGIC_TOKENIZER:
-        case MAGIC_TENSOR:
+        case MAGIC_TENSORS:
             printf("Valid Section Marker found: 0x%lx\n", *marker);
             break;
         default:

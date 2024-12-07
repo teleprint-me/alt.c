@@ -14,16 +14,20 @@
 #include <stdio.h>
 
 // Constants denoting partitioned sectors for model data.
-#define MAGIC_ALT 0x616C7400 // 4 bytes
+#define MAGIC_ALT 0x616C7400 // 8 bytes; 'alt' in hex
+#define MAGIC_GENERAL 0xCAFEBABE // 8 bytes
 #define MAGIC_PARAMETERS 0xDEADBEEF // 8 bytes
 #define MAGIC_TOKENIZER 0xBADDCAFE // 8 bytes
-#define MAGIC_TENSOR 0xFACEFEED // 8 bytes
-#define MAGIC_END 0x0FFFFFFF // 4 bytes
+#define MAGIC_TENSORS 0xFACEFEED // 8 bytes
+#define MAGIC_END 0x0FFFFFFF // 8 bytes
 #define MAGIC_ALIGNMENT 32 // Default ALT alignment value
+#define MAGIC_VERSION 3 // ALT model file format
 
 // Constants denoting state change for model data.
-#define MAGIC_SUCCESS 0
-#define MAGIC_ERROR 1
+typedef enum MagicState {
+    MAGIC_SUCCESS,
+    MAGIC_ERROR
+} MagicState;
 
 /**
  * @struct MagicFile
@@ -54,7 +58,7 @@ FILE* magic_file_open(MagicFile* magic_file);
  * @param magic_file Pointer to the MagicFile structure.
  * @return 1 if valid, 0 if invalid.
  */
-int magic_file_validate(MagicFile* magic_file);
+MagicState magic_file_validate(MagicFile* magic_file);
 
 /**
  * @brief Closes the model file.
@@ -76,23 +80,23 @@ MagicFile magic_file_create(const char* filepath, const char* mode);
  * @param magic_file Pointer to the MagicFile structure.
  * @return 1 if valid, 0 if invalid.
  */
-int magic_file_guard(MagicFile* magic_file);
+MagicState magic_file_guard(MagicFile* magic_file);
 
 // Write functions
 
 /**
- * @brief Writes the start marker (MAGIC_GGML) to the model file.
+ * @brief Writes the start marker (MAGIC_ALT) to the model file.
  * @param magic_file Pointer to the MagicFile structure.
  * @return 0 on success, -1 on failure.
  */
-int magic_write_start_marker(MagicFile* magic_file);
+MagicState magic_write_start_marker(MagicFile* magic_file);
 
 /**
  * @brief Writes the end marker (MAGIC_END) to the model file.
  * @param magic_file Pointer to the MagicFile structure.
  * @return 0 on success, -1 on failure.
  */
-int magic_write_end_marker(MagicFile* magic_file);
+MagicState magic_write_end_marker(MagicFile* magic_file);
 
 /**
  * @brief Writes a section marker and its size to the model file.
@@ -101,23 +105,23 @@ int magic_write_end_marker(MagicFile* magic_file);
  * @param section_size The size of the section in bytes.
  * @return 0 on success, -1 on failure.
  */
-int magic_write_section_marker(MagicFile* magic_file, int64_t marker, int64_t section_size);
+MagicState magic_write_section_marker(MagicFile* magic_file, int64_t marker, int64_t section_size);
 
 // Read functions
 
 /**
- * @brief Reads and validates the start marker (MAGIC_GGML) from the model file.
+ * @brief Reads and validates the start marker (MAGIC_ALT) from the model file.
  * @param magic_file Pointer to the MagicFile structure.
  * @return 0 if valid, -1 if invalid.
  */
-int magic_read_start_marker(MagicFile* magic_file);
+MagicState magic_read_start_marker(MagicFile* magic_file);
 
 /**
  * @brief Reads and validates the end marker (MAGIC_END) from the model file.
  * @param magic_file Pointer to the MagicFile structure.
  * @return 0 if valid, -1 if invalid.
  */
-int magic_read_end_marker(MagicFile* magic_file);
+MagicState magic_read_end_marker(MagicFile* magic_file);
 
 /**
  * @brief Reads a section marker and its size from the model file.
@@ -126,6 +130,6 @@ int magic_read_end_marker(MagicFile* magic_file);
  * @param section_size Pointer to store the section size in bytes.
  * @return 0 on success, -1 on failure.
  */
-int magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* section_size);
+MagicState magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* section_size);
 
 #endif // ALT_MAGIC_H
