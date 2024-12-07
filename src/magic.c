@@ -107,7 +107,7 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
         return MAGIC_ALIGNMENT_ERROR;
     }
 
-    long padding_needed = (MAGIC_ALIGNMENT - (current_offset % MAGIC_ALIGNMENT)) % MAGIC_ALIGNMENT;
+    size_t padding_needed = (MAGIC_ALIGNMENT - (current_offset % MAGIC_ALIGNMENT)) % MAGIC_ALIGNMENT;
 
     if (magic_file->mode[0] == 'w') {
         // Writing mode: Pad with `0x00` bytes
