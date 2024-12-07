@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 // Constants denoting partitioned sectors for model data.
-#define MAGIC_ALT 0x616C7463 // 4 bytes
+#define MAGIC_ALT 0x616C7400 // 4 bytes
 #define MAGIC_PARAMETERS 0xDEADBEEF // 8 bytes
 #define MAGIC_TOKENIZER 0xBADDCAFE // 8 bytes
 #define MAGIC_TENSOR 0xFACEFEED // 8 bytes
