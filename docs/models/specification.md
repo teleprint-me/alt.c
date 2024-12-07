@@ -1,228 +1,569 @@
 ---
 title: "ALT Model File Format Specification"
 type: "technical"
-version: "v1"
+version: "v2"
 date: "2024-07-05"
+modified: "2024-11-15"
 license: "cc-by-nc-sa-4.0"
 ---
 
 # ALT Model File Format Specification
 
-This document outlines the ALT (Altiera) model file format designed to simplify parsing in C-based executors. The format is organized into structured, sequential sections, each marked by unique identifiers and predefined fields.
+This document outlines the ALT (Altiera) model file format, a structured binary format designed for efficient parsing in C-based executors. The format is organized into sequential sections, each marked by unique identifiers and predefined fields, optimized for NLP models like Mistral 7B v0.1.
 
 ## Purpose
 
-This specification aims to facilitate efficient loading and utilization of the Mistral 7B v0.1 model licensed under the Apache License for various applications in natural language processing.
+This specification defines a structured, minimalistic format for loading and utilizing the Mistral 7B v0.1 model (licensed under Apache License). It enables efficient model storage, parsing, and execution in environments where simplicity and performance are essential.
 
 ## Objective
 
-A Python script will be utilized to implement this specification, allowing users to convert model files into the custom binary format. The script will accept a directory path, parse the contents of that path, and output a binary file according to the outlined structure. It will also include error handling and validation checks to ensure the integrity of the generated format. This specification serves as a general guide rather than a strict rule.
+A Python-based script will implement this specification, converting model files into the ALT binary format. This script will:
+
+- Accept a directory path containing model data.
+- Parse the directory contents.
+- Output a binary `.alt` file following the ALT specification.
+- Include error handling and validation to ensure the integrity of the generated file.
+
+> **Note**: This specification serves as a general guide and can be adapted for use with other models if needed.
+
+---
 
 ## File Layout
 
-The ALT file contains the following sections in order:
+The ALT file consists of the following sections in sequential order:
 
-1. **Start Marker** - Identifies the file format.
-2. **Parameters Section** - Contains model-specific hyperparameters essential for model execution.
-3. **Tokenizer Section** - Holds tokenizer vocabulary and special token IDs used during processing.
-4. **Tensor Section** - Contains tensor metadata and binary data required for model inference.
-5. **End Marker** - Marks the end of the file.
+1. **Start Marker**: Identifies the file as an ALT format.
+2. **General Section**: Contains high-level metadata, including name, version, author, and data type.
+3. **HyperParameters Section**: Includes specific hyperparameters like layer configurations and attention settings.
+4. **Tokenizer Section**: Holds vocabulary and special token IDs for model tokenization.
+5. **Tensors Section**: Stores quantized or full-precision tensor data.
+6. **End Marker**: A unique marker signifying the absolute end of the file.
 
-### File Alignment
+### Section Structure
 
-Each section is 32-byte aligned, padded with `0x00` bytes as necessary. The file uses **little-endian** byte order by default.
+Each section is marked with:
 
-### File Extension
+- **Section Marker**: A 64-bit hexadecimal identifier (e.g., `GENERAL = 0xCAFEBABE`) denoting the section type.
+- **Section Size**: A 64-bit integer representing the section size in bytes.
+- **Section Data**: Binary data specific to the section’s function.
 
-Model files will be appended with a `.alt` suffix to mitigate confusion with GGUF file formats, as they will be incompatible and require export.
+## File Alignment
 
-### File Reading and Writing
+Each section aligns to a 32-byte boundary. The required padding is calculated as follows:
 
-- The read and write processes should involve the following steps:
-  1. **Magic Value Check**: The first 4 bytes contain the "alt" magic value. This verifies that the file is in the expected format and compatible with the current implementation.
-  2. **Padding Calculation**: Calculate padding to ensure 32-byte alignment. If the total size of the current position is not aligned, pad with `0x00` bytes as necessary to maintain efficient memory access.
-  3. **Section Header Validation**:
-     - **Section Marker**: Validate the model section marker against an expected unique magic value in hexadecimal.
-       - This marker denotes the beginning of a new section utilized by the model.
-       - The marker is an 8-byte label with type `int64`.
-     - **Section Size**: Read the model section size to determine the total size of the section.
-       - This size indicates the absolute total size of the section, represented by the start and end offsets.
-       - The size may be utilized to jump forward to a following section.
-       - The size is 8 bytes with type `int64`.
-  4. **Section Reading/Writing**:
-     - Proceed to read or write each field according to its defined structure:
-       - Use types purposefully:
-         - Prefer `int32` for integers where possible for efficiency.
-         - Use `int64` for fields that need larger integer representations.
-         - Use `float32` for floating-point values as required.
-       - Ensure that strings are prefixed with their lengths:
-         - The length of the string as `int32`.
-         - The string as a "utf-8" character string.
-       - Store lists, arrays, tensors, etc., as contiguous streams, including:
-         - Total count and shape information.
-         - The number of dimensions for each sequence.
-         - The elements of the object's composition (e.g., [0.1, 0.2, 0.3, 0.4, ...]).
-         - All elements must be of a single type.
-  5. **End Marker Check**: Repeat the reading/writing process until the end marker (4 bytes, int32) is reached, which indicates the conclusion of the current section and helps verify its integrity. After reaching the end marker, the process should terminate gracefully or reset for another section.
+- $\text{alignment} = 32$
+- $\text{position} = \text{file.tell()}$
+- $\text{offset} = \text{position} \mod \text{alignment}$
+- $\text{pad} = (\text{alignment} - \text{offset}) \mod \text{alignment}$
+- If $\text{pad} > 0$, insert `\text{pad}` bytes of `0x00` padding.
 
-- Most fields will be represented as `int32` for efficiency, while string and floating-point types are retained as necessary to accurately capture model-specific details.
-- Each field must adhere to the defined data types, ensuring that the section is correctly read in its entirety.
-- Include validation checks during the reading process to confirm that all expected fields are present and formatted correctly, handling any discrepancies gracefully.
+### Example
 
-### File Structure with Alignment
+For a section ending at byte position $68$:
 
-- **Start Marker**: 
-  - Identifies the file format.
+- $\text{offset} = 68 \mod 32 = 4$
+- $\text{pad} = (32 - 4) \mod 32 = 28$
+- **Result**: Insert $28$ bytes of `0x00` padding.
 
-- **Parameters Section**: 
-  - Stores essential hyperparameters for inference.
-  - **Alignment**: Applied preceding this section.
+---
 
-- **Tokenizer Section**: 
-  - Contains the tokenizer vocabulary and special token IDs.
-  - **Alignment**: Applied preceding this section.
+## **1. Start Marker**
 
-- **Tensor Section**: 
-  - Stores weights and other necessary tensors.
-  - **Alignment**: Applied preceding this section.
+### **Purpose**
 
-- **End Marker**: 
-  - Marks the end of the file.
-  - **Alignment**: Applied preceding this section.
+The Start Marker identifies the file as adhering to the ALT format, establishing compatibility and alignment requirements for the rest of the file. This ensures parsers can validate the file efficiently and proceed with confidence. If the Start Marker is invalid, the file is considered incompatible, and parsing should halt.
 
-### Alignment Calculation
+### **Structure**
 
-- Calculate the alignment offset as follows:
-  - **ALIGNMENT** = 32
-  - **POSITION** = file.tell()
-  - **OFFSET** = POSITION % ALIGNMENT
-  - **PAD** = (ALIGNMENT - OFFSET) % ALIGNMENT
-  - If **PAD** > 0, insert **PAD** bytes of `0x00` padding.
+The Start Marker includes the **Header** and **Fields**, defining the format version, alignment rules, and section size.
 
-### 1. **Start Marker**
+### **Header**
 
-- **Purpose**: Identifies the file format as an ALT (Altiera) file format.
+| Field            | Description                    | Data Type | Size (bytes) | Notes                 |
+|------------------|--------------------------------|-----------|--------------|-----------------------|
+| `section_marker` | Identifies file format as ALT  | `int64`   | 8            | `0x616C7463` ("altc") |
+| `section_size`   | Total size of the Start Marker | `int64`   | 8            | Includes all fields   |
 
-- **Field**:
-  - `Magic Number (4 bytes, int32)`: `0x616C7463` ("altc" in hex).
-    - Where `altc` is shorthand for Altiera Cunningham
+### **Fields**
 
-- **Offset**: 
-  - Starts at byte `0`
-  - Ends at byte `4`
-  - Followed by a 32-byte aligned offset.
+| Field             | Description                    | Data Type | Size (bytes) | Notes      |
+|-------------------|--------------------------------|-----------|--------------|------------|
+| `magic_version`   | Version of the ALT file format | `int32`   | 4            | E.g., `2`  |
+| `magic_alignment` | Alignment requirement (bytes)  | `int32`   | 4            | E.g., `32` |
 
-- **Validation**: When reading the file, ensure the first 4 bytes match the specified magic number to verify format compatibility.
+### **Alignment**
 
-### 2. **Parameters Section**
+- The Start Marker does not include padding between fields.
+- The entire section must align to the next 32-byte boundary. Add `0x00` bytes after the last field if necessary to meet alignment requirements.
 
-- **Purpose**: Stores essential hyperparameters for inference, ensuring that the model has the necessary configurations for operation.
+### **Parsing Steps**
 
-- **Alignment**: Add 32-byte alignment as previously defined.
-  - Begins on the next 32-byte aligned offset after the **Start Marker**.
+1. **Retrieve and Validate Header**:
+   - Read the first 8 bytes and confirm the `magic_number` matches `0x616C7463`.
+   - If the magic number is invalid, halt processing and raise an error.
+2. **Read Section Size**:
+   - Retrieve the next 8 bytes to determine the total size of the Start Marker, including any alignment padding.
+3. **Parse Fields**:
+   - Read `magic_version` to identify the ALT file format version.
+   - Read `magic_alignment` to determine the alignment requirements for subsequent sections.
+4. **Apply Alignment**:
+   - Calculate the necessary padding to ensure alignment with the next 32-byte boundary.
+   - Add `0x00` bytes as required.
 
-- **Header**:
-  - **Marker**: (8 bytes, int64) `0xDEADBEEF` - A unique identifier for the **Parameters Section**.
-  - **Size**: (8 bytes, int64) - Indicates the total size of the **Parameters Section**.
+### **Example Binary Layout**
 
-- **Structure**: The parameters section will include the following fields (in the specified order):
-  - **Model Type**: 
-    - **Length**: (int32) - The length of the model's identifier string.
-    - **Identifier**: (string) - The model's identifier (e.g., "mistral").
+Here’s a binary representation of the Start Marker with `magic_version = 2` and `magic_alignment = 32`. This example assumes no unnecessary padding between fields:
 
-  - **Model Configuration** (4 bytes each, int32):
-    - `hidden_size` (int32): Embedding dimension (hidden size).
-    - `num_hidden_layers` (int32): Number of transformer layers (e.g., `32`).
-    - `intermediate_size` (int32): Size of the feed-forward networks, typically calculated as `4 * hidden_size` (e.g., `14336`).
-    - `num_attention_heads` (int32): Total number of attention heads (e.g., `32`).
-    - `num_key_value_heads` (int32): Number of key-value heads for Grouped-Query Attention (default matches `num_attention_heads` if not specified).
-    - `sliding_window` (int32): Size of the sliding window attention (e.g., `4096`).
-    - `rope_theta` (float32): Parameter for rotary embeddings (default `10000.0`).
-    - `rms_norm_eps` (float32): Epsilon for RMS normalization (default `1e-5`).
+| Offset | Field             | Data         | Size (bytes) | Notes                       |
+|--------|-------------------|--------------|--------------|-----------------------------|
+| 0x00   | `magic_number`    | `0x616C7463` | 8            | "altc" in hex               |
+| 0x08   | `section_size`    | `0x00000020` | 8            | 32 bytes total for section  |
+| 0x10   | `magic_version`   | `0x00000002` | 4            | ALT format version          |
+| 0x14   | `magic_alignment` | `0x00000020` | 4            | 32-byte alignment           |
+| 0x18   | Padding           | `0x00`       | 8            | Pad to 32-byte boundary     |
 
-  - **Model Parameters**:
-    - `head_size` (int32): Computed as `hidden_size / num_attention_heads`.
-    - `data_type` (int32): Data type indicator (e.g., `0` for float32, `1` for float16, `2` for qint8).
-    - `context_length` (int32): Maximum context length for the model (e.g., `8192`).
+---
 
-### 3. **Tokenizer Section**
+## **2. General Section**
 
-- **Purpose**: Contains the tokenizer vocabulary and special token IDs necessary for model operations.
+### **Purpose**
+The General Section provides high-level metadata that applies to the entire model, including configuration details, versioning, and attribution. This section supports model loading, version control, and traceability.
 
-- **Alignment**: Add 32-byte alignment as previously defined.
-  - Begins on the next 32-byte aligned offset after the **Parameters Section**.
+### **Structure**
+The General Section consists of three parts: **Header**, **Fields**, and **Alignment**.
 
-- **Header**:
-  - **Marker**: (8 bytes, int64) `0xBADDCAFE`.
-  - **Size**: (8 bytes, int64) - Indicates the total size of the tokenizer section.
+### **Header**
 
-- **Structure**:
-  - **Tokenizer Metadata** (4 bytes each, int32):
-    - `vocab_size`: Number of tokens.
-    - `bos_id`: Beginning-of-sequence token ID.
-    - `eos_id`: End-of-sequence token ID.
-    - `pad_id`: Padding token ID.
-    - `unk_id`: Unknown token ID.
-  - **Vocabulary Tokens**:
-    - **Each Token**:
-      - **Token Length** (4 bytes, int32): Byte length of the token string.
-      - **Token Data** (variable): UTF-8 encoded token string.
+| Field            | Description                   | Data Type | Size (bytes) | Notes            |
+|------------------|-------------------------------|-----------|--------------|------------------|
+| `section_marker` | Identifies General Section    | `int64`   | 8            | `0xCAFEBABE`     |
+| `section_size`   | Total size of General Section | `int64`   | 8            | Includes padding |
 
-### 4. **Tensor Section**
+### **Fields**
 
-- **Purpose**: Stores weights and other necessary tensors, sequentially ordered for efficient access.
+#### **Configuration**
 
-- **Alignment**: Add 32-byte alignment as previously defined.
-  - Begins on the next 32-byte aligned offset after the **Tokenizer Section**.
+| Field           | Description                     | Data Type | Size (bytes) | Notes                                  |
+|-----------------|---------------------------------|-----------|--------------|----------------------------------------|
+| `data_type`     | Primary data type for tensors   | `int32`   | 4            | `0` for float32, `1` for float16, etc. |
+| `quant_profile` | Profile for quantized data      | `int32`   | 4            | `0` if unquantized                     |
+| `context_len`   | Maximum context length (tokens) | `int32`   | 4            | e.g., `8192`                           |
 
-- **Header**:
-  - **Marker**: (8 bytes, int64) `0xFACEFEED`.
-  - **Size**: (8 bytes, int64) - Indicates the total size of the **Tensor Section**.
+#### **Model Information**
 
-- **Structure**:
-  - **Tensor Metadata**:
-    - `tensor_count` (8 bytes, int64): Total number of tensors.
-    - `shape_count` (8 bytes, int64): Total number of shape elements.
-  - **Each Tensor**:
-    - **Tensor Metadata**:
-      - `dimensions` (4 bytes, int32): Number of dimensions.
-      - `name_length` (4 bytes, int32): Length of the tensor name.
-      - `data_type` (4 bytes, int32): Data type.
-    - **Shape Dimensions** (4 bytes each, int32): Sequential dimensions of the tensor.
-    - **Tensor Name** (variable): UTF-8 encoded name.
-    - **Tensor Data** (variable): Raw data, following the specified `data_type`.
+- **Length Encoding**: Each UTF-8 string is prefixed by a 4-byte integer representing its byte length.
 
-### 5. **End Marker**
+| Field            | Description                   | Data Type | Notes                        |
+|------------------|-------------------------------|-----------|------------------------------|
+| `model_name_len` | Length of model name string   | `int32`   | Prefix for `model_name`      |
+| `model_name`     | Model name (UTF-8)            | `string`  | e.g., "mistral"              |
+| `author_len`     | Length of author name string  | `int32`   | Prefix for `author`          |
+| `author`         | Author name (UTF-8)           | `string`  | e.g., "MistralAI"            |
+| `uuid_len`       | Length of UUID string         | `int32`   | Prefix for `uuid`            |
+| `uuid`           | Unique model identifier       | `string`  | e.g., "c1355a8e-..."         |
+| `hash_len`       | Length of Hash string         | `int32`   | Prefix for `hash`            |
+| `hash`           | BLAKE2b hash of model weights | `string`  | Fixed length, e.g., 32 bytes |
 
-- **Purpose**: Marks the end of the file.
+#### **Optional Metadata**
 
-- **Alignment**: Add 32-byte alignment as previously defined.
-  - Begins on the next 32-byte aligned offset after the **Tensor Section**.
+| Field               | Description                    | Data Type | Notes                      |
+|---------------------|--------------------------------|-----------|----------------------------|
+| `date_created_len`  | Length of creation date string | `int32`   | Prefix for `date_created`  |
+| `date_created`      | Model creation date (UTF-8)    | `string`  | Format `YYYY-MM-DD`        |
+| `last_modified_len` | Length of modified date string | `int32`   | Prefix for `last_modified` |
+| `last_modified`     | Last modified date (UTF-8)     | `string`  | Format `YYYY-MM-DD`        |
+| `license_len`       | Length of license string       | `int32`   | Prefix for `license`       |
+| `license`           | Model license type (UTF-8)     | `string`  | e.g., "Apache-2.0"         |
 
-- **Field**:
-  - **End Marker**: (4 bytes, int32) `0xFFFFFFF`.
+### **Alignment**
 
-### Example Layout Summary
+The section must align to the next 32-byte boundary using padding. Add `0x00` bytes as necessary to reach the required alignment.
 
-| Offset       | Field                 | Size   | Description                                     |
-|--------------|-----------------------|--------|-------------------------------------------------|
-| 0            | Start Marker          | 4      | Magic number (`0x616C7463`, "altc")             |
-| 4            | Padding               | 28     | Padding to align to the next 32-byte boundary   |
-| 32           | Parameters Section    | Varies | Hyperparameters prefixed by section header      |
-| Aligned      | Tokenizer Section     | Varies | Vocabulary and special token IDs                |
-| Aligned      | Tensor Section        | Varies | Tensor metadata and binary data                 |
-| Aligned      | End Marker            | 4      | End marker (`0xFFFFFFF`)                        |
+### **Parsing Steps**
 
-### Key Notes
+1. **Verify Section Marker**:
+   - Read the first 8 bytes and confirm they match `0xCAFEBABE`.
+2. **Read Section Size**:
+   - Retrieve the 8-byte size of the General Section, including padding.
+3. **Parse Configuration**:
+   - Read each `int32` field for `version`, `data_type`, `quant_profile`, and `context_len`.
+4. **Parse Model Information**:
+   - For each UTF-8 string field:
+     - Read the 4-byte length prefix.
+     - Parse the string data of the specified length.
+5. **Parse Optional Metadata**:
+   - If present, repeat the length-and-string parsing process for optional fields like `date_created` and `license`.
+6. **Apply Alignment**:
+   - Add padding with `0x00` bytes as necessary to align to the next 32-byte boundary.
 
-1. **Endianess**: Files are little-endian by default. If not specified, assume little-endian.
-2. **Alignment**: Each section begins on a 32-byte aligned offset, facilitated by padding as required. The `alt/lib/magic.py` module provides `write_align_offset` and `read_align_offset` functions for handling this alignment during both reading and writing processes.
-3. **Token Encoding**: Token strings are UTF-8 encoded to handle multi-byte characters, ensuring compatibility with varied vocabularies and applications across different languages.
-4. **Dimension Ordering**: Shape dimensions are stored in sequential order to support tensor indexing operations effectively, improving the performance of tensor-related computations.
+---
+
+### **3. HyperParameters Section**
+
+#### **Purpose**
+
+The HyperParameters Section provides the core configuration values necessary for model inference. These parameters define the model's structure, including its layers, attention mechanism, and normalization details, ensuring accurate and efficient operation.
+
+#### **Structure**
+
+The HyperParameters Section includes three main parts: **Header**, **Fields**, and **Alignment**.
+
+#### **Header**
+
+| Field            | Description                        | Data Type | Size (bytes) | Notes               |
+|------------------|------------------------------------|-----------|--------------|---------------------|
+| `section_marker` | Identifies HyperParameters Section | `int64`   | 8            | Set to `0xDEADBEEF` |
+| `section_size`   | Total size of HyperParameters      | `int64`   | 8            | Includes padding    |
+
+#### **Fields**
+
+##### **Model Configuration**
+
+| Field                 | Description                       | Data Type   | Size (bytes) | Notes                             |
+|-----------------------|-----------------------------------|-------------|--------------|-----------------------------------|
+| `hidden_size`         | Embedding dimension (hidden size) | `int32`     | 4            | E.g., `4096`                      |
+| `num_hidden_layers`   | Number of transformer layers      | `int32`     | 4            | E.g., `32`                        |
+| `intermediate_size`   | Feed-forward network size         | `int32`     | 4            | Typically `4 * hidden_size`       |
+| `num_attention_heads` | Total number of attention heads   | `int32`     | 4            | E.g., `32`                        |
+| `num_key_value_heads` | Key-value heads for GQA           | `int32`     | 4            | Defaults to `num_attention_heads` |
+| `sliding_window`      | Sliding window size               | `int32`     | 4            | E.g., `4096`                      |
+| `rope_theta`          | Rotary embedding theta            | `float32`   | 4            | Default `10000.0`                 |
+| `rms_norm_eps`        | Epsilon for RMS normalization     | `float32`   | 4            | Default `1e-5`                    |
+
+##### **Derived Parameters**
+
+| Field         | Description                                                | Data Type | Size (bytes) | Notes                                           |
+|---------------|------------------------------------------------------------|-----------|--------------|-------------------------------------------------|
+| `head_size`   | Head size, calculated from hidden size and attention heads | `int32`   | 4            | Computed as `hidden_size / num_attention_heads` |
+
+#### **Alignment**
+
+The section must align to the next 32-byte boundary using padding. Add `0x00` bytes as necessary to reach the required alignment.
+
+#### **Parsing Steps**
+
+1. **Verify Section Marker**:
+   - Confirm the first 8 bytes match `0xDEADBEEF` to identify the section.
+2. **Read Section Size**:
+   - Retrieve the 8-byte value to determine the total byte length of the section, including padding.
+3. **Parse Configuration Fields**:
+   - Read each field in sequence as specified:
+     - Parse integers for structural details (`hidden_size`, `num_hidden_layers`, etc.).
+     - Parse floats for precision-based configurations (`rope_theta`, `rms_norm_eps`).
+4. **Calculate Derived Parameters**:
+   - Compute any derived fields (e.g., `head_size`) based on the primary configuration fields.
+5. **Apply Alignment**:
+   - Add padding bytes (`0x00`) to ensure the section aligns with the next 32-byte boundary.
+
+---
+
+## **4. Tokenizer Section**
+
+### **Purpose**
+
+The Tokenizer Section contains vocabulary and special token IDs needed for input tokenization, supporting diverse tokenization schemes (e.g., SentencePiece) and enabling the model to handle unique token types, scores, and token-specific metadata.
+
+### **Structure**
+
+The Tokenizer Section has three main parts: the **Header**, **Tokenizer Metadata**, and **Vocabulary Tokens**.
+
+### **Header**
+
+| Field            | Description                     | Data Type | Size (bytes) | Notes           |
+|------------------|---------------------------------|-----------|--------------|-----------------|
+| `section_marker` | Identifies Tokenizer Section    | `int64`   | 8            | `0xBADDCAFE`    |
+| `section_size`   | Total size of Tokenizer Section | `int64`   | 8            | Varies in size  |
+
+### **Fields**
+
+#### **Tokenizer Metadata**
+
+| Field        | Description                    | Data Type | Size (bytes) | Notes             |
+|--------------|--------------------------------|-----------|--------------|-------------------|
+| `vocab_size` | Total number of tokens         | `int32`   | 4            |                   |
+| `bos_id`     | Beginning-of-sequence token ID | `int32`   | 4            |                   |
+| `eos_id`     | End-of-sequence token ID       | `int32`   | 4            |                   |
+| `pad_id`     | Padding token ID               | `int32`   | 4            |                   |
+| `unk_id`     | Unknown token ID               | `int32`   | 4            |                   |
+
+#### **Vocabulary Tokens**
+
+Each token in the vocabulary is stored sequentially and contains additional fields for its type and score, enabling the tokenizer to handle special tokens and different token types efficiently.
+
+| Field         | Description                      | Data Type | Size (bytes) | Notes                           |
+|---------------|----------------------------------|-----------|--------------|---------------------------------|
+| `token_len`   | Length of each token (per token) | `int32`   | 4            | Prefix for each token’s data    |
+| `token_data`  | Token string data (UTF-8)        | `string`  | Variable     | UTF-8 encoded byte sequence     |
+| `token_score` | Score or frequency of the token  | `float32` | 4            | E.g., log probability           |
+| `token_type`  | Token type                       | `int32`   | 4            | Enum: `NORMAL`, `UNKNOWN`, etc. |
+
+- **Token Types**:
+  - Using a type enum based on the GGUF `TokenType`, the tokenizer can classify tokens as `NORMAL`, `UNKNOWN`, `CONTROL`, `USER_DEFINED`, `UNUSED`, or `BYTE`.
+
+### **Alignment**
+
+The Tokenizer Section must align to the next 32-byte boundary after all tokens are written. Use `0x00` bytes for padding as needed.
+
+### **Parsing Steps**
+
+1. **Verify Section Marker**:
+   - Confirm the 8-byte section marker (`0xBADDCAFE`) for the Tokenizer Section.
+2. **Read Section Size**:
+   - Retrieve the section size (8 bytes) to determine the total byte length of the section.
+3. **Parse Tokenizer Metadata**:
+   - Read `vocab_size`, `bos_id`, `eos_id`, `pad_id`, and `unk_id`.
+4. **Parse Vocabulary Tokens**:
+   - For each token:
+     - Read the 4-byte `token_len` and then retrieve `token_data` (UTF-8 string).
+     - Extract `token_score` (e.g., log probability).
+     - Retrieve `token_type` to classify the token.
+5. **Apply Alignment**:
+   - Add padding with `0x00` bytes if needed to reach the next 32-byte boundary.
+
+### **Token Types Enum**
+
+Using an enum for token types allows parsers to easily identify special tokens. Here’s a proposed enum based on GGUF:
+
+```python
+class TokenType(IntEnum):
+    NORMAL       = 0
+    UNKNOWN      = 1
+    CONTROL      = 2
+    USER_DEFINED = 3
+    UNUSED       = 4
+    BYTE         = 5
+```
+
+### **Example Binary Layout**
+
+Let’s demonstrate a sample Tokenizer Section layout with three tokens, including token type and score fields:
+
+| Offset | Field            | Data         | Size (bytes) | Notes                          |
+|--------|------------------|--------------|--------------|--------------------------------|
+| 0x00   | `section_marker` | `0xBADDCAFE` | 8            | Tokenizer section identifier   |
+| 0x08   | `section_size`   | `0x000000A0` | 8            | Size in bytes                  |
+| 0x10   | `vocab_size`     | `0x00000003` | 4            | Vocabulary size of 3 tokens    |
+| 0x14   | `bos_id`         | `0x00000001` | 4            | Beginning-of-sequence token ID |
+| 0x18   | `eos_id`         | `0x00000002` | 4            | End-of-sequence token ID       |
+| 0x1C   | `pad_id`         | `0x00000000` | 4            | Padding token ID               |
+| 0x20   | `unk_id`         | `0x00000003` | 4            | Unknown token ID               |
+| 0x24   | `token_len`      | `0x00000004` | 4            | Length for "hello"             |
+| 0x28   | `token_data`     | "hello"      | Variable     | UTF-8 encoded token string     |
+| 0x2C   | `token_score`    | `0.5`        | 4            | Token score                    |
+| 0x30   | `token_type`     | `0x00000001` | 4            | Token type `NORMAL`            |
+| 0x34   | `token_len`      | `0x00000004` | 4            | Length for "world"             |
+| 0x38   | `token_data`     | "world"      | Variable     | UTF-8 encoded token string     |
+| 0x3C   | `token_score`    | `0.8`        | 4            | Token score                    |
+| 0x40   | `token_type`     | `0x00000001` | 4            | Token type `NORMAL`            |
+| 0x44   | `token_len`      | `0x00000001` | 4            | Length for "!"                 |
+| 0x48   | `token_data`     | "!"          | Variable     | UTF-8 encoded token string     |
+| 0x4C   | `token_score`    | `-1.0`       | 4            | Token score                    |
+| 0x50   | `token_type`     | `0x00000003` | 4            | Token type `NORMAL`            |
+| 0x54   | Padding          | `0x00`       | 12           | Pad to next 32-byte boundary   |
+
+---
+
+### **5. Tensor Section**
+
+#### **Purpose**
+
+The Tensor Section contains the model's weight data, supporting various tensor formats and allowing quantization for optimized storage and computation. The section is organized with a **Header** and **Metadata**, followed by **Per-Tensor Metadata** for each tensor in the model.
+
+#### **Header Fields**
+
+| Field            | Description                               | Data Type | Notes                                    |
+|------------------|-------------------------------------------|-----------|------------------------------------------|
+| `section_marker` | Uniquely identifies the section           | `int64`   | Set to `0xFACEFEED` for the Tensor Section |
+| `section_size`   | Total byte size of the section            | `int64`   | E.g., `4900236` bytes for the Tensor Section |
+
+#### **Metadata Fields**
+
+| Field            | Description                               | Data Type | Notes                                    |
+|------------------|-------------------------------------------|-----------|------------------------------------------|
+| `tensor_count`   | Total number of tensors in the section    | `int64`   | Includes tensors from all blocks and unique components |
+| `shape_count`    | Total number of shape dimensions          | `int64`   | Sum of all dimensions for all tensors    |
+| `block_count`    | Total number of blocks (standard layers)  | `int32`   | E.g., `32` for `Mistral-7B`              |
+| `unique_count`   | Number of unique components               | `int32`   | E.g., `3` for `embed_tokens`, `lm_head`, `norm` |
+
+#### **Per-Tensor Metadata**
+
+Each tensor in the section is defined by a set of fields providing information on its role, shape, and storage requirements.
+
+| Field              | Description                                 | Data Type | Notes                                    |
+|--------------------|---------------------------------------------|-----------|------------------------------------------|
+| `component_type`   | Primary model component type                | `int32`   | Identifies `"layers"`, `"embed_tokens"`, `"lm_head"`, `"norm"`, etc. |
+| `block_index`      | Block index (positive) or unique (negative) | `int32`   | `0–31` for blocks, `-1` for `embed_tokens`, `-2` for `lm_head`, `-3` for `norm` |
+| `layer_type`       | Subdivision within block, if any            | `int32`   | Maps to `"self_attn"`, `"mlp"`, `"input_layernorm"`, etc. |
+| `projection_type`  | Subdivision of layer type, if any           | `int32`   | Maps to `"q_proj"`, `"v_proj"`, `"o_proj"`, etc. |
+| `n_dims`           | Number of dimensions in the tensor          | `int32`   | E.g., `2` for matrices                 |
+| `shape_dimensions` | List of dimension sizes per tensor          | `int32[]` | Sizes of each dimension                |
+| `name_len`         | Length of the tensor name                   | `int32`   | Prefix for `tensor_name`               |
+| `tensor_name`      | UTF-8 encoded tensor name                   | `string`  | E.g., `"model.layers.0.self_attn.q_proj.weight"` |
+| `data_type`        | Storage format for tensor data              | `int32`   | Maps to `float32`, `float16`, `qint8`, `qint4` |
+| `delta`            | Scaling factor for quantized data           | `float32` | Only for quantized tensors             |
+| `min`              | Minimum value for range-based quantization  | `float32` | Optional; use `0` if not needed        |
+| `max`              | Maximum value for range-based quantization  | `float32` | Optional; use `0` if not needed        |
+| `packing_flag`     | Indicates packed/unpacked data              | `int8`    | `1` = packed, `0` = unpacked           |
+| `tensor_data`      | Raw tensor data                             | Variable  | Serialized according to `data_type`    |
+
+#### **Parsing Steps**
+
+1. **Header Parsing**:
+   - Read `section_marker` to confirm the section identity (`0xFACEFEED`).
+   - Use `section_size` to calculate the total length of the Tensor Section, enabling efficient validation or skipping if necessary.
+
+2. **Metadata Parsing**:
+   - Retrieve `tensor_count`, `shape_count`, `block_count`, and `unique_count` to initialize parsing for the tensors in this section.
+
+3. **Per-Tensor Metadata Parsing**:
+   - For each tensor:
+     - Read `component_type` and `block_index` to identify the tensor’s primary component and unique vs. block index.
+     - Parse `layer_type` and `projection_type` for specific layer and projection identification within blocks.
+     - Retrieve `n_dims`, `shape_dimensions`, and `tensor_name` to identify the tensor’s shape and name.
+     - Check `data_type` and parse any quantization metadata (`delta`, `min`, `max`).
+     - Use `packing_flag` to determine if data is packed before reading `tensor_data`.
+
+4. **Tensor Data Extraction**:
+   - Extract tensor data based on `data_type` and apply quantization metadata if applicable.
+
+#### **Example Tensor Metadata**
+
+For a tensor in a standard block layer (`self_attn.q_proj.weight`):
+
+```json
+{
+  "component_type": "layers",
+  "block_index": 0,
+  "layer_type": "self_attn",
+  "projection_type": "q_proj",
+  "n_dims": 2,
+  "shape_dimensions": [4096, 4096],
+  "name_len": 38,
+  "tensor_name": "model.layers.0.self_attn.q_proj.weight",
+  "data_type": "float32",
+  "delta": 0.0,
+  "min": 0.0,
+  "max": 0.0,
+  "packing_flag": 0,
+  "tensor_data": "..."
+}
+```
+
+And for a unique component (`lm_head.weight`):
+
+```json
+{
+  "component_type": "lm_head",
+  "block_index": -2,
+  "layer_type": "weight",
+  "projection_type": "",
+  "n_dims": 2,
+  "shape_dimensions": [32000, 4096],
+  "name_len": 14,
+  "tensor_name": "lm_head.weight",
+  "data_type": "float32",
+  "delta": 0.0,
+  "min": 0.0,
+  "max": 0.0,
+  "packing_flag": 0,
+  "tensor_data": "..."
+}
+```
+
+---
+
+## **6. End Marker**
+
+### **Purpose**
+
+The End Marker signals the absolute end of the file. Its presence confirms that all preceding sections have been read in full, and any attempt to read past this point is undefined behavior.
+
+### **Structure**
+
+| Field        | Description               | Data Type | Size (bytes) | Value        |
+|--------------|---------------------------|-----------|--------------|--------------|
+| `end_marker` | Marks the end of the file | `int64`   | 8            | `0x0FFFFFFF` |
+
+- **End Marker Field**: A 8-byte integer (`int64`), set to `0x0FFFFFFF`, that uniquely identifies the end of the file.
+- **No Alignment**: There is no padding or alignment after the End Marker; any attempt to read beyond this point is undefined.
+
+### **Parsing Steps**
+
+1. **Verify End Marker**:
+   - Read the 8-byte integer value at the current position.
+   - Confirm it matches `0x0FFFFFFF` to validate the end of the file.
+2. **End of File**:
+   - Parsing should terminate here. Any attempt to read past the End Marker is considered undefined behavior.
+
+### **Example Layout Summary**
+
+This summary consolidates the structure and layout of the ALT file format, showing each section’s expected alignment and size:
+
+| Offset  | Field                   | Size     | Description                                           |
+|---------|-------------------------|----------|-------------------------------------------------------|
+| 0       | Start Marker            | 16       | Magic number (`0x616C7463`, "altc") and `section_size` |
+| 16      | Fields                  | 8        | `magic_version` and `magic_alignment`                  |
+| 24      | Padding                 | 8        | Padding to align to the next 32-byte boundary         |
+| 32      | General Section         | Variable | Metadata, including name, author, and UUID            |
+| Aligned | HyperParameters Section | Variable | Model hyperparameters prefixed by section header      |
+| Aligned | Tokenizer Section       | Variable | Vocabulary, token types, and special token IDs        |
+| Aligned | Tensor Section          | Variable | Tensor metadata and packed binary data                |
+| Aligned | End Marker              | 4        | End marker (`0x0FFFFFFF`) - Marks end of file         |
+
+### Notes:
+
+- **Aligned Sections**: Each section starts on a 32-byte boundary following its predecessor.
+- **Padding**: Padding is only applied where necessary to reach the alignment requirement, and sections do not contain intra-field padding.
+- **Variable Size Sections**: Sections like General, Tokenizer, and Tensors vary in size depending on model-specific details but are clearly marked by `section_marker` and `section_size`.
+
+---
+
+## **Parsing Algorithm Overview**
+
+1. **Magic Value Check**:
+   - **Objective**: Validate that the file is in ALT format.
+   - **Process**: Read the initial 8 bytes and confirm they match the ALT magic value (`0x616C7463`).
+   - **Outcome**: If valid, continue parsing; otherwise, terminate with an error.
+
+2. **Read and Align Sections**:
+   - **Objective**: Ensure each section is correctly 32-byte aligned for efficient access.
+   - **Process**:
+     1. Calculate any necessary padding, adjusting the file pointer as needed.
+     2. Locate each section’s start via its section marker and size fields.
+   - **Outcome**: Aligned sections that support consistent data access.
+
+3. **Process Each Section**:
+   - **Objective**: Sequentially parse each model component.
+   - **Steps**:
+     - **General Section**: Read core metadata (e.g., model name, version).
+     - **Parameters Section**: Load hyperparameters, such as model dimensions and layer count.
+     - **Tokenizer Section**: Extract vocabulary and special tokens (e.g., BOS, EOS).
+     - **Tensor Section**: Parse tensor data, applying quantization as specified.
+   - **Outcome**: Each model component is parsed, ready for storage or immediate use.
+
+4. **Validate Section Integrity**:
+   - **Objective**: Ensure each section’s contents match expected structure and types.
+   - **Process**:
+     - Verify section markers, sizes, and validate data fields.
+     - Ensure each section adheres to expected data types and lengths.
+   - **Outcome**: Confirms file structure accuracy and prevents runtime issues.
+
+5. **End Marker Verification**:
+   - **Objective**: Confirm the end of the file with the correct end marker.
+   - **Process**: Check that the final 4 bytes match the end marker (`0x0FFFFFFF`).
+   - **Outcome**: Successful completion, marking the end of parsing.
 
 ## Conclusion
 
-This specification provides a clear layout and simplifies parsing by maintaining a sequential structure, making it efficient and compatible with C-based executors. It serves as a solid foundation for current implementations while allowing for future extensions or modifications as needed.
+This specification provides a streamlined, sequential layout for the ALT model file format, optimizing parsing simplicity and compatibility with C-based executors. By maintaining a consistent structure with explicit markers, aligned sections, and flexible quantization support, this format establishes a robust foundation for current and future model implementations.
+
+### Key Notes
+
+1. **Endianness**: The ALT format uses little-endian encoding by default. When not specified, assume little-endian for all fields.
+2. **Alignment**: Each section starts on a 32-byte aligned offset, achieved through padding as needed. The `alt/lib/magic.py` module provides `write_align_offset` and `read_align_offset` functions, simplifying alignment handling for both reading and writing.
+3. **UTF-8 Encoding**: Token strings and tensor names are UTF-8 encoded, supporting multilingual vocabularies and facilitating seamless token handling across varied languages.
+4. **Quantization and Precision Flexibility**: The Tensor Section supports mixed precision and quantization, allowing efficient memory use and computational performance based on model requirements.
+5. **Dimension Ordering**: Shape dimensions are stored sequentially to optimize tensor indexing and operations, enhancing performance for tensor computations.
 
 ---
 
