@@ -531,7 +531,7 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     // General UUID
     uuid_t binuuid;
     uuid_generate_random(binuuid);
-    #define UUID_STR_LEN 37
+    #define UUID_STR_LEN 37 // 36 characters + 1 null character
     int32_t uuid_len = UUID_STR_LEN;
     char* uuid = malloc(uuid_len);
     if (uuid == NULL) {
@@ -585,18 +585,100 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     return MAGIC_SUCCESS;
 }
 
+MagicState load_general_section(MagicFile* magic_file, char** model_name, char** author, char** uuid) {
+    // Read and validate section marker
+    int64_t section_marker, section_size;
+    if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to read general section marker.\n");
+        return MAGIC_ERROR;
+    }
+    if (section_marker != MAGIC_GENERAL) {
+        fprintf(stderr, "Invalid section marker for general section.\n");
+        return MAGIC_INVALID_MARKER;
+    }
+
+    // Read the data type (not used in this example, but read for consistency)
+    int32_t data_type;
+    if (fread(&data_type, sizeof(int32_t), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read data type.\n");
+        return MAGIC_ERROR;
+    }
+
+    // Read model name
+    int32_t model_name_len;
+    if (fread(&model_name_len, sizeof(int32_t), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read model name length.\n");
+        return MAGIC_ERROR;
+    }
+    *model_name = malloc(model_name_len);
+    if (*model_name == NULL) {
+        fprintf(stderr, "Failed to allocate memory for model name.\n");
+        return MAGIC_ERROR;
+    }
+    if (fread(*model_name, model_name_len, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read model name.\n");
+        free(*model_name);
+        return MAGIC_ERROR;
+    }
+
+    // Read author name
+    int32_t author_len;
+    if (fread(&author_len, sizeof(int32_t), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read author name length.\n");
+        free(*model_name);
+        return MAGIC_ERROR;
+    }
+    *author = malloc(author_len);
+    if (*author == NULL) {
+        fprintf(stderr, "Failed to allocate memory for author name.\n");
+        free(*model_name);
+        return MAGIC_ERROR;
+    }
+    if (fread(*author, author_len, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read author name.\n");
+        free(*model_name);
+        free(*author);
+        return MAGIC_ERROR;
+    }
+
+    // Read UUID
+    int32_t uuid_len;
+    if (fread(&uuid_len, sizeof(int32_t), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read UUID length.\n");
+        free(*model_name);
+        free(*author);
+        return MAGIC_ERROR;
+    }
+    *uuid = malloc(uuid_len);
+    if (*uuid == NULL) {
+        fprintf(stderr, "Failed to allocate memory for UUID.\n");
+        free(*model_name);
+        free(*author);
+        return MAGIC_ERROR;
+    }
+    if (fread(*uuid, uuid_len, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read UUID.\n");
+        free(*model_name);
+        free(*author);
+        free(*uuid);
+        return MAGIC_ERROR;
+    }
+
+    return MAGIC_SUCCESS;
+}
+
 MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
         fprintf(stderr, "Failed to open file %s for writing.\n", filepath);
-        return;
+        return MAGIC_ERROR;
     }
 
     // Write Start Marker
     if (magic_write_start_marker(&magic_file, MAGIC_VERSION, MAGIC_ALIGNMENT) != MAGIC_SUCCESS) {
         fprintf(stderr, "Failed to write start marker.\n");
         magic_file.close(&magic_file);
-        return;
+        return MAGIC_ERROR;
     }
 
     // General Section
@@ -610,7 +692,7 @@ MagicState mlp_save(MLP* model, const char* filepath) {
     if (magic_write_section_marker(&magic_file, MAGIC_PARAMETERS, param_size) != MAGIC_SUCCESS) {
         fprintf(stderr, "Failed to write parameters section marker.\n");
         magic_file.close(&magic_file);
-        return;
+        return MAGIC_ERROR;
     }
     fwrite(&epochs, sizeof(uint32_t), 1, magic_file.model);
     fwrite(&learning_rate, sizeof(float), 1, magic_file.model);
@@ -627,7 +709,7 @@ MagicState mlp_save(MLP* model, const char* filepath) {
     if (magic_write_section_marker(&magic_file, MAGIC_TENSORS, tensors_size) != MAGIC_SUCCESS) {
         fprintf(stderr, "Failed to write tensors section marker.\n");
         magic_file.close(&magic_file);
-        return;
+        return MAGIC_ERROR;
     }
     fwrite(&model->num_layers, sizeof(uint32_t), 1, magic_file.model);
     for (uint32_t i = 0; i < model->num_layers; i++) {
@@ -644,11 +726,12 @@ MagicState mlp_save(MLP* model, const char* filepath) {
     if (magic_write_end_marker(&magic_file) != MAGIC_SUCCESS) {
         fprintf(stderr, "Failed to write end marker.\n");
         magic_file.close(&magic_file);
-        return;
+        return MAGIC_ERROR;
     }
 
     // Close the file
     magic_file.close(&magic_file);
+    return MAGIC_SUCCESS;
 }
 
 int main(int argc, char* argv[]) {
