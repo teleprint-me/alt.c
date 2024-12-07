@@ -28,7 +28,10 @@
 // Constants denoting state change for model data.
 typedef enum MagicState {
     MAGIC_SUCCESS,
-    MAGIC_ERROR
+    MAGIC_ERROR,
+    MAGIC_INVALID_MARKER,
+    MAGIC_ALIGNMENT_ERROR,
+    MAGIC_FILE_ERROR
 } MagicState;
 
 /**
@@ -41,7 +44,7 @@ typedef struct MagicFile {
     FILE* model; /**< File pointer to the open model */
 
     // Member function pointers
-    FILE* (*open)(struct MagicFile* self);
+    MagicState (*open)(struct MagicFile* self);
     MagicState (*validate)(struct MagicFile* self);
     void (*close)(struct MagicFile* self);
 } MagicFile;
@@ -51,14 +54,14 @@ typedef struct MagicFile {
 /**
  * @brief Opens the model file based on the MagicFile structure.
  * @param magic_file Pointer to the MagicFile structure.
- * @return FILE* pointer if successful, NULL on failure.
+ * @return MAGIC_SUCCESS if successful, MAGIC_FILE_ERROR on failure.
  */
-FILE* magic_file_open(MagicFile* magic_file);
+MagicState magic_file_open(MagicFile* magic_file);
 
 /**
  * @brief Validates the model file, checking existence and permissions.
  * @param magic_file Pointer to the MagicFile structure.
- * @return 1 if valid, 0 if invalid.
+ * @return MAGIC_SUCCESS if valid, MAGIC_ERROR if invalid.
  */
 MagicState magic_file_validate(MagicFile* magic_file);
 
@@ -68,6 +71,8 @@ MagicState magic_file_validate(MagicFile* magic_file);
  */
 void magic_file_close(MagicFile* magic_file);
 
+// MagicFile constructor (no destructor is needed as no memory is allocated)
+
 /**
  * @brief Constructs and initializes a MagicFile instance.
  * @param filepath Path to the file.
@@ -76,62 +81,58 @@ void magic_file_close(MagicFile* magic_file);
  */
 MagicFile magic_file_create(const char* filepath, const char* mode);
 
+// Utilities
+
 /**
  * @brief Helper function for guarding write and read operations.
  *        Ensures the MagicFile structure and file pointer are valid.
  * @param magic_file Pointer to the MagicFile structure.
- * @return 1 if valid, 0 if invalid.
+ * @return MAGIC_SUCCESS if valid, MAGIC_ERROR if invalid.
  */
 MagicState magic_file_guard(MagicFile* magic_file);
 
-// Write functions
+// Alignment
 
 /**
- * @brief Writes the start marker (MAGIC_ALT) to the model file.
+ * @brief Aligns the file pointer to the nearest MAGIC_ALIGNMENT boundary.
  * @param magic_file Pointer to the MagicFile structure.
- * @return 0 on success, -1 on failure.
  */
-MagicState magic_write_start_marker(MagicFile* magic_file);
+void magic_apply_padding(MagicFile* magic_file);
 
-/**
- * @brief Writes the end marker (MAGIC_END) to the model file.
- * @param magic_file Pointer to the MagicFile structure.
- * @return 0 on success, -1 on failure.
- */
-MagicState magic_write_end_marker(MagicFile* magic_file);
+// Section handling functions
 
 /**
  * @brief Writes a section marker and its size to the model file.
  * @param magic_file Pointer to the MagicFile structure.
  * @param marker The section marker identifier.
  * @param section_size The size of the section in bytes.
- * @return 0 on success, -1 on failure.
+ * @return MAGIC_SUCCESS on success, MAGIC_ERROR on failure.
  */
 MagicState magic_write_section_marker(MagicFile* magic_file, int64_t marker, int64_t section_size);
-
-// Read functions
-
-/**
- * @brief Reads and validates the start marker (MAGIC_ALT) from the model file.
- * @param magic_file Pointer to the MagicFile structure.
- * @return 0 if valid, -1 if invalid.
- */
-MagicState magic_read_start_marker(MagicFile* magic_file);
-
-/**
- * @brief Reads and validates the end marker (MAGIC_END) from the model file.
- * @param magic_file Pointer to the MagicFile structure.
- * @return 0 if valid, -1 if invalid.
- */
-MagicState magic_read_end_marker(MagicFile* magic_file);
 
 /**
  * @brief Reads a section marker and its size from the model file.
  * @param magic_file Pointer to the MagicFile structure.
  * @param marker Pointer to store the section marker identifier.
  * @param section_size Pointer to store the section size in bytes.
- * @return 0 on success, -1 on failure.
+ * @return MAGIC_SUCCESS on success, MAGIC_ERROR on failure.
  */
 MagicState magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* section_size);
+
+// Marker handling functions
+
+/**
+ * @brief Writes the end marker (MAGIC_END) to the model file.
+ * @param magic_file Pointer to the MagicFile structure.
+ * @return MAGIC_SUCCESS on success, MAGIC_ERROR on failure.
+ */
+MagicState magic_write_end_marker(MagicFile* magic_file);
+
+/**
+ * @brief Reads and validates the end marker (MAGIC_END) from the model file.
+ * @param magic_file Pointer to the MagicFile structure.
+ * @return MAGIC_SUCCESS if valid, MAGIC_ERROR if invalid.
+ */
+MagicState magic_read_end_marker(MagicFile* magic_file);
 
 #endif // ALT_MAGIC_H
