@@ -66,7 +66,7 @@ add_subdirectory(examples/models)
 # Link necessary libraries (e.g., math, real-time library, Vulkan if Linux)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_compile_options("alt" PRIVATE -pthread)
-    target_link_libraries("alt" PUBLIC m rt vulkan)
+    target_link_libraries("alt" PUBLIC m uuid rt vulkan)
 endif()
 
 # Custom clean target for removing generated files (optional)
