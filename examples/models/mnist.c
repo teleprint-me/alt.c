@@ -95,8 +95,8 @@ void mlp_free(MLP* model);
 void mlp_forward(MLP* model, float* input);
 void mlp_backward(MLP* model, float* input, float* target);
 void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_threshold);
-void mlp_save(MLP* model, const char* filepath);
-void mlp_load(MLP* model, const char* filepath);
+MagicState mlp_save(MLP* model, const char* filepath);
+MagicState mlp_load(MLP* model, const char* filepath);
 
 void* parallel_forward_pass(void* args);
 void* parallel_backward_pass(void* args);
@@ -515,9 +515,77 @@ void* parallel_backward_pass(void* args) {
     return NULL;
 }
 
-// Writing and reading model files
+// Save MLP to a model file
 
-void mlp_save(MLP* model, const char* filepath) {
+MagicState save_general_section(MagicFile* magic_file, const char* model_name, const char* author) {
+    // General configuration
+    const int32_t data_type = TYPE_FLOAT32;
+    const int32_t data_type_size = sizeof(data_type);
+
+    // General model name
+    const int32_t model_name_len = strlen(model_name) + 1;
+
+    // General author name
+    const int32_t author_len = strlen(author) + 1;
+
+    // General UUID
+    uuid_t binuuid;
+    uuid_generate_random(binuuid);
+    #define UUID_STR_LEN 37
+    int32_t uuid_len = UUID_STR_LEN;
+    char* uuid = malloc(uuid_len);
+    if (uuid == NULL) {
+        fprintf(stderr, "Failed to allocate memory for UUID.\n");
+        return MAGIC_ERROR;
+    }
+    uuid_unparse_lower(binuuid, uuid);
+
+    // Calculate General Section size
+    uint64_t general_size = data_type_size + 
+                            sizeof(model_name_len) + model_name_len +
+                            sizeof(author_len) + author_len +
+                            sizeof(uuid_len) + uuid_len;
+
+    // Write section marker
+    if (magic_write_section_marker(magic_file, MAGIC_GENERAL, general_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write general section marker.\n");
+        free(uuid);
+        return MAGIC_ERROR;
+    }
+
+    // Write the data type
+    if (fwrite(&data_type, data_type_size, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write data type.\n");
+        free(uuid);
+        return MAGIC_ERROR;
+    }
+    // Write the model name and length
+    if (fwrite(&model_name_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
+        fwrite(model_name, model_name_len, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write model name.\n");
+        free(uuid);
+        return MAGIC_ERROR;
+    }
+    // Write the author name and length
+    if (fwrite(&author_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
+        fwrite(author, author_len, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write author name.\n");
+        free(uuid);
+        return MAGIC_ERROR;
+    }
+    // Write the UUID and length
+    if (fwrite(&uuid_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
+        fwrite(uuid, uuid_len, 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write UUID.\n");
+        free(uuid);
+        return MAGIC_ERROR;
+    }
+    free(uuid); // Cleanup
+
+    return MAGIC_SUCCESS;
+}
+
+MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
         fprintf(stderr, "Failed to open file %s for writing.\n", filepath);
@@ -532,46 +600,7 @@ void mlp_save(MLP* model, const char* filepath) {
     }
 
     // General Section
-
-    // General configuration
-    const int32_t data_type = TYPE_FLOAT32;
-    const int32_t data_type_size = sizeof(data_type);
-
-    // General model name
-    const char* model_name = "MNIST MLP";
-    const int32_t model_name_len = strlen(model_name) + 1;
-
-    // General author name
-    const char* author = "Austin Berrio";
-    const int32_t author_len = strlen(author) + 1;
-
-    // General UUID
-    uuid_t binuuid;
-    uuid_generate_random(binuuid);
-    int32_t uuid_len = 36 + 1;
-    char* uuid = malloc(uuid_len);
-    uuid_unparse_lower(binuuid, uuid);
-
-    // General marker and size
-    uint64_t general_size = data_type_size + model_name_len + author_len + uuid_len;
-    if (magic_write_section_marker(&magic_file, MAGIC_GENERAL, general_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write general section marker.\n");
-        magic_file.close(&magic_file);
-        return;
-    }
-    
-    // Write the data type
-    fwrite(&data_type, data_type_size, 1, magic_file.model);
-    // Write the model name and length (len always precedes str data)
-    fwrite(&model_name_len, sizeof(int32_t), 1, magic_file.model);
-    fwrite(model_name, model_name_len, 1, magic_file.model);
-    // Write the author name and length
-    fwrite(&author_len, sizeof(int32_t), 1, magic_file.model);
-    fwrite(author, author_len, 1, magic_file.model);
-    // Write the model uuid
-    fwrite(&uuid_len, sizeof(int32_t), 1, magic_file.model);
-    fwrite(uuid, uuid_len, 1, magic_file.model);
-    free(uuid); // cleanup
+    save_general_section(&magic_file, "MNIST MLP", "Austin Berrio");
 
     // Parameters Section
     uint32_t epochs = EPOCHS;
