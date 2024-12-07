@@ -8,9 +8,7 @@
  */
 
 #include "magic.h"
-
-#include <stdlib.h>
-#include <unistd.h>
+#include "logger.h"
 
 // Function definitions
 FILE* magic_file_open(MagicFile* magic_file) {

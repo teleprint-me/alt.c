@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 // Constants denoting partitioned sectors for model data.
 #define MAGIC_ALT 0x616C7400 // 8 bytes; 'alt' in hex
