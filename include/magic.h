@@ -95,9 +95,11 @@ MagicState magic_file_guard(MagicFile* magic_file);
 
 /**
  * @brief Aligns the file pointer to the nearest MAGIC_ALIGNMENT boundary.
+ *        Handles padding for writing or skips padding for reading.
  * @param magic_file Pointer to the MagicFile structure.
+ * @return MAGIC_SUCCESS if successful, MAGIC_ALIGNMENT_ERROR on failure.
  */
-void magic_apply_padding(MagicFile* magic_file);
+MagicState magic_apply_padding(MagicFile* magic_file);
 
 // Section handling functions
 
