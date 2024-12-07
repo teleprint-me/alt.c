@@ -134,7 +134,7 @@ void magic_read_align_offset(MagicFile* magic_file) {
     // Read zero bytes to align if padding is required
     if (padding_needed > 0) {
         fseek(magic_file->model, padding_needed, SEEK_CUR);
-        printf("Aligned offset with %d bytes of padding.\n", padding_needed);
+        printf("Aligned offset with %ld bytes of padding.\n", padding_needed);
     }
 }
 

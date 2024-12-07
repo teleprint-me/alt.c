@@ -40,7 +40,7 @@ typedef struct MagicFile {
 
     // Member function pointers
     FILE* (*open)(struct MagicFile* self);
-    int (*validate)(struct MagicFile* self);
+    MagicState (*validate)(struct MagicFile* self);
     void (*close)(struct MagicFile* self);
 } MagicFile;
 
