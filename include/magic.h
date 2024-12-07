@@ -36,7 +36,7 @@
 #define MAGIC_TENSORS 0xFACEFEED /**< Tensor data section. */
 #define MAGIC_END 0x0FFFFFFF /**< End marker (absolute end of the file). */
 #define MAGIC_ALIGNMENT 32 /**< Default alignment (32 bytes). */
-#define MAGIC_VERSION 3 /**< Current ALT file format version. */
+#define MAGIC_VERSION 2 /**< Current ALT file format version. */
 
 // --------------------------- MagicState Enum ---------------------------------
 
