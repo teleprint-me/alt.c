@@ -515,7 +515,9 @@ void* parallel_backward_pass(void* args) {
     return NULL;
 }
 
-// Save MLP to a model file
+// MLP model file operations
+
+// General section
 
 MagicState save_general_section(MagicFile* magic_file, const char* model_name, const char* author) {
     // General configuration
@@ -667,6 +669,39 @@ MagicState load_general_section(MagicFile* magic_file, char** model_name, char**
     return MAGIC_SUCCESS;
 }
 
+// Parameters section
+
+MagicState save_parameters_section(MagicFile* magic_file, uint32_t epochs, float learning_rate, float error_threshold) {
+    // Calculate the size of the Parameters Section
+    uint64_t param_size = sizeof(epochs) + sizeof(learning_rate) + sizeof(error_threshold);
+
+    // Write section marker
+    if (magic_write_section_marker(magic_file, MAGIC_PARAMETERS, param_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write parameters section marker.\n");
+        return MAGIC_ERROR;
+    }
+
+    // Write epochs
+    if (fwrite(&epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write epochs.\n");
+        return MAGIC_ERROR;
+    }
+
+    // Write learning rate
+    if (fwrite(&learning_rate, sizeof(float), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write learning rate.\n");
+        return MAGIC_ERROR;
+    }
+
+    // Write error threshold
+    if (fwrite(&error_threshold, sizeof(float), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to write error threshold.\n");
+        return MAGIC_ERROR;
+    }
+
+    return MAGIC_SUCCESS;
+}
+
 MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
@@ -685,18 +720,7 @@ MagicState mlp_save(MLP* model, const char* filepath) {
     save_general_section(&magic_file, "MNIST MLP", "Austin Berrio");
 
     // Parameters Section
-    uint32_t epochs = EPOCHS;
-    float learning_rate = LEARNING_RATE;
-    float error_threshold = ERROR_THRESHOLD;
-    uint64_t param_size = sizeof(learning_rate) + sizeof(epochs) + sizeof(error_threshold);
-    if (magic_write_section_marker(&magic_file, MAGIC_PARAMETERS, param_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write parameters section marker.\n");
-        magic_file.close(&magic_file);
-        return MAGIC_ERROR;
-    }
-    fwrite(&epochs, sizeof(uint32_t), 1, magic_file.model);
-    fwrite(&learning_rate, sizeof(float), 1, magic_file.model);
-    fwrite(&error_threshold, sizeof(float), 1, magic_file.model);
+    save_parameters_section(&magic_file, EPOCHS, LEARNING_RATE, ERROR_THRESHOLD);
 
     // Tensors Section
     uint64_t tensors_size = sizeof(uint32_t); // For number of layers
