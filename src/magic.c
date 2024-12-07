@@ -11,6 +11,21 @@
 #include "logger.h"
 
 /**
+ * @brief Constructs and initializes a MagicFile instance.
+ */
+MagicFile magic_file_create(const char* filepath, const char* mode) {
+    MagicFile magic_file;
+    magic_file.filepath = filepath;
+    magic_file.mode = mode;
+    magic_file.model = NULL;
+    magic_file.open = magic_file_open;
+    magic_file.validate = magic_file_validate;
+    magic_file.close = magic_file_close;
+    LOG_DEBUG("%s: MagicFile created for %s in mode %s.\n", __func__, filepath, mode);
+    return magic_file;
+}
+
+/**
  * @brief Opens the model file based on the MagicFile structure.
  */
 MagicState magic_file_open(MagicFile* magic_file) {
@@ -25,6 +40,16 @@ MagicState magic_file_open(MagicFile* magic_file) {
     }
     LOG_DEBUG("%s: File %s opened successfully.\n", __func__, magic_file->filepath);
     return MAGIC_SUCCESS;
+}
+/**
+ * @brief Closes the model file.
+ */
+void magic_file_close(MagicFile* magic_file) {
+    if (magic_file && magic_file->model) {
+        fclose(magic_file->model);
+        magic_file->model = NULL;
+        LOG_DEBUG("%s: File closed successfully.\n", __func__);
+    }
 }
 
 /**
@@ -111,32 +136,6 @@ MagicState magic_file_validate(MagicFile* magic_file) {
     }
 
     return MAGIC_SUCCESS;
-}
-
-/**
- * @brief Closes the model file.
- */
-void magic_file_close(MagicFile* magic_file) {
-    if (magic_file && magic_file->model) {
-        fclose(magic_file->model);
-        magic_file->model = NULL;
-        LOG_DEBUG("%s: File closed successfully.\n", __func__);
-    }
-}
-
-/**
- * @brief Constructs and initializes a MagicFile instance.
- */
-MagicFile magic_file_create(const char* filepath, const char* mode) {
-    MagicFile magic_file;
-    magic_file.filepath = filepath;
-    magic_file.mode = mode;
-    magic_file.model = NULL;
-    magic_file.open = magic_file_open;
-    magic_file.validate = magic_file_validate;
-    magic_file.close = magic_file_close;
-    LOG_DEBUG("%s: MagicFile created for %s in mode %s.\n", __func__, filepath, mode);
-    return magic_file;
 }
 
 /**
