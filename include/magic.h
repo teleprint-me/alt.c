@@ -61,26 +61,6 @@ typedef struct MagicFile {
 
 // Method declarations for MagicFile
 
-/**
- * @brief Opens the model file based on the MagicFile structure.
- * @param magic_file Pointer to the MagicFile structure.
- * @return MAGIC_SUCCESS if successful, MAGIC_FILE_ERROR on failure.
- */
-MagicState magic_file_open(MagicFile* magic_file);
-
-/**
- * @brief Validates the model file, checking existence and permissions.
- * @param magic_file Pointer to the MagicFile structure.
- * @return MAGIC_SUCCESS if valid, MAGIC_ERROR if invalid.
- */
-MagicState magic_file_validate(MagicFile* magic_file);
-
-/**
- * @brief Closes the model file.
- * @param magic_file Pointer to the MagicFile structure.
- */
-void magic_file_close(MagicFile* magic_file);
-
 // MagicFile constructor (no destructor is needed as no memory is allocated)
 
 /**
@@ -90,6 +70,26 @@ void magic_file_close(MagicFile* magic_file);
  * @return Initialized MagicFile structure.
  */
 MagicFile magic_file_create(const char* filepath, const char* mode);
+
+/**
+ * @brief Opens the model file based on the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
+ * @return MAGIC_SUCCESS if successful, MAGIC_FILE_ERROR on failure.
+ */
+MagicState magic_file_open(MagicFile* magic_file);
+
+/**
+ * @brief Closes the model file.
+ * @param magic_file Pointer to the MagicFile structure.
+ */
+void magic_file_close(MagicFile* magic_file);
+
+/**
+ * @brief Validates the model file, checking existence and permissions.
+ * @param magic_file Pointer to the MagicFile structure.
+ * @return MAGIC_SUCCESS if valid, MAGIC_ERROR if invalid.
+ */
+MagicState magic_file_validate(MagicFile* magic_file);
 
 // Utilities
 
