@@ -9,6 +9,7 @@ A transformer model built completely from scratch in C.
 ### System Dependencies
 
 - `libc`
+- `libuuid`
 - `stb`
 - `pthread`
 - `vulkan`
