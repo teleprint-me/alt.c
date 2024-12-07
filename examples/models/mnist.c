@@ -21,6 +21,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <uuid/uuid.h>
 
 // stb
 #define STB_IMAGE_IMPLEMENTATION
@@ -28,6 +29,8 @@
 
 // alt
 #include "activation.h" // For layer activations
+#include "data_types.h" // Math, constants, data types, etc.
+#include "magic.h" // Alt model file format
 #include "path.h" // For path management
 #include "random.h" // For weight initialization
 
@@ -345,7 +348,7 @@ void mlp_forward(MLP* model, float* input) {
         for (uint32_t t = 0; t < NUM_THREADS; t++) {
             args[t] = (ModelArgs){
                 .inputs = current_input,
-                .targets = NULL,  // No targets in forward pass
+                .targets = NULL, // No targets in forward pass
                 .weights = layer->weights,
                 .biases = layer->biases,
                 .outputs = layer->activations,
@@ -353,7 +356,7 @@ void mlp_forward(MLP* model, float* input) {
                 .cols = layer->input_size,
                 .thread_id = t,
                 .thread_count = NUM_THREADS,
-                .learning_rate = 0.0f  // Not used in forward pass
+                .learning_rate = 0.0f // Not used in forward pass
             };
             pthread_create(&threads[t], NULL, parallel_forward_pass, &args[t]);
         }
@@ -486,9 +489,8 @@ void* parallel_backward_pass(void* args) {
     // Backpropagate error and update weights for assigned rows
     for (uint32_t i = start; i < end; i++) {
         float* weights = bargs->weights + i * bargs->cols;
-        float error = (bargs->targets) 
-                        ? bargs->targets[i] - bargs->outputs[i] // Output layer error
-                        : 0.0f;
+        float error
+            = (bargs->targets) ? bargs->targets[i] - bargs->outputs[i] : 0.0f; // Output layer error
 
         if (!bargs->targets) {
             // Hidden layer error: sum of weighted gradients from the next layer
@@ -511,6 +513,113 @@ void* parallel_backward_pass(void* args) {
     }
 
     return NULL;
+}
+
+// Writing and reading model files
+
+void mlp_save(MLP* model, const char* filepath) {
+    MagicFile magic_file = magic_file_create(filepath, "wb");
+    if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to open file %s for writing.\n", filepath);
+        return;
+    }
+
+    // Write Start Marker
+    if (magic_write_start_marker(&magic_file, MAGIC_VERSION, MAGIC_ALIGNMENT) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write start marker.\n");
+        magic_file.close(&magic_file);
+        return;
+    }
+
+    // General Section
+
+    // General configuration
+    const int32_t data_type = TYPE_FLOAT32;
+    const int32_t data_type_size = sizeof(data_type);
+
+    // General model name
+    const char* model_name = "MNIST MLP";
+    const int32_t model_name_len = strlen(model_name) + 1;
+
+    // General author name
+    const char* author = "Austin Berrio";
+    const int32_t author_len = strlen(author) + 1;
+
+    // General UUID
+    uuid_t binuuid;
+    uuid_generate_random(binuuid);
+    int32_t uuid_len = 36 + 1;
+    char* uuid = malloc(uuid_len);
+    uuid_unparse_lower(binuuid, uuid);
+
+    // General marker and size
+    uint64_t general_size = data_type_size + model_name_len + author_len + uuid_len;
+    if (magic_write_section_marker(&magic_file, MAGIC_GENERAL, general_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write general section marker.\n");
+        magic_file.close(&magic_file);
+        return;
+    }
+    
+    // Write the data type
+    fwrite(&data_type, data_type_size, 1, magic_file.model);
+    // Write the model name and length (len always precedes str data)
+    fwrite(&model_name_len, sizeof(int32_t), 1, magic_file.model);
+    fwrite(model_name, model_name_len, 1, magic_file.model);
+    // Write the author name and length
+    fwrite(&author_len, sizeof(int32_t), 1, magic_file.model);
+    fwrite(author, author_len, 1, magic_file.model);
+    // Write the model uuid
+    fwrite(&uuid_len, sizeof(int32_t), 1, magic_file.model);
+    fwrite(uuid, uuid_len, 1, magic_file.model);
+    free(uuid); // cleanup
+
+    // Parameters Section
+    uint32_t epochs = EPOCHS;
+    float learning_rate = LEARNING_RATE;
+    float error_threshold = ERROR_THRESHOLD;
+    uint64_t param_size = sizeof(learning_rate) + sizeof(epochs) + sizeof(error_threshold);
+    if (magic_write_section_marker(&magic_file, MAGIC_PARAMETERS, param_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write parameters section marker.\n");
+        magic_file.close(&magic_file);
+        return;
+    }
+    fwrite(&epochs, sizeof(uint32_t), 1, magic_file.model);
+    fwrite(&learning_rate, sizeof(float), 1, magic_file.model);
+    fwrite(&error_threshold, sizeof(float), 1, magic_file.model);
+
+    // Tensors Section
+    uint64_t tensors_size = sizeof(uint32_t); // For number of layers
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+        tensors_size += sizeof(uint32_t) * 2; // input_size, output_size
+        tensors_size += sizeof(float) * (layer->input_size * layer->output_size); // weights
+        tensors_size += sizeof(float) * layer->output_size; // biases
+    }
+    if (magic_write_section_marker(&magic_file, MAGIC_TENSORS, tensors_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write tensors section marker.\n");
+        magic_file.close(&magic_file);
+        return;
+    }
+    fwrite(&model->num_layers, sizeof(uint32_t), 1, magic_file.model);
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+        fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file.model);
+        fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file.model);
+        fwrite(
+            layer->weights, sizeof(float), layer->input_size * layer->output_size, magic_file.model
+        );
+        fwrite(layer->biases, sizeof(float), layer->output_size, magic_file.model);
+    }
+
+    // End Marker
+    if (magic_write_end_marker(&magic_file) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to write end marker.\n");
+        magic_file.close(&magic_file);
+        return;
+    }
+
+    // Close the file
+    magic_file.close(&magic_file);
 }
 
 int main(int argc, char* argv[]) {
