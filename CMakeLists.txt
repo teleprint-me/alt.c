@@ -43,8 +43,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(
     C_SOURCES
     "src/logger.c"
-    "src/data_types.c"
     "src/path.c"
+    "src/magic.c"
+    "src/data_types.c"
     "src/random.c"
     "src/flex_array.c"
     "src/activation.c"
