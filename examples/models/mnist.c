@@ -943,28 +943,38 @@ MagicState mlp_load(MLP* model, const char* filepath) {
 }
 
 int main(int argc, char* argv[]) {
-    global_logger.log_level = LOG_LEVEL_DEBUG; // Set the log level
+    global_logger.log_level = LOG_LEVEL_DEBUG;
 
     if (argc != 2 || !argv[1]) {
         LOG_ERROR("%s: Usage: %s <path_to_mnist>\n", __func__, argv[0]);
         return EXIT_FAILURE;
     }
 
+    // Training dataset path
     char* training_path = path_join(argv[1], "training");
     if (!path_exists(training_path)) {
-        LOG_ERROR("%s: Training path does not exist!\n", __func__);
+        LOG_ERROR("%s: Training path does not exist: %s\n", __func__, training_path);
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
 
-    // Training has a max of 60000 samples
+    // Load dataset
     MNISTDataset* dataset = mnist_dataset_create(60000);
     if (!dataset) {
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
-    mnist_dataset_load(training_path, dataset);
 
+    uint32_t sample_count = mnist_dataset_load(training_path, dataset);
+    if (sample_count == 0) {
+        LOG_ERROR("%s: No samples loaded from the dataset.\n", __func__);
+        mnist_dataset_free(dataset);
+        path_free_string(training_path);
+        return EXIT_FAILURE;
+    }
+    LOG_INFO("%s: Loaded %d samples.", __func__, sample_count);
+
+    // Define model architecture
     uint32_t layer_sizes[] = {784, 128, 10}; // Input: 784, Hidden: 128, Output: 10
     MLP* model = mlp_create(3, layer_sizes);
     if (!model) {
@@ -973,16 +983,25 @@ int main(int argc, char* argv[]) {
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
-    mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
 
-    // Create the model path if it does not exist
+    // Train the model
+    // mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD); // don't do the full epoch yet
+    mlp_train(model, dataset, 1, ERROR_THRESHOLD); // @temp Use a single epoch for testing.
+    
+    // Prepare model save path
     char* model_file_path = "models/mnist/model.alt";
     char* model_base_path = path_dirname(model_file_path);
     if (!path_exists(model_base_path)) {
-        mkdir(model_base_path, 0755);
+        mkdir(model_base_path, 0755); // @note temporarily use mkdir
+        // path_create_directories(model_base_path, 0755); // @todo Create directories recursively
     }
-    // Write the trained model to the model file path
-    mlp_save(model, model_file_path);
+
+    // Save the trained model
+    if (mlp_save(model, model_file_path) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to save the model to %s.\n", __func__, model_file_path);
+    } else {
+        LOG_INFO("%s: Model saved to %s.\n", __func__, model_file_path);
+    }
 
     // Cleanup
     mlp_free(model);
