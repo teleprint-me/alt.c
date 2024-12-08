@@ -672,6 +672,8 @@ MagicState load_general_section(MagicFile* magic_file, char** model_name, char**
 
 // Parameters section
 
+/// @todo Input, Output, and Hidden sizes are also hyperparameters.
+
 MagicState save_parameters_section(MagicFile* magic_file, uint32_t epochs, float learning_rate, float error_threshold) {
     // Calculate the size of the Parameters Section
     uint64_t param_size = sizeof(epochs) + sizeof(learning_rate) + sizeof(error_threshold);
