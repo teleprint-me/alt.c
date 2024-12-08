@@ -125,13 +125,13 @@ void print_progress(char* title, float percentage, uint32_t width, char ch) {
 MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
     MNISTDataset* dataset = malloc(sizeof(MNISTDataset));
     if (!dataset) {
-        fprintf(stderr, "Failed to allocate MNISTDataset.\n");
+        LOG_ERROR("%s: Failed to allocate MNISTDataset.\n", __func__);
         return NULL;
     }
 
     dataset->samples = malloc(sizeof(MNISTSample) * max_samples);
     if (!dataset->samples) {
-        fprintf(stderr, "Failed to allocate MNIST samples.\n");
+        LOG_ERROR("%s: Failed to allocate MNIST samples.\n", __func__);
         free(dataset);
         return NULL;
     }
@@ -142,7 +142,7 @@ MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
         dataset->samples[i].label = -1;
 
         if (!dataset->samples[i].pixels) {
-            fprintf(stderr, "Failed to allocate MNIST sample pixels.\n");
+            LOG_ERROR("%s: Failed to allocate MNIST sample pixels.\n", __func__);
             for (uint32_t j = 0; j < i; j++) {
                 free(dataset->samples[j].pixels);
             }
@@ -169,13 +169,13 @@ void mnist_dataset_free(MNISTDataset* dataset) {
 
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
     if (!dataset || !dataset->samples) {
-        fprintf(stderr, "Invalid MNIST dataset.\n");
+        LOG_ERROR("%s: Invalid MNIST dataset.\n", __func__);
         return 0;
     }
 
     PathEntry* entry = path_create_entry(path, 0, 1);
     if (!entry) {
-        fprintf(stderr, "Failed to traverse path '%s'.\n", path);
+        LOG_ERROR("%s: Failed to traverse path '%s'.\n", path, __func__);
         return 0;
     }
 
@@ -201,13 +201,13 @@ uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset) {
         int width, height, channels;
         unsigned char* image_data = stbi_load(info->path, &width, &height, &channels, 1);
         if (!image_data) {
-            fprintf(stderr, "Failed to load image '%s'.\n", info->path);
+            LOG_ERROR("%s: Failed to load image '%s'.\n", __func__, info->path);
             continue;
         }
 
         // Ensure image dimensions match MNIST (28x28)
         if (width != 28 || height != 28) {
-            fprintf(stderr, "Invalid dimensions for '%s'.\n", info->path);
+            LOG_ERROR("%s: Invalid dimensions for '%s'.\n", __func__, info->path);
             stbi_image_free(image_data);
             continue;
         }
@@ -255,14 +255,14 @@ uint32_t mnist_dataset_shuffle(MNISTDataset* dataset) {
 
 MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
     if (num_layers < 2) {
-        fprintf(stderr, "An MLP must have at least two layers (input and output).\n");
+        LOG_ERROR("%s: An MLP must have at least two layers (input and output).\n", __func__);
         return NULL;
     }
 
     // Allocate memory for the MLP structure
     MLP* model = malloc(sizeof(MLP));
     if (!model) {
-        fprintf(stderr, "Failed to allocate memory for MLP.\n");
+        LOG_ERROR("%s: Failed to allocate memory for MLP.\n", __func__);
         return NULL;
     }
 
@@ -270,7 +270,7 @@ MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
     model->num_layers = num_layers - 1; // Number of connections (layers - 1)
     model->layers = malloc(sizeof(Layer) * model->num_layers);
     if (!model->layers) {
-        fprintf(stderr, "Failed to allocate memory for layers.\n");
+        LOG_ERROR("%s: Failed to allocate memory for %u layers.\n", __func__, num_layers);
         free(model);
         return NULL;
     }
@@ -286,7 +286,7 @@ MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
         layer->gradients = malloc(sizeof(float) * layer->output_size);
 
         if (!layer->weights || !layer->biases || !layer->activations || !layer->gradients) {
-            fprintf(stderr, "Failed to allocate memory for layer %d.\n", i);
+            LOG_ERROR("%s: Failed to allocate memory for layer %d.\n", __func__, i);
             mlp_free(model); // Ensure memory cleanup
             return NULL;
         }
@@ -522,7 +522,7 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     int32_t uuid_len = UUID_STR_LEN;
     char* uuid = malloc(uuid_len);
     if (uuid == NULL) {
-        fprintf(stderr, "Failed to allocate memory for UUID.\n");
+        LOG_ERROR("%s: Failed to allocate memory for UUID.\n", __func__);
         return MAGIC_ERROR;
     }
     uuid_unparse_lower(binuuid, uuid);
@@ -535,35 +535,35 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
 
     // Write section marker
     if (magic_write_section_marker(magic_file, MAGIC_GENERAL, general_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write general section marker.\n");
+        LOG_ERROR("%s: Failed to write general section marker.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
 
     // Write the data type
     if (fwrite(&data_type, data_type_size, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write data type.\n");
+        LOG_ERROR("%s: Failed to write data type.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
     // Write the model name and length
     if (fwrite(&model_name_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
         fwrite(model_name, model_name_len, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write model name.\n");
+        LOG_ERROR("%s: Failed to write model name.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
     // Write the author name and length
     if (fwrite(&author_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
         fwrite(author, author_len, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write author name.\n");
+        LOG_ERROR("%s: Failed to write author name.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
     // Write the UUID and length
     if (fwrite(&uuid_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
         fwrite(uuid, uuid_len, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write UUID.\n");
+        LOG_ERROR("%s: Failed to write UUID.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
@@ -576,34 +576,34 @@ MagicState load_general_section(MagicFile* magic_file, char** model_name, char**
     // Read and validate section marker
     int64_t section_marker, section_size;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to read general section marker.\n");
+        LOG_ERROR("%s: Failed to read general section marker.\n", __func__);
         return MAGIC_ERROR;
     }
     if (section_marker != MAGIC_GENERAL) {
-        fprintf(stderr, "Invalid section marker for general section.\n");
+        LOG_ERROR("%s: Invalid section marker for general section.\n", __func__);
         return MAGIC_INVALID_MARKER;
     }
 
     // Read the data type (not used in this example, but read for consistency)
     int32_t data_type;
     if (fread(&data_type, sizeof(int32_t), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read data type.\n");
+        LOG_ERROR("%s: Failed to read data type.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Read model name
     int32_t model_name_len;
     if (fread(&model_name_len, sizeof(int32_t), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read model name length.\n");
+        LOG_ERROR("%s: Failed to read model name length.\n", __func__);
         return MAGIC_ERROR;
     }
     *model_name = malloc(model_name_len);
     if (*model_name == NULL) {
-        fprintf(stderr, "Failed to allocate memory for model name.\n");
+        LOG_ERROR("%s: Failed to allocate memory for model name.\n", __func__);
         return MAGIC_ERROR;
     }
     if (fread(*model_name, model_name_len, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read model name.\n");
+        LOG_ERROR("%s: Failed to read model name.\n", __func__);
         free(*model_name);
         return MAGIC_ERROR;
     }
@@ -611,18 +611,18 @@ MagicState load_general_section(MagicFile* magic_file, char** model_name, char**
     // Read author name
     int32_t author_len;
     if (fread(&author_len, sizeof(int32_t), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read author name length.\n");
+        LOG_ERROR("%s: Failed to read author name length.\n", __func__);
         free(*model_name);
         return MAGIC_ERROR;
     }
     *author = malloc(author_len);
     if (*author == NULL) {
-        fprintf(stderr, "Failed to allocate memory for author name.\n");
+        LOG_ERROR("%s: Failed to allocate memory for author name.\n", __func__);
         free(*model_name);
         return MAGIC_ERROR;
     }
     if (fread(*author, author_len, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read author name.\n");
+        LOG_ERROR("%s: Failed to read author name.\n", __func__);
         free(*model_name);
         free(*author);
         return MAGIC_ERROR;
@@ -631,20 +631,20 @@ MagicState load_general_section(MagicFile* magic_file, char** model_name, char**
     // Read UUID
     int32_t uuid_len;
     if (fread(&uuid_len, sizeof(int32_t), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read UUID length.\n");
+        LOG_ERROR("%s: Failed to read UUID length.\n", __func__);
         free(*model_name);
         free(*author);
         return MAGIC_ERROR;
     }
     *uuid = malloc(uuid_len);
     if (*uuid == NULL) {
-        fprintf(stderr, "Failed to allocate memory for UUID.\n");
+        LOG_ERROR("%s: Failed to allocate memory for UUID.\n", __func__);
         free(*model_name);
         free(*author);
         return MAGIC_ERROR;
     }
     if (fread(*uuid, uuid_len, 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read UUID.\n");
+        LOG_ERROR("%s: Failed to read UUID.\n", __func__);
         free(*model_name);
         free(*author);
         free(*uuid);
@@ -664,25 +664,25 @@ MagicState save_parameters_section(MagicFile* magic_file, uint32_t epochs, float
 
     // Write section marker
     if (magic_write_section_marker(magic_file, MAGIC_PARAMETERS, param_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write parameters section marker.\n");
+        LOG_ERROR("%s: Failed to write parameters section marker.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Write epochs
     if (fwrite(&epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write epochs.\n");
+        LOG_ERROR("%s: Failed to write epochs.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Write learning rate
     if (fwrite(&learning_rate, sizeof(float), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write learning rate.\n");
+        LOG_ERROR("%s: Failed to write learning rate.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Write error threshold
     if (fwrite(&error_threshold, sizeof(float), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to write error threshold.\n");
+        LOG_ERROR("%s: Failed to write error threshold.\n", __func__);
         return MAGIC_ERROR;
     }
 
@@ -693,29 +693,29 @@ MagicState load_parameters_section(MagicFile* magic_file, uint32_t* epochs, floa
     // Read and validate section marker
     int64_t section_marker, section_size;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to read parameters section marker.\n");
+        LOG_ERROR("%s: Failed to read parameters section marker.\n", __func__);
         return MAGIC_ERROR;
     }
     if (section_marker != MAGIC_PARAMETERS) {
-        fprintf(stderr, "Invalid section marker for parameters section.\n");
+        LOG_ERROR("%s: Invalid section marker for parameters section.\n", __func__);
         return MAGIC_INVALID_MARKER;
     }
 
     // Read epochs
     if (fread(epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read epochs.\n");
+        LOG_ERROR("%s: Failed to read epochs.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Read learning rate
     if (fread(learning_rate, sizeof(float), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read learning rate.\n");
+        LOG_ERROR("%s: Failed to read learning rate.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Read error threshold
     if (fread(error_threshold, sizeof(float), 1, magic_file->model) != 1) {
-        fprintf(stderr, "Failed to read error threshold.\n");
+        LOG_ERROR("%s: Failed to read error threshold.\n", __func__);
         return MAGIC_ERROR;
     }
 
@@ -725,13 +725,13 @@ MagicState load_parameters_section(MagicFile* magic_file, uint32_t* epochs, floa
 MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to open file %s for writing.\n", filepath);
+        LOG_ERROR("%s: Failed to open file %s for writing.\n", __func__, filepath);
         return MAGIC_ERROR;
     }
 
     // Write Start Marker
     if (magic_write_start_marker(&magic_file, MAGIC_VERSION, MAGIC_ALIGNMENT) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write start marker.\n");
+        LOG_ERROR("%s: Failed to write start marker.\n", __func__);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -751,7 +751,7 @@ MagicState mlp_save(MLP* model, const char* filepath) {
         tensors_size += sizeof(float) * layer->output_size; // biases
     }
     if (magic_write_section_marker(&magic_file, MAGIC_TENSORS, tensors_size) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write tensors section marker.\n");
+        LOG_ERROR("%s: Failed to write tensors section marker.\n", __func__);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -768,7 +768,7 @@ MagicState mlp_save(MLP* model, const char* filepath) {
 
     // End Marker
     if (magic_write_end_marker(&magic_file) != MAGIC_SUCCESS) {
-        fprintf(stderr, "Failed to write end marker.\n");
+        LOG_ERROR("%s: Failed to write end marker.\n", __func__);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -782,13 +782,13 @@ int main(int argc, char* argv[]) {
     global_logger.log_level = LOG_LEVEL_DEBUG; // Set the log level
 
     if (argc != 2 || !argv[1]) {
-        fprintf(stderr, "Usage: %s <path_to_mnist>\n", argv[0]);
+        LOG_ERROR("%s: Usage: %s <path_to_mnist>\n", __func__, argv[0]);
         return EXIT_FAILURE;
     }
 
     char* training_path = path_join(argv[1], "training");
     if (!path_exists(training_path)) {
-        fprintf(stderr, "Training path does not exist!\n");
+        LOG_ERROR("%s: Training path does not exist!\n", __func__);
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
@@ -804,7 +804,7 @@ int main(int argc, char* argv[]) {
     uint32_t layer_sizes[] = {784, 128, 10}; // Input: 784, Hidden: 128, Output: 10
     MLP* model = mlp_create(3, layer_sizes);
     if (!model) {
-        fprintf(stderr, "Failed to create the MLP model.\n");
+        LOG_ERROR("%s: Failed to create the MLP model.\n", __func__);
         mnist_dataset_free(dataset);
         path_free_string(training_path);
         return EXIT_FAILURE;
