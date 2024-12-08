@@ -152,18 +152,7 @@ TensorState tensor_set_element(Tensor* tensor, const FlexArray* indices, void* v
  * - Calculates the size of the tensor's data using its shape and rank.
  * - Copies the data using `memcpy` for efficient bulk transfer.
  *
- * Example Usage:
- * @code
- * uint32_t dimensions[] = {3, 3};
- * FlexArray* shape = tensor_create_shape(2, dimensions);
- * Tensor* tensor = tensor_create(shape, 2, TYPE_FLOAT32);
- *
- * float data[] = {1.0, 2.0, 3.0, ..., 9.0}; // Example data
- * if (tensor_set_bulk(tensor, data) == TENSOR_SUCCESS) {
- *     // Data successfully copied
- * }
- * tensor_free(tensor);
- * @endcode
+ * @note Assumes a dense tensor with compatible dimensions and a consistent memory layout.
  */
 TensorState tensor_set_bulk(Tensor* tensor, const void* data);
 
