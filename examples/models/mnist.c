@@ -964,21 +964,55 @@ MagicState mlp_load(MLP* model, const char* filepath) {
     return MAGIC_SUCCESS;
 }
 
+void print_usage(const char* program_name) {
+    fprintf(stderr, "Usage: %s <path_to_mnist> [options]\n", program_name);
+    fprintf(stderr, "Options:\n");
+    fprintf(stderr, "\t--epochs <num>\tNumber of epochs to train (default: 1)\n");
+    fprintf(stderr, "\t--learning-rate <val>\tLearning rate (default: 0.1)\n");
+    fprintf(stderr, "\t--error-threshold <val>\tEarly stopping threshold (default: 0.01)\n");
+    fprintf(stderr, "\t--model <path>\tPath to save/load the model (default: models/mnist/model.alt)\n");
+}
+
 int main(int argc, char* argv[]) {
     global_logger.log_level = LOG_LEVEL_DEBUG;
 
-    if (argc != 2 || !argv[1]) {
-        LOG_ERROR("%s: Usage: %s <path_to_mnist>\n", __func__, argv[0]);
+    if (argc < 2 || !argv[1]) {
+        print_usage(argv[0]);
         return EXIT_FAILURE;
     }
 
-    // Training dataset path
+    // Default parameters
+    uint32_t epochs = 1;
+    // float learning_rate = 0.1f;
+    float error_threshold = 0.01f;
+    char* model_file_path = "models/mnist/model.alt";
+
+    // Parse CLI arguments
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--epochs") == 0 && i + 1 < argc) {
+            epochs = (uint32_t)atoi(argv[++i]);
+        // } else if (strcmp(argv[i], "--learning-rate") == 0 && i + 1 < argc) {
+        //     learning_rate = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--error-threshold") == 0 && i + 1 < argc) {
+            error_threshold = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
+            model_file_path = argv[++i];
+        } else {
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
+        }
+    }
+
+    // Prepare paths
     char* training_path = path_join(argv[1], "training");
     if (!path_exists(training_path)) {
         LOG_ERROR("%s: Training path does not exist: %s\n", __func__, training_path);
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
+
+    // Timer start
+    clock_t start_time = clock();
 
     // Load dataset
     MNISTDataset* dataset = mnist_dataset_create(60000);
@@ -996,34 +1030,62 @@ int main(int argc, char* argv[]) {
     }
     LOG_INFO("%s: Loaded %d samples.", __func__, sample_count);
 
-    // Define model architecture
-    uint32_t layer_sizes[] = {784, 128, 10}; // Input: 784, Hidden: 128, Output: 10
-    MLP* model = mlp_create(3, layer_sizes);
-    if (!model) {
-        LOG_ERROR("%s: Failed to create the MLP model.\n", __func__);
-        mnist_dataset_free(dataset);
-        path_free_string(training_path);
-        return EXIT_FAILURE;
+    // Shuffle dataset
+    mnist_dataset_shuffle(dataset);
+
+    // Timer stop for loading and shuffling
+    clock_t load_time = clock();
+    LOG_INFO("%s: Loading and shuffling time: %.2f seconds\n",
+             __func__, (double)(load_time - start_time) / CLOCKS_PER_SEC);
+
+    // Create or load model
+    MLP* model = NULL;
+    if (path_exists(model_file_path)) {
+        LOG_INFO("%s: Loading model from %s\n", __func__, model_file_path);
+        model = malloc(sizeof(MLP)); // Allocate model structure
+        if (mlp_load(model, model_file_path) != MAGIC_SUCCESS) {
+            LOG_ERROR("%s: Failed to load model from %s\n", __func__, model_file_path);
+            free(model);
+            mnist_dataset_free(dataset);
+            path_free_string(training_path);
+            return EXIT_FAILURE;
+        }
+    } else {
+        LOG_INFO("%s: Training model from scratch.\n", __func__);
+        uint32_t layer_sizes[] = {784, 128, 10}; // Input, hidden, output
+        model = mlp_create(3, layer_sizes);
+        if (!model) {
+            LOG_ERROR("%s: Failed to create the MLP model.\n", __func__);
+            mnist_dataset_free(dataset);
+            path_free_string(training_path);
+            return EXIT_FAILURE;
+        }
     }
 
     // Train the model
-    // mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD); // don't do the full epoch yet
-    mlp_train(model, dataset, 1, ERROR_THRESHOLD); // @temp Use a single epoch for testing.
+    mlp_train(model, dataset, epochs, error_threshold);
 
-    // Prepare model save path
-    char* model_file_path = "models/mnist/model.alt";
+    // Timer stop for training
+    clock_t train_time = clock();
+    LOG_INFO("%s: Training time: %.2f seconds\n",
+             __func__, (double)(train_time - load_time) / CLOCKS_PER_SEC);
+
+    // Save the model
     char* model_base_path = path_dirname(model_file_path);
     if (!path_exists(model_base_path)) {
-        mkdir(model_base_path, 0755); // @note temporarily use mkdir
-        // path_create_directories(model_base_path, 0755); // @todo Create directories recursively
+        mkdir(model_base_path, 0755);
+        // path_create_directories(model_base_path, 0755); // @todo This function does not exist.
     }
-
-    // Save the trained model
     if (mlp_save(model, model_file_path) != MAGIC_SUCCESS) {
         LOG_ERROR("%s: Failed to save the model to %s.\n", __func__, model_file_path);
     } else {
         LOG_INFO("%s: Model saved to %s.\n", __func__, model_file_path);
     }
+
+    // Timer stop for saving
+    clock_t end_time = clock();
+    LOG_INFO("%s: Total time: %.2f seconds\n",
+             __func__, (double)(end_time - start_time) / CLOCKS_PER_SEC);
 
     // Cleanup
     mlp_free(model);
