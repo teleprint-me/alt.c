@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 #include <uuid/uuid.h>
@@ -28,9 +30,9 @@
 #include <stb/stb_image.h> // For dataset management
 
 // alt
-#include "logger.h"
 #include "activation.h" // For layer activations
 #include "data_types.h" // Math, constants, data types, etc.
+#include "logger.h"
 #include "magic.h" // Alt model file format
 #include "path.h" // For path management
 #include "random.h" // For weight initialization
@@ -368,15 +370,15 @@ void mlp_backward(MLP* model, float* input, float* target) {
         for (uint32_t t = 0; t < NUM_THREADS; t++) {
             args[t] = (ModelArgs){
                 .inputs = prev_activations,
-                .targets = (l == num_layers) ? target : NULL,
-                .weights = layer->weights,
-                .biases = layer->biases,
-                .outputs = layer->gradients,
-                .rows = layer->output_size,
-                .cols = layer->input_size,
-                .thread_id = t,
-                .thread_count = NUM_THREADS,
-                .learning_rate = LEARNING_RATE
+              .targets = (l == num_layers) ? target : NULL,
+              .weights = layer->weights,
+              .biases = layer->biases,
+              .outputs = layer->gradients,
+              .rows = layer->output_size,
+              .cols = layer->input_size,
+              .thread_id = t,
+              .thread_count = NUM_THREADS,
+              .learning_rate = LEARNING_RATE
             };
             pthread_create(&threads[t], NULL, parallel_backward_pass, &args[t]);
         }
@@ -518,7 +520,7 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     // General UUID
     uuid_t binuuid;
     uuid_generate_random(binuuid);
-    #define UUID_STR_LEN 37 // 36 characters + 1 null character
+#define UUID_STR_LEN 37 // 36 characters + 1 null character
     int32_t uuid_len = UUID_STR_LEN;
     char* uuid = malloc(uuid_len);
     if (uuid == NULL) {
@@ -547,22 +549,22 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
         return MAGIC_ERROR;
     }
     // Write the model name and length
-    if (fwrite(&model_name_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
-        fwrite(model_name, model_name_len, 1, magic_file->model) != 1) {
+    if (fwrite(&model_name_len, sizeof(int32_t), 1, magic_file->model) != 1
+        || fwrite(model_name, model_name_len, 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to write model name.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
     // Write the author name and length
-    if (fwrite(&author_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
-        fwrite(author, author_len, 1, magic_file->model) != 1) {
+    if (fwrite(&author_len, sizeof(int32_t), 1, magic_file->model) != 1
+        || fwrite(author, author_len, 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to write author name.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
     }
     // Write the UUID and length
-    if (fwrite(&uuid_len, sizeof(int32_t), 1, magic_file->model) != 1 ||
-        fwrite(uuid, uuid_len, 1, magic_file->model) != 1) {
+    if (fwrite(&uuid_len, sizeof(int32_t), 1, magic_file->model) != 1
+        || fwrite(uuid, uuid_len, 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to write UUID.\n", __func__);
         free(uuid);
         return MAGIC_ERROR;
