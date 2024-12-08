@@ -91,7 +91,7 @@ void mnist_dataset_free(MNISTDataset* dataset);
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
 uint32_t mnist_dataset_shuffle(MNISTDataset* dataset);
 
-MLP* mlp_create(int input_size, int hidden_size, int output_size);
+MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes);
 void mlp_free(MLP* model);
 void mlp_forward(MLP* model, float* input);
 void mlp_backward(MLP* model, float* input, float* target);
@@ -253,7 +253,12 @@ uint32_t mnist_dataset_shuffle(MNISTDataset* dataset) {
 
 // MLP model implementation
 
-MLP* mlp_create(int input_size, int hidden_size, int output_size) {
+MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
+    if (num_layers < 2) {
+        fprintf(stderr, "An MLP must have at least two layers (input and output).\n");
+        return NULL;
+    }
+
     // Allocate memory for the MLP structure
     MLP* model = malloc(sizeof(MLP));
     if (!model) {
@@ -261,8 +266,8 @@ MLP* mlp_create(int input_size, int hidden_size, int output_size) {
         return NULL;
     }
 
-    // Define the number of layers (input -> hidden -> output)
-    model->num_layers = 2; // Hidden layer + Output layer
+    // Define the number of layers
+    model->num_layers = num_layers - 1; // Number of connections (layers - 1)
     model->layers = malloc(sizeof(Layer) * model->num_layers);
     if (!model->layers) {
         fprintf(stderr, "Failed to allocate memory for layers.\n");
@@ -270,50 +275,29 @@ MLP* mlp_create(int input_size, int hidden_size, int output_size) {
         return NULL;
     }
 
-    // Initialize the input->hidden layer
-    Layer* input_hidden = &model->layers[0];
-    input_hidden->input_size = input_size;
-    input_hidden->output_size = hidden_size;
-    input_hidden->weights = malloc(sizeof(float) * input_size * hidden_size);
-    input_hidden->biases = malloc(sizeof(float) * hidden_size);
-    input_hidden->activations = malloc(sizeof(float) * hidden_size);
-    input_hidden->gradients = malloc(sizeof(float) * hidden_size);
-    if (!input_hidden->weights || !input_hidden->biases || !input_hidden->activations
-        || !input_hidden->gradients) {
-        fprintf(stderr, "Failed to allocate memory for input->hidden layer.\n");
-        mlp_free(model);
-        return NULL;
-    }
+    // Initialize each layer
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+        layer->input_size = layer_sizes[i];
+        layer->output_size = layer_sizes[i + 1];
+        layer->weights = malloc(sizeof(float) * layer->input_size * layer->output_size);
+        layer->biases = malloc(sizeof(float) * layer->output_size);
+        layer->activations = malloc(sizeof(float) * layer->output_size);
+        layer->gradients = malloc(sizeof(float) * layer->output_size);
 
-    // Initialize weights and biases
-    for (int i = 0; i < input_size * hidden_size; i++) {
-        input_hidden->weights[i] = random_xavier_glorot(input_size, hidden_size);
-    }
-    for (int i = 0; i < hidden_size; i++) {
-        input_hidden->biases[i] = random_linear();
-    }
+        if (!layer->weights || !layer->biases || !layer->activations || !layer->gradients) {
+            fprintf(stderr, "Failed to allocate memory for layer %d.\n", i);
+            mlp_free(model); // Ensure memory cleanup
+            return NULL;
+        }
 
-    // Initialize the hidden->output layer
-    Layer* hidden_output = &model->layers[1];
-    hidden_output->input_size = hidden_size;
-    hidden_output->output_size = output_size;
-    hidden_output->weights = malloc(sizeof(float) * hidden_size * output_size);
-    hidden_output->biases = malloc(sizeof(float) * output_size);
-    hidden_output->activations = malloc(sizeof(float) * output_size);
-    hidden_output->gradients = malloc(sizeof(float) * output_size);
-    if (!hidden_output->weights || !hidden_output->biases || !hidden_output->activations
-        || !hidden_output->gradients) {
-        fprintf(stderr, "Failed to allocate memory for hidden->output layer.\n");
-        mlp_free(model);
-        return NULL;
-    }
-
-    // Initialize weights and biases
-    for (int i = 0; i < hidden_size * output_size; i++) {
-        hidden_output->weights[i] = random_xavier_glorot(hidden_size, output_size);
-    }
-    for (int i = 0; i < output_size; i++) {
-        hidden_output->biases[i] = random_linear();
+        // Initialize weights and biases
+        for (uint32_t j = 0; j < layer->input_size * layer->output_size; j++) {
+            layer->weights[j] = random_xavier_glorot(layer->input_size, layer->output_size);
+        }
+        for (uint32_t j = 0; j < layer->output_size; j++) {
+            layer->biases[j] = random_linear();
+        }
     }
 
     return model;
@@ -817,10 +801,14 @@ int main(int argc, char* argv[]) {
     }
     mnist_dataset_load(training_path, dataset);
 
-    uint32_t input_size = 784; // MNIST images flattened
-    uint32_t hidden_size = 128; // Example hidden layer size
-    uint32_t output_size = 10; // 10 output classes
-    MLP* model = mlp_create(input_size, hidden_size, output_size);
+    uint32_t layer_sizes[] = {784, 128, 10}; // Input: 784, Hidden: 128, Output: 10
+    MLP* model = mlp_create(3, layer_sizes);
+    if (!model) {
+        fprintf(stderr, "Failed to create the MLP model.\n");
+        mnist_dataset_free(dataset);
+        path_free_string(training_path);
+        return EXIT_FAILURE;
+    }
     mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
     mlp_save(model, "models/mnist/mlp.alt");
 
