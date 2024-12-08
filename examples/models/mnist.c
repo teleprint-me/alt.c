@@ -49,63 +49,94 @@
 
 // Structures
 
-// Struct to hold a single image and label
+/**
+ * @brief Represents a single MNIST image and its label.
+ */
 typedef struct {
-    float* pixels;
-    int label;
+    float* pixels; /**< Flattened pixel data (grayscale values). */
+    int label; /**< Label representing the digit (0-9). */
 } MNISTSample;
 
+/**
+ * @brief Represents a dataset of MNIST samples.
+ */
 typedef struct {
-    MNISTSample* samples; // Array of MNIST samples
-    uint32_t length; // Number of loaded samples
+    MNISTSample* samples; /**< Array of MNIST samples. */
+    uint32_t length; /**< Number of loaded samples. */
 } MNISTDataset;
 
+/**
+ * @brief Parameters for training the MLP model.
+ */
 typedef struct {
-    float* weights; // Flattened weight matrix
-    float* biases; // Bias vector
-    float* activations; // Outputs of this layer
-    float* gradients; // Gradients for backpropagation
-    uint32_t input_size;
-    uint32_t output_size;
+    float learning_rate; /**< Learning rate for gradient descent. */
+    float error_threshold; /**< Threshold for acceptable training error. */
+    uint32_t epochs; /**< Maximum number of training epochs. */
+} Parameter;
+
+/**
+ * @brief Represents a single layer in the MLP model.
+ */
+typedef struct {
+    float* weights; /**< Flattened weight matrix. */
+    float* biases; /**< Bias vector for the layer. */
+    float* activations; /**< Activations (outputs) of this layer. */
+    float* gradients; /**< Gradients for backpropagation. */
+    uint32_t input_size; /**< Number of inputs to this layer. */
+    uint32_t output_size; /**< Number of outputs (neurons) in this layer. */
 } Layer;
 
+/**
+ * @brief Represents a multi-layer perceptron (MLP) model.
+ */
 typedef struct {
-    Layer* layers;
-    uint32_t num_layers;
+    Layer* layers; /**< Array of layers in the model. */
+    uint32_t num_layers; /**< Number of layers (connections) in the model. */
+    Parameter parameters;
 } MLP;
 
+/**
+ * @brief Represents arguments for multi-threaded operations in the MLP model.
+ */
 typedef struct {
-    float* inputs; // Input vector (e.g., pixels for MNIST)
-    float* targets; // Target vector (NULL for forward pass)
-    float* weights; // Flattened weight matrix
-    float* biases; // Bias vector
-    float* outputs; // Activations or gradients vector
-    uint32_t rows; // Number of rows in the matrix (neurons in the layer)
-    uint32_t cols; // Number of columns in the matrix (input size to the layer)
-    uint32_t thread_id; // Thread ID
-    uint32_t thread_count; // Total number of threads
-    float learning_rate; // Learning rate (used in backward pass)
+    float* inputs; /**< Input vector (e.g., MNIST pixels). */
+    float* targets; /**< Target vector (NULL for forward pass). */
+    float* weights; /**< Flattened weight matrix. */
+    float* biases; /**< Bias vector. */
+    float* outputs; /**< Output activations or gradients vector. */
+    uint32_t rows; /**< Number of rows in the matrix (neurons in the layer). */
+    uint32_t cols; /**< Number of columns in the matrix (input size to the layer). */
+    uint32_t thread_id; /**< Thread ID for this thread. */
+    uint32_t thread_count; /**< Total number of threads. */
+    float learning_rate; /**< Learning rate for gradient descent (backward pass). */
 } ModelArgs;
 
 // Prototypes
 
 void print_progress(char* title, float percentage, uint32_t width, char ch);
 
+// Dataset management
 MNISTDataset* mnist_dataset_create(uint32_t max_samples);
 void mnist_dataset_free(MNISTDataset* dataset);
+
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
 uint32_t mnist_dataset_shuffle(MNISTDataset* dataset);
 
+// Model management
 MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes);
 void mlp_free(MLP* model);
+
+void* mlp_forward_parallel(void* args);
 void mlp_forward(MLP* model, float* input);
+
+void* mlp_backward_parallel(void* args);
 void mlp_backward(MLP* model, float* input, float* target);
+
 void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_threshold);
+
+// File management
 MagicState mlp_save(MLP* model, const char* filepath);
 MagicState mlp_load(MLP* model, const char* filepath);
-
-void* parallel_forward_pass(void* args);
-void* parallel_backward_pass(void* args);
 
 // Progress utility
 
@@ -348,7 +379,7 @@ void mlp_forward(MLP* model, float* input) {
                 .thread_count = NUM_THREADS,
                 .learning_rate = 0.0f // Not used in forward pass
             };
-            pthread_create(&threads[t], NULL, parallel_forward_pass, &args[t]);
+            pthread_create(&threads[t], NULL, mlp_forward_parallel, &args[t]);
         }
 
         for (uint32_t t = 0; t < NUM_THREADS; t++) {
@@ -382,7 +413,7 @@ void mlp_backward(MLP* model, float* input, float* target) {
               .thread_id = t,
               .thread_count = NUM_THREADS,
               .learning_rate = LEARNING_RATE};
-            pthread_create(&threads[t], NULL, parallel_backward_pass, &args[t]);
+            pthread_create(&threads[t], NULL, mlp_backward_parallel, &args[t]);
         }
 
         for (uint32_t t = 0; t < NUM_THREADS; t++) {
@@ -442,7 +473,7 @@ void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_t
 
 // Multi-threaded operations
 
-void* parallel_forward_pass(void* args) {
+void* mlp_forward_parallel(void* args) {
     ModelArgs* fargs = (ModelArgs*) args;
     uint32_t start = fargs->thread_id * (fargs->rows / fargs->thread_count);
     uint32_t end = (fargs->thread_id + 1) * (fargs->rows / fargs->thread_count);
@@ -465,7 +496,7 @@ void* parallel_forward_pass(void* args) {
     return NULL;
 }
 
-void* parallel_backward_pass(void* args) {
+void* mlp_backward_parallel(void* args) {
     ModelArgs* bargs = (ModelArgs*) args;
 
     // Compute start and end indices for this thread
