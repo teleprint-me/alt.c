@@ -812,6 +812,12 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
     mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
+
+    // Create the model path if it does not exist
+    if (!path_exists("models/mnist")) {
+        mkdir("models/mnist", 0755);
+    }
+    // Write the trained model to the model file path
     mlp_save(model, "models/mnist/mlp.alt");
 
     // Cleanup
