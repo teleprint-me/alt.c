@@ -28,6 +28,7 @@
 #include <stb/stb_image.h> // For dataset management
 
 // alt
+#include "logger.h"
 #include "activation.h" // For layer activations
 #include "data_types.h" // Math, constants, data types, etc.
 #include "magic.h" // Alt model file format
@@ -702,6 +703,39 @@ MagicState save_parameters_section(MagicFile* magic_file, uint32_t epochs, float
     return MAGIC_SUCCESS;
 }
 
+MagicState load_parameters_section(MagicFile* magic_file, uint32_t* epochs, float* learning_rate, float* error_threshold) {
+    // Read and validate section marker
+    int64_t section_marker, section_size;
+    if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
+        fprintf(stderr, "Failed to read parameters section marker.\n");
+        return MAGIC_ERROR;
+    }
+    if (section_marker != MAGIC_PARAMETERS) {
+        fprintf(stderr, "Invalid section marker for parameters section.\n");
+        return MAGIC_INVALID_MARKER;
+    }
+
+    // Read epochs
+    if (fread(epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read epochs.\n");
+        return MAGIC_ERROR;
+    }
+
+    // Read learning rate
+    if (fread(learning_rate, sizeof(float), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read learning rate.\n");
+        return MAGIC_ERROR;
+    }
+
+    // Read error threshold
+    if (fread(error_threshold, sizeof(float), 1, magic_file->model) != 1) {
+        fprintf(stderr, "Failed to read error threshold.\n");
+        return MAGIC_ERROR;
+    }
+
+    return MAGIC_SUCCESS;
+}
+
 MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
@@ -759,6 +793,8 @@ MagicState mlp_save(MLP* model, const char* filepath) {
 }
 
 int main(int argc, char* argv[]) {
+    global_logger.log_level = LOG_LEVEL_DEBUG; // Set the log level
+
     if (argc != 2 || !argv[1]) {
         fprintf(stderr, "Usage: %s <path_to_mnist>\n", argv[0]);
         return EXIT_FAILURE;
@@ -784,6 +820,7 @@ int main(int argc, char* argv[]) {
     uint32_t output_size = 10; // 10 output classes
     MLP* model = mlp_create(input_size, hidden_size, output_size);
     mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
+    mlp_save(model, "models/mnist/mlp.alt");
 
     // Cleanup
     mlp_free(model);
