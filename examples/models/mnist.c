@@ -371,8 +371,8 @@ void mlp_backward(MLP* model, float* input, float* target) {
         float* prev_activations = (l == 0) ? input : model->layers[l - 1].activations;
 
         for (uint32_t t = 0; t < NUM_THREADS; t++) {
-            args[t] = (ModelArgs){
-                .inputs = prev_activations,
+            args[t] = (ModelArgs
+            ){.inputs = prev_activations,
               .targets = (l == num_layers) ? target : NULL,
               .weights = layer->weights,
               .biases = layer->biases,
@@ -381,8 +381,7 @@ void mlp_backward(MLP* model, float* input, float* target) {
               .cols = layer->input_size,
               .thread_id = t,
               .thread_count = NUM_THREADS,
-              .learning_rate = LEARNING_RATE
-            };
+              .learning_rate = LEARNING_RATE};
             pthread_create(&threads[t], NULL, parallel_backward_pass, &args[t]);
         }
 
@@ -433,7 +432,9 @@ void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_t
 
         // Early stopping condition
         if (total_error < error_threshold) {
-            printf("Training converged at epoch %u, Error: %.6f\n", epoch + 1, (double) total_error);
+            printf(
+                "Training converged at epoch %u, Error: %.6f\n", epoch + 1, (double) total_error
+            );
             break;
         }
     }
@@ -532,10 +533,8 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     uuid_unparse_lower(binuuid, uuid);
 
     // Calculate General Section size
-    uint64_t general_size = data_type_size + 
-                            sizeof(model_name_len) + model_name_len +
-                            sizeof(author_len) + author_len +
-                            sizeof(uuid_len) + uuid_len;
+    uint64_t general_size = data_type_size + sizeof(model_name_len) + model_name_len
+                            + sizeof(author_len) + author_len + sizeof(uuid_len) + uuid_len;
 
     // Write section marker
     if (magic_write_section_marker(magic_file, MAGIC_GENERAL, general_size) != MAGIC_SUCCESS) {
@@ -576,7 +575,8 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     return MAGIC_SUCCESS;
 }
 
-MagicState load_general_section(MagicFile* magic_file, char** model_name, char** author, char** uuid) {
+MagicState
+load_general_section(MagicFile* magic_file, char** model_name, char** author, char** uuid) {
     // Read and validate section marker
     int64_t section_marker, section_size;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
@@ -662,7 +662,9 @@ MagicState load_general_section(MagicFile* magic_file, char** model_name, char**
 
 /// @todo Input, Output, and Hidden sizes are also hyperparameters.
 
-MagicState save_parameters_section(MagicFile* magic_file, uint32_t epochs, float learning_rate, float error_threshold) {
+MagicState save_parameters_section(
+    MagicFile* magic_file, uint32_t epochs, float learning_rate, float error_threshold
+) {
     // Calculate the size of the Parameters Section
     uint64_t param_size = sizeof(epochs) + sizeof(learning_rate) + sizeof(error_threshold);
 
@@ -693,7 +695,9 @@ MagicState save_parameters_section(MagicFile* magic_file, uint32_t epochs, float
     return MAGIC_SUCCESS;
 }
 
-MagicState load_parameters_section(MagicFile* magic_file, uint32_t* epochs, float* learning_rate, float* error_threshold) {
+MagicState load_parameters_section(
+    MagicFile* magic_file, uint32_t* epochs, float* learning_rate, float* error_threshold
+) {
     // Read and validate section marker
     int64_t section_marker, section_size;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
@@ -752,19 +756,25 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
     for (uint32_t i = 0; i < model->num_layers; i++) {
         Layer* layer = &model->layers[i];
         // Write input and output sizes
-        if (fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
-            fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        if (fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1
+            || fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
             LOG_ERROR("%s: Failed to write layer dimensions.\n", __func__);
             return MAGIC_ERROR;
         }
         // Write weights
-        if (fwrite(layer->weights, sizeof(float), layer->input_size * layer->output_size, magic_file->model) !=
-            layer->input_size * layer->output_size) {
+        if (fwrite(
+                layer->weights,
+                sizeof(float),
+                layer->input_size * layer->output_size,
+                magic_file->model
+            )
+            != layer->input_size * layer->output_size) {
             LOG_ERROR("%s: Failed to write layer weights.\n", __func__);
             return MAGIC_ERROR;
         }
         // Write biases
-        if (fwrite(layer->biases, sizeof(float), layer->output_size, magic_file->model) != layer->output_size) {
+        if (fwrite(layer->biases, sizeof(float), layer->output_size, magic_file->model)
+            != layer->output_size) {
             LOG_ERROR("%s: Failed to write layer biases.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -803,8 +813,8 @@ MagicState load_tensors_section(MagicFile* magic_file, MLP* model) {
         Layer* layer = &model->layers[i];
 
         // Read input and output sizes
-        if (fread(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
-            fread(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        if (fread(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1
+            || fread(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
             LOG_ERROR("%s: Failed to read layer dimensions.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -816,8 +826,13 @@ MagicState load_tensors_section(MagicFile* magic_file, MLP* model) {
             return MAGIC_ERROR;
         }
         // Read weights
-        if (fread(layer->weights, sizeof(float), layer->input_size * layer->output_size, magic_file->model) !=
-            layer->input_size * layer->output_size) {
+        if (fread(
+                layer->weights,
+                sizeof(float),
+                layer->input_size * layer->output_size,
+                magic_file->model
+            )
+            != layer->input_size * layer->output_size) {
             LOG_ERROR("%s: Failed to read layer weights.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -829,7 +844,8 @@ MagicState load_tensors_section(MagicFile* magic_file, MLP* model) {
             return MAGIC_ERROR;
         }
         // Read biases
-        if (fread(layer->biases, sizeof(float), layer->output_size, magic_file->model) != layer->output_size) {
+        if (fread(layer->biases, sizeof(float), layer->output_size, magic_file->model)
+            != layer->output_size) {
             LOG_ERROR("%s: Failed to read layer biases.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -914,13 +930,19 @@ MagicState mlp_load(MLP* model, const char* filepath) {
     // Parameters Section
     uint32_t epochs;
     float learning_rate, error_threshold;
-    if (load_parameters_section(&magic_file, &epochs, &learning_rate, &error_threshold) != MAGIC_SUCCESS) {
+    if (load_parameters_section(&magic_file, &epochs, &learning_rate, &error_threshold)
+        != MAGIC_SUCCESS) {
         LOG_ERROR("%s: Failed to load parameters section.\n", __func__);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
-    LOG_INFO("%s: Loaded parameters - Epochs: %u, Learning Rate: %.4f, Error Threshold: %.4f\n",
-             __func__, epochs, (double) learning_rate, (double) error_threshold);
+    LOG_INFO(
+        "%s: Loaded parameters - Epochs: %u, Learning Rate: %.4f, Error Threshold: %.4f\n",
+        __func__,
+        epochs,
+        (double) learning_rate,
+        (double) error_threshold
+    );
 
     // Tensors Section
     if (load_tensors_section(&magic_file, model) != MAGIC_SUCCESS) {
@@ -987,7 +1009,7 @@ int main(int argc, char* argv[]) {
     // Train the model
     // mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD); // don't do the full epoch yet
     mlp_train(model, dataset, 1, ERROR_THRESHOLD); // @temp Use a single epoch for testing.
-    
+
     // Prepare model save path
     char* model_file_path = "models/mnist/model.alt";
     char* model_base_path = path_dirname(model_file_path);
