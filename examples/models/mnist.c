@@ -773,6 +773,71 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
     return MAGIC_SUCCESS;
 }
 
+MagicState load_tensors_section(MagicFile* magic_file, MLP* model) {
+    // Read and validate section marker
+    int64_t section_marker, section_size;
+    if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to read tensors section marker.\n", __func__);
+        return MAGIC_ERROR;
+    }
+    if (section_marker != MAGIC_TENSORS) {
+        LOG_ERROR("%s: Invalid section marker for tensors section.\n", __func__);
+        return MAGIC_INVALID_MARKER;
+    }
+
+    // Read the number of layers
+    if (fread(&model->num_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to read number of layers.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Allocate memory for layers
+    model->layers = malloc(model->num_layers * sizeof(Layer));
+    if (model->layers == NULL) {
+        LOG_ERROR("%s: Failed to allocate memory for layers.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Read each layer's tensors
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+
+        // Read input and output sizes
+        if (fread(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
+            fread(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
+            LOG_ERROR("%s: Failed to read layer dimensions.\n", __func__);
+            return MAGIC_ERROR;
+        }
+
+        // Allocate memory for weights
+        layer->weights = malloc(layer->input_size * layer->output_size * sizeof(float));
+        if (layer->weights == NULL) {
+            LOG_ERROR("%s: Failed to allocate memory for weights.\n", __func__);
+            return MAGIC_ERROR;
+        }
+        // Read weights
+        if (fread(layer->weights, sizeof(float), layer->input_size * layer->output_size, magic_file->model) !=
+            layer->input_size * layer->output_size) {
+            LOG_ERROR("%s: Failed to read layer weights.\n", __func__);
+            return MAGIC_ERROR;
+        }
+
+        // Allocate memory for biases
+        layer->biases = malloc(layer->output_size * sizeof(float));
+        if (layer->biases == NULL) {
+            LOG_ERROR("%s: Failed to allocate memory for biases.\n", __func__);
+            return MAGIC_ERROR;
+        }
+        // Read biases
+        if (fread(layer->biases, sizeof(float), layer->output_size, magic_file->model) != layer->output_size) {
+            LOG_ERROR("%s: Failed to read layer biases.\n", __func__);
+            return MAGIC_ERROR;
+        }
+    }
+
+    return MAGIC_SUCCESS;
+}
+
 MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
@@ -799,6 +864,75 @@ MagicState mlp_save(MLP* model, const char* filepath) {
     // End Marker
     if (magic_write_end_marker(&magic_file) != MAGIC_SUCCESS) {
         LOG_ERROR("%s: Failed to write end marker.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+
+    // Close the file
+    magic_file.close(&magic_file);
+    return MAGIC_SUCCESS;
+}
+
+MagicState mlp_load(MLP* model, const char* filepath) {
+    MagicFile magic_file = magic_file_create(filepath, "rb");
+    if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to open file %s for reading.\n", __func__, filepath);
+        return MAGIC_ERROR;
+    }
+
+    // Validate version and alignment
+    if (magic_file.validate(&magic_file) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to validate magic file.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+
+    // Read Start Marker
+    int32_t version, alignment;
+    if (magic_read_start_marker(&magic_file, &version, &alignment) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to read start marker.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+    LOG_INFO("%s: ALT model file format version %i", version);
+    LOG_INFO("%s: ALT model file format alignment %i", alignment);
+
+    // General Section
+    char* model_name = NULL;
+    char* author = NULL;
+    char* uuid = NULL;
+    if (load_general_section(&magic_file, &model_name, &author, &uuid) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to load general section.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+    LOG_INFO("%s: Loaded model '%s' by %s (UUID: %s).\n", __func__, model_name, author, uuid);
+    free(model_name);
+    free(author);
+    free(uuid);
+
+    // Parameters Section
+    uint32_t epochs;
+    float learning_rate, error_threshold;
+    if (load_parameters_section(&magic_file, &epochs, &learning_rate, &error_threshold) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to load parameters section.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+    LOG_INFO("%s: Loaded parameters - Epochs: %u, Learning Rate: %.4f, Error Threshold: %.4f\n",
+             __func__, epochs, (double) learning_rate, (double) error_threshold);
+
+    // Tensors Section
+    if (load_tensors_section(&magic_file, model) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to load tensors section.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+    LOG_INFO("%s: Loaded tensors for %u layers.\n", __func__, model->num_layers);
+
+    // End Marker
+    if (magic_read_end_marker(&magic_file) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to validate end marker.\n", __func__);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -842,7 +976,7 @@ int main(int argc, char* argv[]) {
     mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
 
     // Create the model path if it does not exist
-    char* model_file_path = "models/mnist/mlp.alt";
+    char* model_file_path = "models/mnist/model.alt";
     char* model_base_path = path_dirname(model_file_path);
     if (!path_exists(model_base_path)) {
         mkdir(model_base_path, 0755);
