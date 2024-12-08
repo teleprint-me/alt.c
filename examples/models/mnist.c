@@ -44,6 +44,9 @@
 #define ERROR_THRESHOLD 0.01f // Early stopping threshold for average error
 #define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN) // Number of CPU threads available at runtime
 
+// Model file parameters
+#define UUID_STR_LEN 37 // 36 characters + 1 null character
+
 // Structures
 
 // Struct to hold a single image and label
@@ -520,7 +523,6 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     // General UUID
     uuid_t binuuid;
     uuid_generate_random(binuuid);
-#define UUID_STR_LEN 37 // 36 characters + 1 null character
     int32_t uuid_len = UUID_STR_LEN;
     char* uuid = malloc(uuid_len);
     if (uuid == NULL) {
@@ -814,16 +816,19 @@ int main(int argc, char* argv[]) {
     mlp_train(model, dataset, EPOCHS, ERROR_THRESHOLD);
 
     // Create the model path if it does not exist
-    if (!path_exists("models/mnist")) {
-        mkdir("models/mnist", 0755);
+    char* model_file_path = "models/mnist/mlp.alt";
+    char* model_base_path = path_dirname(model_file_path);
+    if (!path_exists(model_base_path)) {
+        mkdir(model_base_path, 0755);
     }
     // Write the trained model to the model file path
-    mlp_save(model, "models/mnist/mlp.alt");
+    mlp_save(model, model_file_path);
 
     // Cleanup
     mlp_free(model);
     mnist_dataset_free(dataset);
     path_free_string(training_path);
+    path_free_string(model_base_path);
 
     return EXIT_SUCCESS;
 }
