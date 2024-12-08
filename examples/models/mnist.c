@@ -726,6 +726,53 @@ MagicState load_parameters_section(MagicFile* magic_file, uint32_t* epochs, floa
     return MAGIC_SUCCESS;
 }
 
+MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
+    // Calculate the size of the Tensors Section
+    uint64_t tensors_size = sizeof(uint32_t); // For number of layers
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+        tensors_size += sizeof(uint32_t) * 2; // input_size, output_size
+        tensors_size += sizeof(float) * (layer->input_size * layer->output_size); // weights
+        tensors_size += sizeof(float) * layer->output_size; // biases
+    }
+
+    // Write section marker
+    if (magic_write_section_marker(magic_file, MAGIC_TENSORS, tensors_size) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to write tensors section marker.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Write the number of layers
+    if (fwrite(&model->num_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to write number of layers.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Write each layer's tensors
+    for (uint32_t i = 0; i < model->num_layers; i++) {
+        Layer* layer = &model->layers[i];
+        // Write input and output sizes
+        if (fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
+            fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
+            LOG_ERROR("%s: Failed to write layer dimensions.\n", __func__);
+            return MAGIC_ERROR;
+        }
+        // Write weights
+        if (fwrite(layer->weights, sizeof(float), layer->input_size * layer->output_size, magic_file->model) !=
+            layer->input_size * layer->output_size) {
+            LOG_ERROR("%s: Failed to write layer weights.\n", __func__);
+            return MAGIC_ERROR;
+        }
+        // Write biases
+        if (fwrite(layer->biases, sizeof(float), layer->output_size, magic_file->model) != layer->output_size) {
+            LOG_ERROR("%s: Failed to write layer biases.\n", __func__);
+            return MAGIC_ERROR;
+        }
+    }
+
+    return MAGIC_SUCCESS;
+}
+
 MagicState mlp_save(MLP* model, const char* filepath) {
     MagicFile magic_file = magic_file_create(filepath, "wb");
     if (magic_file.open(&magic_file) != MAGIC_SUCCESS) {
@@ -747,28 +794,7 @@ MagicState mlp_save(MLP* model, const char* filepath) {
     save_parameters_section(&magic_file, EPOCHS, LEARNING_RATE, ERROR_THRESHOLD);
 
     // Tensors Section
-    uint64_t tensors_size = sizeof(uint32_t); // For number of layers
-    for (uint32_t i = 0; i < model->num_layers; i++) {
-        Layer* layer = &model->layers[i];
-        tensors_size += sizeof(uint32_t) * 2; // input_size, output_size
-        tensors_size += sizeof(float) * (layer->input_size * layer->output_size); // weights
-        tensors_size += sizeof(float) * layer->output_size; // biases
-    }
-    if (magic_write_section_marker(&magic_file, MAGIC_TENSORS, tensors_size) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to write tensors section marker.\n", __func__);
-        magic_file.close(&magic_file);
-        return MAGIC_ERROR;
-    }
-    fwrite(&model->num_layers, sizeof(uint32_t), 1, magic_file.model);
-    for (uint32_t i = 0; i < model->num_layers; i++) {
-        Layer* layer = &model->layers[i];
-        fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file.model);
-        fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file.model);
-        fwrite(
-            layer->weights, sizeof(float), layer->input_size * layer->output_size, magic_file.model
-        );
-        fwrite(layer->biases, sizeof(float), layer->output_size, magic_file.model);
-    }
+    save_tensors_section(&magic_file, model);
 
     // End Marker
     if (magic_write_end_marker(&magic_file) != MAGIC_SUCCESS) {
