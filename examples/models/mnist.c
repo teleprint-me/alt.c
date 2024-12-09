@@ -135,11 +135,11 @@ void mlp_free_params(Parameters* params);
 MLP* mlp_create_model(Parameters* params);
 void mlp_free_model(MLP* model);
 
-void* mlp_forward_parallel(void* args);
 void mlp_forward(MLP* model, float* input);
+void* mlp_forward_parallel(void* args);
 
-void* mlp_backward_parallel(void* args);
 void mlp_backward(MLP* model, float* input, float* target);
+void* mlp_backward_parallel(void* args);
 
 void mlp_train(MLP* model, MNISTDataset* dataset);
 
@@ -446,6 +446,29 @@ void mlp_forward(MLP* model, float* input) {
     }
 }
 
+void* mlp_forward_parallel(void* args) {
+    ModelArgs* fargs = (ModelArgs*) args;
+    uint32_t start = fargs->thread_id * (fargs->rows / fargs->thread_count);
+    uint32_t end = (fargs->thread_id + 1) * (fargs->rows / fargs->thread_count);
+
+    // Handle remainder rows in the last thread
+    if (fargs->thread_id == fargs->thread_count - 1) {
+        end = fargs->rows;
+    }
+
+    for (uint32_t i = start; i < end; i++) {
+        fargs->outputs[i] = fargs->biases[i]; // Start with bias
+        // Apply the dot product
+        for (uint32_t j = 0; j < fargs->cols; j++) {
+            fargs->outputs[i] += fargs->weights[i * fargs->cols + j] * fargs->inputs[j];
+        }
+        // store the activations in the hidden output layer
+        fargs->outputs[i] = activate_relu(fargs->outputs[i]);
+    }
+
+    return NULL;
+}
+
 void mlp_backward(MLP* model, float* input, float* target) {
     int32_t n_layers = (int32_t) model->params->n_layers - 1;
 
@@ -476,6 +499,47 @@ void mlp_backward(MLP* model, float* input, float* target) {
             pthread_join(threads[t], NULL);
         }
     }
+}
+
+void* mlp_backward_parallel(void* args) {
+    ModelArgs* bargs = (ModelArgs*) args;
+
+    // Compute start and end indices for this thread
+    uint32_t start = bargs->thread_id * (bargs->rows / bargs->thread_count);
+    uint32_t end = (bargs->thread_id + 1) * (bargs->rows / bargs->thread_count);
+
+    // Handle remainder rows in the last thread
+    if (bargs->thread_id == bargs->thread_count - 1) {
+        end = bargs->rows;
+    }
+
+    // Backpropagate error and update weights for assigned rows
+    for (uint32_t i = start; i < end; i++) {
+        float* weights = bargs->weights + i * bargs->cols;
+        float error
+            = (bargs->targets) ? bargs->targets[i] - bargs->outputs[i] : 0.0f; // Output layer error
+
+        if (!bargs->targets) {
+            // Hidden layer error: sum of weighted gradients from the next layer
+            for (uint32_t j = 0; j < bargs->cols; j++) {
+                error += weights[j] * bargs->inputs[j];
+            }
+        }
+
+        // Compute gradient
+        float gradient = error * activate_relu_prime(bargs->outputs[i]);
+
+        // Update weights and biases
+        for (uint32_t j = 0; j < bargs->cols; j++) {
+            weights[j] += bargs->learning_rate * gradient * bargs->inputs[j];
+        }
+        bargs->biases[i] += bargs->learning_rate * gradient;
+
+        // Store gradient for next layer
+        bargs->outputs[i] = gradient;
+    }
+
+    return NULL;
 }
 
 void mlp_train(MLP* model, MNISTDataset* dataset) {
@@ -525,72 +589,6 @@ void mlp_train(MLP* model, MNISTDataset* dataset) {
             break;
         }
     }
-}
-
-// Multi-threaded operations
-
-void* mlp_forward_parallel(void* args) {
-    ModelArgs* fargs = (ModelArgs*) args;
-    uint32_t start = fargs->thread_id * (fargs->rows / fargs->thread_count);
-    uint32_t end = (fargs->thread_id + 1) * (fargs->rows / fargs->thread_count);
-
-    // Handle remainder rows in the last thread
-    if (fargs->thread_id == fargs->thread_count - 1) {
-        end = fargs->rows;
-    }
-
-    for (uint32_t i = start; i < end; i++) {
-        fargs->outputs[i] = fargs->biases[i]; // Start with bias
-        // Apply the dot product
-        for (uint32_t j = 0; j < fargs->cols; j++) {
-            fargs->outputs[i] += fargs->weights[i * fargs->cols + j] * fargs->inputs[j];
-        }
-        // store the activations in the hidden output layer
-        fargs->outputs[i] = activate_relu(fargs->outputs[i]);
-    }
-
-    return NULL;
-}
-
-void* mlp_backward_parallel(void* args) {
-    ModelArgs* bargs = (ModelArgs*) args;
-
-    // Compute start and end indices for this thread
-    uint32_t start = bargs->thread_id * (bargs->rows / bargs->thread_count);
-    uint32_t end = (bargs->thread_id + 1) * (bargs->rows / bargs->thread_count);
-
-    // Handle remainder rows in the last thread
-    if (bargs->thread_id == bargs->thread_count - 1) {
-        end = bargs->rows;
-    }
-
-    // Backpropagate error and update weights for assigned rows
-    for (uint32_t i = start; i < end; i++) {
-        float* weights = bargs->weights + i * bargs->cols;
-        float error
-            = (bargs->targets) ? bargs->targets[i] - bargs->outputs[i] : 0.0f; // Output layer error
-
-        if (!bargs->targets) {
-            // Hidden layer error: sum of weighted gradients from the next layer
-            for (uint32_t j = 0; j < bargs->cols; j++) {
-                error += weights[j] * bargs->inputs[j];
-            }
-        }
-
-        // Compute gradient
-        float gradient = error * activate_relu_prime(bargs->outputs[i]);
-
-        // Update weights and biases
-        for (uint32_t j = 0; j < bargs->cols; j++) {
-            weights[j] += bargs->learning_rate * gradient * bargs->inputs[j];
-        }
-        bargs->biases[i] += bargs->learning_rate * gradient;
-
-        // Store gradient for next layer
-        bargs->outputs[i] = gradient;
-    }
-
-    return NULL;
 }
 
 // MLP model file operations
