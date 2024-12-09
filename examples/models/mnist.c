@@ -37,22 +37,21 @@
 #include "path.h" // For path management
 #include "random.h" // For weight initialization
 
-// Training parameters
+// MNIST image dimensions
 #define IMAGE_SIZE 28 * 28 // Flattened size of MNIST images
-#define LEARNING_RATE 0.1f // Learning rate for gradient descent
-#define EPOCHS 10000 // Maximum number of training epochs
-#define ERROR_THRESHOLD 0.01f // Early stopping threshold for average error
-#define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN) // Number of CPU threads available at runtime
 
 // Model file parameters
 #define UUID_STR_LEN 37 // 36 characters + 1 null character
+
+// Default number of CPU threads available at runtime
+#define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN)
 
 // Structures
 
 /**
  * @brief Represents a single MNIST image and its label.
  */
-typedef struct {
+typedef struct MNISTSample {
     float* pixels; /**< Flattened pixel data (grayscale values). */
     int label; /**< Label representing the digit (0-9). */
 } MNISTSample;
@@ -60,45 +59,44 @@ typedef struct {
 /**
  * @brief Represents a dataset of MNIST samples.
  */
-typedef struct {
+typedef struct MNISTDataset {
     MNISTSample* samples; /**< Array of MNIST samples. */
     uint32_t length; /**< Number of loaded samples. */
 } MNISTDataset;
 
 /**
- * @brief Parameters for training the MLP model.
- */
-typedef struct {
-    float learning_rate; /**< Learning rate for gradient descent. */
-    float error_threshold; /**< Threshold for acceptable training error. */
-    uint32_t epochs; /**< Maximum number of training epochs. */
-} Parameter;
-
-/**
  * @brief Represents a single layer in the MLP model.
  */
-typedef struct {
+typedef struct Layer {
     float* weights; /**< Flattened weight matrix. */
     float* biases; /**< Bias vector for the layer. */
     float* activations; /**< Activations (outputs) of this layer. */
     float* gradients; /**< Gradients for backpropagation. */
-    uint32_t input_size; /**< Number of inputs to this layer. */
-    uint32_t output_size; /**< Number of outputs (neurons) in this layer. */
+    uint32_t input_size; /**< Number of inputs to this layer. (width -> cols) */
+    uint32_t output_size; /**< Number of outputs (neurons) in this layer. (height -> rows) */
 } Layer;
+
+typedef struct Parameters {
+    float error_threshold; /**< Threshold for early stopping. */
+    float learning_rate; /**< Learning rate for gradient descent. */
+    uint32_t n_threads; /**< Number of CPU threads to use. */
+    uint32_t n_epochs; /**< Number of training epochs. */
+    uint32_t n_layers; /**< Number of layers (connections). */
+    uint32_t* layer_sizes; /**< Sizes of each layer (input, hidden, output). */
+} Parameters;
 
 /**
  * @brief Represents a multi-layer perceptron (MLP) model.
  */
-typedef struct {
+typedef struct MLP {
     Layer* layers; /**< Array of layers in the model. */
-    uint32_t num_layers; /**< Number of layers (connections) in the model. */
-    Parameter parameters;
+    Parameters* params;
 } MLP;
 
 /**
  * @brief Represents arguments for multi-threaded operations in the MLP model.
  */
-typedef struct {
+typedef struct ModelArgs {
     float* inputs; /**< Input vector (e.g., MNIST pixels). */
     float* targets; /**< Target vector (NULL for forward pass). */
     float* weights; /**< Flattened weight matrix. */
@@ -115,16 +113,27 @@ typedef struct {
 
 void print_progress(char* title, float percentage, uint32_t width, char ch);
 
-// Dataset management
+// MNIST dataset
 MNISTDataset* mnist_dataset_create(uint32_t max_samples);
 void mnist_dataset_free(MNISTDataset* dataset);
 
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
 uint32_t mnist_dataset_shuffle(MNISTDataset* dataset);
 
-// Model management
-MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes);
-void mlp_free(MLP* model);
+
+// MLP model
+Parameters* mlp_create_params(
+    float error_threshold,
+    float learning_rate,
+    uint32_t n_threads,
+    uint32_t n_epochs,
+    uint32_t n_layers,
+    uint32_t* layer_sizes
+);
+void mlp_free_params(Parameters* params);
+
+MLP* mlp_create_model(Parameters* params);
+void mlp_free_model(MLP* model);
 
 void* mlp_forward_parallel(void* args);
 void mlp_forward(MLP* model, float* input);
@@ -132,7 +141,7 @@ void mlp_forward(MLP* model, float* input);
 void* mlp_backward_parallel(void* args);
 void mlp_backward(MLP* model, float* input, float* target);
 
-void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_threshold);
+void mlp_train(MLP* model, MNISTDataset* dataset);
 
 // File management
 MagicState mlp_save(MLP* model, const char* filepath);
@@ -289,33 +298,77 @@ uint32_t mnist_dataset_shuffle(MNISTDataset* dataset) {
 
 // MLP model implementation
 
-MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
-    if (num_layers < 2) {
-        LOG_ERROR("%s: An MLP must have at least two layers (input and output).\n", __func__);
+Parameters* mlp_create_params(
+    float error_threshold,
+    float learning_rate,
+    uint32_t n_threads,
+    uint32_t n_epochs,
+    uint32_t n_layers,
+    uint32_t* layer_sizes
+) {
+    // Allocate memory for hyperparameters
+    Parameters* params = (Parameters*) malloc(sizeof(Parameters));
+    if (!params) {
+        LOG_ERROR("%s: Failed to allocate memory for Parameters.\n", __func__);
+        return NULL;
+    }
+    
+    // Set hyperparameter values
+    params->error_threshold = error_threshold;
+    params->learning_rate = learning_rate;
+    params->n_threads = n_threads;
+    params->n_epochs = n_epochs;
+    params->n_layers = n_layers;
+    
+    // Allocate memory for the layer sizes
+    params->layer_sizes = (uint32_t*) malloc(sizeof(uint32_t) * n_layers);
+    if (!params->layer_sizes) {
+        LOG_ERROR("%s: Failed to allocate memory for layer sizes.\n", __func__);
+        free(params);
         return NULL;
     }
 
-    // Allocate memory for the MLP structure
+    // Copy the layer sizes to parameters
+    for (uint32_t i = 0; i < n_layers; i++) {
+        params->layer_sizes[i] = layer_sizes[i];
+    }
+
+    return params;
+}
+
+void mlp_free_params(Parameters* params) {
+    if (params) {
+        if (params->layer_sizes) {
+            free(params->layer_sizes);
+        }
+        free(params);
+    }
+}
+
+MLP* mlp_create_model(Parameters* params) {
+    if (params->n_layers < 2) {
+        LOG_ERROR("%s: MLP must have at least two layers (input and output).\n", __func__);
+        return NULL;
+    }
+
     MLP* model = malloc(sizeof(MLP));
     if (!model) {
         LOG_ERROR("%s: Failed to allocate memory for MLP.\n", __func__);
         return NULL;
     }
 
-    // Define the number of layers
-    model->num_layers = num_layers - 1; // Number of connections (layers - 1)
-    model->layers = malloc(sizeof(Layer) * model->num_layers);
+    model->params = params; // MLP model takes ownership of Parameters
+    model->layers = malloc(sizeof(Layer) * params->n_layers);
     if (!model->layers) {
-        LOG_ERROR("%s: Failed to allocate memory for %u layers.\n", __func__, num_layers);
+        LOG_ERROR("%s: Failed to allocate memory for layers.\n", __func__);
         free(model);
         return NULL;
     }
 
-    // Initialize each layer
-    for (uint32_t i = 0; i < model->num_layers; i++) {
+    for (uint32_t i = 0; i < params->n_layers - 1; i++) {
         Layer* layer = &model->layers[i];
-        layer->input_size = layer_sizes[i];
-        layer->output_size = layer_sizes[i + 1];
+        layer->input_size = params->layer_sizes[i];
+        layer->output_size = params->layer_sizes[i + 1];
         layer->weights = malloc(sizeof(float) * layer->input_size * layer->output_size);
         layer->biases = malloc(sizeof(float) * layer->output_size);
         layer->activations = malloc(sizeof(float) * layer->output_size);
@@ -323,7 +376,7 @@ MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
 
         if (!layer->weights || !layer->biases || !layer->activations || !layer->gradients) {
             LOG_ERROR("%s: Failed to allocate memory for layer %d.\n", __func__, i);
-            mlp_free(model); // Ensure memory cleanup
+            mlp_free_model(model);
             return NULL;
         }
 
@@ -339,10 +392,10 @@ MLP* mlp_create(uint32_t num_layers, uint32_t* layer_sizes) {
     return model;
 }
 
-void mlp_free(MLP* model) {
+void mlp_free_model(MLP* model) {
     if (model) {
         if (model->layers) {
-            for (uint32_t i = 0; i < model->num_layers; i++) {
+            for (uint32_t i = 0; i < model->params->n_layers; i++) {
                 Layer* layer = &model->layers[i];
                 if (layer) {
                     free(layer->weights);
@@ -353,6 +406,9 @@ void mlp_free(MLP* model) {
             }
             free(model->layers);
         }
+        if (model->params) {
+            mlp_free_params(model->params);
+        }
         free(model);
     }
 }
@@ -360,14 +416,14 @@ void mlp_free(MLP* model) {
 void mlp_forward(MLP* model, float* input) {
     float* current_input = input;
 
-    pthread_t threads[NUM_THREADS];
-    ModelArgs args[NUM_THREADS];
+    pthread_t threads[model->params->n_threads];
+    ModelArgs args[model->params->n_threads];
 
-    for (uint32_t i = 0; i < model->num_layers; i++) {
+    for (uint32_t i = 0; i < model->params->n_layers; i++) {
         Layer* layer = &model->layers[i];
 
-        for (uint32_t t = 0; t < NUM_THREADS; t++) {
-            args[t] = (ModelArgs){
+        for (uint32_t t = 0; t < model->params->n_threads; t++) {
+            args[t] = (ModelArgs) {
                 .inputs = current_input,
                 .targets = NULL, // No targets in forward pass
                 .weights = layer->weights,
@@ -376,13 +432,13 @@ void mlp_forward(MLP* model, float* input) {
                 .rows = layer->output_size,
                 .cols = layer->input_size,
                 .thread_id = t,
-                .thread_count = NUM_THREADS,
+                .thread_count = model->params->n_threads,
                 .learning_rate = 0.0f // Not used in forward pass
             };
             pthread_create(&threads[t], NULL, mlp_forward_parallel, &args[t]);
         }
 
-        for (uint32_t t = 0; t < NUM_THREADS; t++) {
+        for (uint32_t t = 0; t < model->params->n_threads; t++) {
             pthread_join(threads[t], NULL);
         }
 
@@ -391,39 +447,39 @@ void mlp_forward(MLP* model, float* input) {
 }
 
 void mlp_backward(MLP* model, float* input, float* target) {
-    int32_t num_layers = (int32_t) model->num_layers - 1;
+    int32_t n_layers = (int32_t) model->params->n_layers - 1;
 
-    pthread_t threads[NUM_THREADS];
-    ModelArgs args[NUM_THREADS];
+    pthread_t threads[model->params->n_threads];
+    ModelArgs args[model->params->n_threads];
 
     // Applying chain-rule requires iterating in reverse order
-    for (int32_t l = num_layers; l >= 0; l--) {
+    for (int32_t l = n_layers; l >= 0; l--) {
         Layer* layer = &model->layers[l];
         float* prev_activations = (l == 0) ? input : model->layers[l - 1].activations;
 
-        for (uint32_t t = 0; t < NUM_THREADS; t++) {
-            args[t] = (ModelArgs
-            ){.inputs = prev_activations,
-              .targets = (l == num_layers) ? target : NULL,
+        for (uint32_t t = 0; t < model->params->n_threads; t++) {
+            args[t] = (ModelArgs) {
+              .inputs = prev_activations,
+              .targets = (l == n_layers) ? target : NULL,
               .weights = layer->weights,
               .biases = layer->biases,
               .outputs = layer->gradients,
               .rows = layer->output_size,
               .cols = layer->input_size,
               .thread_id = t,
-              .thread_count = NUM_THREADS,
-              .learning_rate = LEARNING_RATE};
+              .thread_count = model->params->n_threads,
+              .learning_rate = model->params->learning_rate};
             pthread_create(&threads[t], NULL, mlp_backward_parallel, &args[t]);
         }
 
-        for (uint32_t t = 0; t < NUM_THREADS; t++) {
+        for (uint32_t t = 0; t < model->params->n_threads; t++) {
             pthread_join(threads[t], NULL);
         }
     }
 }
 
-void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_threshold) {
-    for (uint32_t epoch = 0; epoch < epochs; epoch++) {
+void mlp_train(MLP* model, MNISTDataset* dataset) {
+    for (uint32_t epoch = 0; epoch < model->params->n_epochs; epoch++) {
         // Shuffle the dataset at the start of each epoch
         mnist_dataset_shuffle(dataset);
 
@@ -445,7 +501,7 @@ void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_t
 
             // Accumulate error (mean squared error for simplicity)
             for (uint32_t j = 0; j < 10; j++) {
-                float error = target[j] - model->layers[model->num_layers - 1].activations[j];
+                float error = target[j] - model->layers[model->params->n_layers - 1].activations[j];
                 total_error += error * error;
             }
 
@@ -462,7 +518,7 @@ void mlp_train(MLP* model, MNISTDataset* dataset, uint32_t epochs, float error_t
         printf("Epoch %u, Error: %.6f\n", epoch + 1, (double) total_error);
 
         // Early stopping condition
-        if (total_error < error_threshold) {
+        if (total_error < model->params->error_threshold) {
             printf(
                 "Training converged at epoch %u, Error: %.6f\n", epoch + 1, (double) total_error
             );
@@ -606,8 +662,7 @@ MagicState save_general_section(MagicFile* magic_file, const char* model_name, c
     return MAGIC_SUCCESS;
 }
 
-MagicState
-load_general_section(MagicFile* magic_file, char** model_name, char** author, char** uuid) {
+MagicState load_general_section(MagicFile* magic_file, char** model_name, char** author, char** uuid) {
     // Read and validate section marker
     int64_t section_marker, section_size;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
@@ -693,11 +748,13 @@ load_general_section(MagicFile* magic_file, char** model_name, char** author, ch
 
 /// @todo Input, Output, and Hidden sizes are also hyperparameters.
 
-MagicState save_parameters_section(
-    MagicFile* magic_file, uint32_t epochs, float learning_rate, float error_threshold
-) {
+MagicState save_parameters_section(MagicFile* magic_file, Parameters* params) {
     // Calculate the size of the Parameters Section
-    uint64_t param_size = sizeof(epochs) + sizeof(learning_rate) + sizeof(error_threshold);
+    int64_t param_size = sizeof(params->error_threshold) +
+                         sizeof(params->learning_rate) +
+                         sizeof(params->n_epochs) +
+                         sizeof(params->n_layers) +
+                         (sizeof(uint32_t) * params->n_layers); // Layer sizes array
 
     // Write section marker
     if (magic_write_section_marker(magic_file, MAGIC_PARAMETERS, param_size) != MAGIC_SUCCESS) {
@@ -705,30 +762,40 @@ MagicState save_parameters_section(
         return MAGIC_ERROR;
     }
 
-    // Write epochs
-    if (fwrite(&epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to write epochs.\n", __func__);
+    // Write error threshold
+    if (fwrite(&params->error_threshold, sizeof(float), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to write error threshold.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Write learning rate
-    if (fwrite(&learning_rate, sizeof(float), 1, magic_file->model) != 1) {
+    if (fwrite(&params->learning_rate, sizeof(float), 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to write learning rate.\n", __func__);
         return MAGIC_ERROR;
     }
 
-    // Write error threshold
-    if (fwrite(&error_threshold, sizeof(float), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to write error threshold.\n", __func__);
+    // Write number of epochs
+    if (fwrite(&params->n_epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to write number of epochs.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Write number of layers
+    if (fwrite(&params->n_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to write number of layers.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Write layer sizes array
+    if (fwrite(params->layer_sizes, sizeof(uint32_t), params->n_layers, magic_file->model) != params->n_layers) {
+        LOG_ERROR("%s: Failed to write layer sizes array.\n", __func__);
         return MAGIC_ERROR;
     }
 
     return MAGIC_SUCCESS;
 }
 
-MagicState load_parameters_section(
-    MagicFile* magic_file, uint32_t* epochs, float* learning_rate, float* error_threshold
-) {
+MagicState load_parameters_section(MagicFile* magic_file, Parameters* params) {
     // Read and validate section marker
     int64_t section_marker, section_size;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
@@ -740,21 +807,46 @@ MagicState load_parameters_section(
         return MAGIC_INVALID_MARKER;
     }
 
-    // Read epochs
-    if (fread(epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read epochs.\n", __func__);
+    // Read error threshold
+    if (fread(&params->error_threshold, sizeof(float), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to read error threshold.\n", __func__);
         return MAGIC_ERROR;
     }
 
     // Read learning rate
-    if (fread(learning_rate, sizeof(float), 1, magic_file->model) != 1) {
+    if (fread(&params->learning_rate, sizeof(float), 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to read learning rate.\n", __func__);
         return MAGIC_ERROR;
     }
 
-    // Read error threshold
-    if (fread(error_threshold, sizeof(float), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read error threshold.\n", __func__);
+    // Read epochs
+    if (fread(&params->n_epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to read epochs.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Read number of layers
+    if (fread(&params->n_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        LOG_ERROR("%s: Failed to read number of layers.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Free pre-existing allocated memory
+    if (params->layer_sizes) {
+        free(params->layer_sizes);
+    }
+
+    // Allocate new memory according to the number of layers
+    params->layer_sizes = (uint32_t*) malloc(sizeof(uint32_t) * params->n_layers);
+    if (!params->layer_sizes) {
+        LOG_ERROR("%s: Failed to allocate memory for layer sizes.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Read layer sizes array
+    if (fread(params->layer_sizes, sizeof(uint32_t), params->n_layers, magic_file->model) != params->n_layers) {
+        LOG_ERROR("%s: Failed to read layer sizes array.\n", __func__);
+        free(params->layer_sizes);
         return MAGIC_ERROR;
     }
 
@@ -763,8 +855,8 @@ MagicState load_parameters_section(
 
 MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
     // Calculate the size of the Tensors Section
-    uint64_t tensors_size = sizeof(uint32_t); // For number of layers
-    for (uint32_t i = 0; i < model->num_layers; i++) {
+    uint64_t tensors_size = 0;
+    for (uint32_t i = 0; i < model->params->n_layers; i++) {
         Layer* layer = &model->layers[i];
         tensors_size += sizeof(uint32_t) * 2; // input_size, output_size
         tensors_size += sizeof(float) * (layer->input_size * layer->output_size); // weights
@@ -777,18 +869,12 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
         return MAGIC_ERROR;
     }
 
-    // Write the number of layers
-    if (fwrite(&model->num_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to write number of layers.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
     // Write each layer's tensors
-    for (uint32_t i = 0; i < model->num_layers; i++) {
+    for (uint32_t i = 0; i < model->params->n_layers; i++) {
         Layer* layer = &model->layers[i];
         // Write input and output sizes
-        if (fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1
-            || fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        if (fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
+            fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
             LOG_ERROR("%s: Failed to write layer dimensions.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -798,14 +884,12 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
                 sizeof(float),
                 layer->input_size * layer->output_size,
                 magic_file->model
-            )
-            != layer->input_size * layer->output_size) {
+            ) != layer->input_size * layer->output_size) {
             LOG_ERROR("%s: Failed to write layer weights.\n", __func__);
             return MAGIC_ERROR;
         }
         // Write biases
-        if (fwrite(layer->biases, sizeof(float), layer->output_size, magic_file->model)
-            != layer->output_size) {
+        if (fwrite(layer->biases, sizeof(float), layer->output_size, magic_file->model) != layer->output_size) {
             LOG_ERROR("%s: Failed to write layer biases.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -816,7 +900,7 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
 
 MagicState load_tensors_section(MagicFile* magic_file, MLP* model) {
     // Read and validate section marker
-    int64_t section_marker, section_size;
+    int64_t section_marker = 0, section_size = 0;
     if (magic_read_section_marker(magic_file, &section_marker, &section_size) != MAGIC_SUCCESS) {
         LOG_ERROR("%s: Failed to read tensors section marker.\n", __func__);
         return MAGIC_ERROR;
@@ -826,60 +910,53 @@ MagicState load_tensors_section(MagicFile* magic_file, MLP* model) {
         return MAGIC_INVALID_MARKER;
     }
 
-    // Read the number of layers
-    if (fread(&model->num_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read number of layers.\n", __func__);
-        return MAGIC_ERROR;
-    }
+    // Simplify access to parameters
+    Parameters* params = model->params;
 
-    // Allocate memory for layers
-    model->layers = malloc(model->num_layers * sizeof(Layer));
-    if (model->layers == NULL) {
-        LOG_ERROR("%s: Failed to allocate memory for layers.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
-    // Read each layer's tensors
-    for (uint32_t i = 0; i < model->num_layers; i++) {
+    // Populate each layer's tensors
+    for (uint32_t i = 0; i < params->n_layers - 1; i++) { // -1 for connections
         Layer* layer = &model->layers[i];
+        uint32_t expected_input_size = params->layer_sizes[i];
+        uint32_t expected_output_size = params->layer_sizes[i + 1];
 
         // Read input and output sizes
-        if (fread(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1
-            || fread(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
+        uint32_t input_size = 0, output_size = 0;
+        if (fread(&input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
+            fread(&output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
             LOG_ERROR("%s: Failed to read layer dimensions.\n", __func__);
             return MAGIC_ERROR;
         }
 
-        // Allocate memory for weights
-        layer->weights = malloc(layer->input_size * layer->output_size * sizeof(float));
-        if (layer->weights == NULL) {
-            LOG_ERROR("%s: Failed to allocate memory for weights.\n", __func__);
+        // Validate dimensions match expected sizes
+        if (input_size != expected_input_size || output_size != expected_output_size) {
+            LOG_ERROR(
+                "%s: Dimension mismatch for layer %u (expected %u->%u, got %u->%u).\n",
+                __func__, i, expected_input_size, expected_output_size, input_size, output_size
+            );
             return MAGIC_ERROR;
         }
+
         // Read weights
         if (fread(
                 layer->weights,
                 sizeof(float),
-                layer->input_size * layer->output_size,
+                input_size * output_size,
                 magic_file->model
-            )
-            != layer->input_size * layer->output_size) {
+            ) != input_size * output_size) {
             LOG_ERROR("%s: Failed to read layer weights.\n", __func__);
             return MAGIC_ERROR;
         }
 
-        // Allocate memory for biases
-        layer->biases = malloc(layer->output_size * sizeof(float));
-        if (layer->biases == NULL) {
-            LOG_ERROR("%s: Failed to allocate memory for biases.\n", __func__);
-            return MAGIC_ERROR;
-        }
         // Read biases
-        if (fread(layer->biases, sizeof(float), layer->output_size, magic_file->model)
-            != layer->output_size) {
+        if (fread(layer->biases, sizeof(float), output_size, magic_file->model)
+            != output_size) {
             LOG_ERROR("%s: Failed to read layer biases.\n", __func__);
             return MAGIC_ERROR;
         }
+
+        // Assign dimensions to layer
+        layer->input_size = input_size;
+        layer->output_size = output_size;
     }
 
     return MAGIC_SUCCESS;
@@ -892,32 +969,43 @@ MagicState mlp_save(MLP* model, const char* filepath) {
         return MAGIC_ERROR;
     }
 
+    #define CLEANUP_AND_RETURN(state) \
+        do { \
+            magic_file.close(&magic_file); \
+            return state; \
+        } while (0)
+
     // Write Start Marker
     if (magic_write_start_marker(&magic_file, MAGIC_VERSION, MAGIC_ALIGNMENT) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to write start marker.\n", __func__);
-        magic_file.close(&magic_file);
-        return MAGIC_ERROR;
+        LOG_ERROR("%s: Failed to write start marker to file %s.\n", __func__, filepath);
+        CLEANUP_AND_RETURN(MAGIC_ERROR);
     }
 
     // General Section
-    save_general_section(&magic_file, "MNIST MLP", "Austin Berrio");
+    if (save_general_section(&magic_file, "MNIST MLP", "Austin Berrio") != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to save general section to file %s.\n", __func__, filepath);
+        CLEANUP_AND_RETURN(MAGIC_ERROR);
+    }
 
     // Parameters Section
-    save_parameters_section(&magic_file, EPOCHS, LEARNING_RATE, ERROR_THRESHOLD);
+    if (save_parameters_section(&magic_file, model->params) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to save parameters section to file %s.\n", __func__, filepath);
+        CLEANUP_AND_RETURN(MAGIC_ERROR);
+    }
 
     // Tensors Section
-    save_tensors_section(&magic_file, model);
+    if (save_tensors_section(&magic_file, model) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to save tensors section to file %s.\n", __func__, filepath);
+        CLEANUP_AND_RETURN(MAGIC_ERROR);
+    }
 
     // End Marker
     if (magic_write_end_marker(&magic_file) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to write end marker.\n", __func__);
-        magic_file.close(&magic_file);
-        return MAGIC_ERROR;
+        LOG_ERROR("%s: Failed to write end marker to file %s.\n", __func__, filepath);
+        CLEANUP_AND_RETURN(MAGIC_ERROR);
     }
 
-    // Close the file
-    magic_file.close(&magic_file);
-    return MAGIC_SUCCESS;
+    CLEANUP_AND_RETURN(MAGIC_SUCCESS);
 }
 
 MagicState mlp_load(MLP* model, const char* filepath) {
@@ -927,9 +1015,16 @@ MagicState mlp_load(MLP* model, const char* filepath) {
         return MAGIC_ERROR;
     }
 
+    // Ensure parameters are pre-allocated
+    if (!model->params) {
+        LOG_ERROR("%s: Model parameters are not allocated.\n", __func__);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+
     // Validate version and alignment
     if (magic_file.validate(&magic_file) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to validate magic file.\n", __func__);
+        LOG_ERROR("%s: Failed to validate magic file %s.\n", __func__, filepath);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -937,19 +1032,25 @@ MagicState mlp_load(MLP* model, const char* filepath) {
     // Read Start Marker
     int32_t version, alignment;
     if (magic_read_start_marker(&magic_file, &version, &alignment) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to read start marker.\n", __func__);
+        LOG_ERROR("%s: Failed to read start marker from file %s.\n", __func__, filepath);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
-    LOG_INFO("%s: ALT model file format version %i", version);
-    LOG_INFO("%s: ALT model file format alignment %i", alignment);
+    LOG_INFO("%s: ALT model file format version %i", __func__, version);
+    LOG_INFO("%s: ALT model file format alignment %i", __func__, alignment);
 
     // General Section
-    char* model_name = NULL;
-    char* author = NULL;
-    char* uuid = NULL;
+    char *model_name = NULL, *author = NULL, *uuid = NULL;
     if (load_general_section(&magic_file, &model_name, &author, &uuid) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to load general section.\n", __func__);
+        LOG_ERROR("%s: Failed to load general section from file %s.\n", __func__, filepath);
+        magic_file.close(&magic_file);
+        return MAGIC_ERROR;
+    }
+    if (!model_name || !author || !uuid) {
+        LOG_ERROR("%s: General section contains invalid data in file %s.\n", __func__, filepath);
+        free(model_name);
+        free(author);
+        free(uuid);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -959,33 +1060,30 @@ MagicState mlp_load(MLP* model, const char* filepath) {
     free(uuid);
 
     // Parameters Section
-    uint32_t epochs;
-    float learning_rate, error_threshold;
-    if (load_parameters_section(&magic_file, &epochs, &learning_rate, &error_threshold)
-        != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to load parameters section.\n", __func__);
+    if (load_parameters_section(&magic_file, model->params) != MAGIC_SUCCESS) {
+        LOG_ERROR("%s: Failed to load parameters section from file %s.\n", __func__, filepath);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
     LOG_INFO(
         "%s: Loaded parameters - Epochs: %u, Learning Rate: %.4f, Error Threshold: %.4f\n",
         __func__,
-        epochs,
-        (double) learning_rate,
-        (double) error_threshold
+        model->params->n_epochs,
+        (double) model->params->learning_rate,
+        (double) model->params->error_threshold
     );
 
     // Tensors Section
     if (load_tensors_section(&magic_file, model) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to load tensors section.\n", __func__);
+        LOG_ERROR("%s: Failed to load tensors section from file %s.\n", __func__, filepath);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
-    LOG_INFO("%s: Loaded tensors for %u layers.\n", __func__, model->num_layers);
+    LOG_INFO("%s: Loaded tensors for %u layers.\n", __func__, model->params->n_layers);
 
     // End Marker
     if (magic_read_end_marker(&magic_file) != MAGIC_SUCCESS) {
-        LOG_ERROR("%s: Failed to validate end marker.\n", __func__);
+        LOG_ERROR("%s: Failed to validate end marker in file %s.\n", __func__, filepath);
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
@@ -995,13 +1093,54 @@ MagicState mlp_load(MLP* model, const char* filepath) {
     return MAGIC_SUCCESS;
 }
 
+uint32_t* parse_layer_sizes(Parameters* params, const char* sizes) {
+    if (!params) {
+        LOG_ERROR("%s: Parameters is NULL.\n", __func__);
+        return NULL;
+    }
+
+    // Free the default allocated sizes
+    if (params->layer_sizes) {
+        free(params->layer_sizes);
+    }
+
+    uint32_t* layer_sizes = NULL;
+    uint32_t count = 0;
+
+    // Count the number of layers (commas + 1)
+    for (const char* p = sizes; *p; p++) {
+        if (*p == ',') { count++; }
+    }
+    count++;
+
+    // Allocate memory for layer sizes
+    layer_sizes = malloc(sizeof(uint32_t) * count);
+    if (!layer_sizes) {
+        LOG_ERROR("%s: Failed to allocate memory for layer sizes.\n", __func__);
+        return NULL;
+    }
+
+    // Parse the layer sizes
+    const char* start = sizes;
+    for (uint32_t i = 0; i < count; i++) {
+        layer_sizes[i] = (uint32_t) strtol(start, (char**)&start, 10);
+        if (*start == ',') { start++; }
+    }
+
+    params->n_layers = count; // Update the number of layers
+    return layer_sizes;
+}
+
 void print_usage(const char* program_name) {
     fprintf(stderr, "Usage: %s <path_to_mnist> [options]\n", program_name);
     fprintf(stderr, "Options:\n");
-    fprintf(stderr, "\t--epochs <num>\tNumber of epochs to train (default: 1)\n");
-    fprintf(stderr, "\t--learning-rate <val>\tLearning rate (default: 0.1)\n");
-    fprintf(stderr, "\t--error-threshold <val>\tEarly stopping threshold (default: 0.01)\n");
-    fprintf(stderr, "\t--model <path>\tPath to save/load the model (default: models/mnist/model.alt)\n");
+    fprintf(stderr, "\t--layers <num> Number of layers to connect (default: 3)\n");
+    fprintf(stderr, "\t--layer-sizes <num> Number of neurons in each layer (default: 784,128,10)\n");
+    fprintf(stderr, "\t--threads <int> Number of CPU threads (default: auto)\n");
+    fprintf(stderr, "\t--epochs <int> Number of epochs to train (default: 1)\n");
+    fprintf(stderr, "\t--learning-rate <float> Learning rate (default: 0.1)\n");
+    fprintf(stderr, "\t--error-threshold <float> Early stopping threshold (default: 0.01)\n");
+    fprintf(stderr, "\t--model <path> Path to save/load the model (default: models/mnist/model.alt)\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -1012,20 +1151,37 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Default parameters
-    uint32_t epochs = 1;
-    // float learning_rate = 0.1f;
-    float error_threshold = 0.01f;
+    // Default model file path
     char* model_file_path = "models/mnist/model.alt";
+
+    // Create default hyperparameters instance for mlp configuration
+    Parameters* params = mlp_create_params(
+        /* error_threshold */ 0.05f,
+        /* learning_rate */ 0.1f,
+        /* n_threads */ sysconf(_SC_NPROCESSORS_ONLN), // Default available CPU thread count
+        /* n_epochs */ 1, // Number of training cycles
+        /* n_layers */ 3, // Number of connected layers
+        /* layer_sizes */ (uint32_t[]){784, 128, 10} // input, hidden, output
+    );
 
     // Parse CLI arguments
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--epochs") == 0 && i + 1 < argc) {
-            epochs = (uint32_t)atoi(argv[++i]);
-        // } else if (strcmp(argv[i], "--learning-rate") == 0 && i + 1 < argc) {
-        //     learning_rate = atof(argv[++i]);
+            params->n_epochs = (uint32_t)atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--learning-rate") == 0 && i + 1 < argc) {
+            params->learning_rate = atof(argv[++i]);
         } else if (strcmp(argv[i], "--error-threshold") == 0 && i + 1 < argc) {
-            error_threshold = atof(argv[++i]);
+            params->error_threshold = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--layer-sizes") == 0 && i + 1 < argc) {
+            // Parse layer sizes from a comma-separated string
+            char* sizes = argv[++i];
+            params->layer_sizes = parse_layer_sizes(params, sizes);
+            if (!params->layer_sizes) {
+                LOG_ERROR("%s: Failed to parse layer sizes.\n", __func__);
+                return EXIT_FAILURE;
+            }
+        } else if (strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
+            params->n_threads = (uint32_t)atoi(argv[++i]);
         } else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
             model_file_path = argv[++i];
         } else {
@@ -1070,21 +1226,18 @@ int main(int argc, char* argv[]) {
              __func__, (double)(load_time - start_time) / CLOCKS_PER_SEC);
 
     // Create or load model
-    MLP* model = NULL;
+    MLP* model = mlp_create_model(params); // model owns params
     if (path_exists(model_file_path)) {
         LOG_INFO("%s: Loading model from %s\n", __func__, model_file_path);
-        model = malloc(sizeof(MLP)); // Allocate model structure
         if (mlp_load(model, model_file_path) != MAGIC_SUCCESS) {
             LOG_ERROR("%s: Failed to load model from %s\n", __func__, model_file_path);
-            free(model);
+            mlp_free_model(model); // model frees params
             mnist_dataset_free(dataset);
             path_free_string(training_path);
             return EXIT_FAILURE;
         }
     } else {
         LOG_INFO("%s: Training model from scratch.\n", __func__);
-        uint32_t layer_sizes[] = {784, 128, 10}; // Input, hidden, output
-        model = mlp_create(3, layer_sizes);
         if (!model) {
             LOG_ERROR("%s: Failed to create the MLP model.\n", __func__);
             mnist_dataset_free(dataset);
@@ -1094,7 +1247,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Train the model
-    mlp_train(model, dataset, epochs, error_threshold);
+    mlp_train(model, dataset);
 
     // Timer stop for training
     clock_t train_time = clock();
@@ -1119,7 +1272,7 @@ int main(int argc, char* argv[]) {
              __func__, (double)(end_time - start_time) / CLOCKS_PER_SEC);
 
     // Cleanup
-    mlp_free(model);
+    mlp_free_model(model);
     mnist_dataset_free(dataset);
     path_free_string(training_path);
     path_free_string(model_base_path);
