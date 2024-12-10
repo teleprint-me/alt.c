@@ -43,83 +43,87 @@
 // Model file parameters
 #define UUID_STR_LEN 37 // 36 characters + 1 null character
 
-// Default number of CPU threads available at runtime
-#define NUM_THREADS sysconf(_SC_NPROCESSORS_ONLN)
+// Align objects
+#define OBJECT_ALIGNMENT 8
 
 // Structures
 
 /**
  * @brief Represents a single MNIST image and its label.
  */
-typedef struct MNISTSample {
+typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) MNISTSample {
+    int label;     /**< Label representing the digit (0-9). */
     float* pixels; /**< Flattened pixel data (grayscale values). */
-    int label; /**< Label representing the digit (0-9). */
 } MNISTSample;
 
 /**
  * @brief Represents a dataset of MNIST samples.
  */
-typedef struct MNISTDataset {
+typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) MNISTDataset {
+    uint32_t length;      /**< Number of loaded samples. */
     MNISTSample* samples; /**< Array of MNIST samples. */
-    uint32_t length; /**< Number of loaded samples. */
 } MNISTDataset;
 
 /**
  * @brief Represents a single layer in the MLP model.
  */
-typedef struct Layer {
-    float* weights; /**< Flattened weight matrix. */
-    float* biases; /**< Bias vector for the layer. */
-    float* activations; /**< Activations (outputs) of this layer. */
-    float* gradients; /**< Gradients for backpropagation. */
-    uint32_t input_size; /**< Number of inputs to this layer. (width -> cols) */
-    uint32_t output_size; /**< Number of outputs (neurons) in this layer. (height -> rows) */
+typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) Layer {
+    uint32_t input_size; /**< Number of inputs to this layer (width -> cols). */
+    uint32_t output_size;/**< Number of outputs (neurons) in this layer (height -> rows). */
+    float* weights;      /**< Flattened weight matrix. */
+    float* biases;       /**< Bias vector for the layer. */
+    float* activations;  /**< Activations (outputs) of this layer. */
+    float* gradients;    /**< Gradients (outputs) for backpropagation. */
 } Layer;
 
-typedef struct Parameters {
+/**
+ * @brief Represents hyperparameters for the MLP model.
+ */
+typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) Parameters {
     float error_threshold; /**< Threshold for early stopping. */
-    float learning_rate; /**< Learning rate for gradient descent. */
-    uint32_t n_threads; /**< Number of CPU threads to use. */
-    uint32_t n_epochs; /**< Number of training epochs. */
-    uint32_t n_layers; /**< Number of layers (connections). */
+    float learning_rate;   /**< Learning rate for gradient descent. */
+    uint32_t n_threads;    /**< Number of CPU threads to use. */
+    uint32_t n_epochs;     /**< Number of training epochs. */
+    uint32_t n_layers;     /**< Number of layers (connections). */
     uint32_t* layer_sizes; /**< Sizes of each layer (input, hidden, output). */
 } Parameters;
 
 /**
  * @brief Represents a multi-layer perceptron (MLP) model.
  */
-typedef struct MLP {
-    Layer* layers; /**< Array of layers in the model. */
-    Parameters* params;
+typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) MLP {
+    Parameters* params;  /**< Hyperparameters of the model. */
+    Layer* layers;       /**< Array of layers in the model. */
 } MLP;
 
 /**
  * @brief Represents arguments for multi-threaded operations in the MLP model.
  */
-typedef struct ModelArgs {
-    float* inputs; /**< Input vector (e.g., MNIST pixels). */
-    float* targets; /**< Target vector (NULL for forward pass). */
-    float* weights; /**< Flattened weight matrix. */
-    float* biases; /**< Bias vector. */
-    float* outputs; /**< Output activations or gradients vector. */
-    uint32_t rows; /**< Number of rows in the matrix (neurons in the layer). */
-    uint32_t cols; /**< Number of columns in the matrix (input size to the layer). */
+typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) ModelArgs {
+    uint32_t rows;      /**< Number of rows in the matrix (neurons in the layer). */
+    uint32_t cols;      /**< Number of columns in the matrix (input size to the layer). */
     uint32_t thread_id; /**< Thread ID for this thread. */
     uint32_t thread_count; /**< Total number of threads. */
     float learning_rate; /**< Learning rate for gradient descent (backward pass). */
+    float* inputs;      /**< Input vector (e.g., MNIST pixels). */
+    float* targets;     /**< Target vector (NULL for forward pass). */
+    float* weights;     /**< Flattened weight matrix. */
+    float* biases;      /**< Bias vector. */
+    float* outputs;     /**< Output activations or gradients vector. */
 } ModelArgs;
 
 // Prototypes
 
+// Utilities
+void* aligned_malloc(size_t alignment, size_t size); // uses posix_memalign()
 void print_progress(char* title, float percentage, uint32_t width, char ch);
 
-// MNIST dataset
+// MNIST dataset management
 MNISTDataset* mnist_dataset_create(uint32_t max_samples);
 void mnist_dataset_free(MNISTDataset* dataset);
 
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
 uint32_t mnist_dataset_shuffle(MNISTDataset* dataset);
-
 
 // MLP model
 Parameters* mlp_create_params(
@@ -147,7 +151,29 @@ void mlp_train(MLP* model, MNISTDataset* dataset);
 MagicState mlp_save(MLP* model, const char* filepath);
 MagicState mlp_load(MLP* model, const char* filepath);
 
-// Progress utility
+// Memory utility (align memory)
+
+void* aligned_malloc(size_t alignment, size_t size) {
+    // Ensure alignment is at least sizeof(void*) and a power of 2
+    if (alignment < sizeof(void*)) {
+        alignment = sizeof(void*);
+    }
+    if ((alignment & (alignment - 1)) != 0) { // Check if alignment is a power of 2
+        LOG_ERROR("%s: Alignment %zu is not a power of 2.\n", __func__, alignment);
+        return NULL;
+    }
+
+    void* ptr = NULL;
+    if (posix_memalign(&ptr, alignment, size) != 0) {
+        LOG_ERROR("%s: posix_memalign failed (alignment=%zu, size=%zu).\n", __func__, alignment, size);
+        return NULL;
+    }
+
+    // LOG_DEBUG("%s: Allocated memory at %p (alignment=%zu, size=%zu).\n", __func__, ptr, alignment, size);
+    return ptr;
+}
+
+// Progress utility (display live progress)
 
 // @ref https://stackoverflow.com/a/36315819/20035933
 void print_progress(char* title, float percentage, uint32_t width, char ch) {
@@ -168,13 +194,13 @@ void print_progress(char* title, float percentage, uint32_t width, char ch) {
 // MNIST dataset implementation
 
 MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
-    MNISTDataset* dataset = malloc(sizeof(MNISTDataset));
+    MNISTDataset* dataset = aligned_malloc(alignof(MNISTDataset), sizeof(MNISTDataset));
     if (!dataset) {
         LOG_ERROR("%s: Failed to allocate MNISTDataset.\n", __func__);
         return NULL;
     }
 
-    dataset->samples = malloc(sizeof(MNISTSample) * max_samples);
+    dataset->samples = aligned_malloc(alignof(MNISTSample), sizeof(MNISTSample) * max_samples);
     if (!dataset->samples) {
         LOG_ERROR("%s: Failed to allocate MNIST samples.\n", __func__);
         free(dataset);
@@ -183,7 +209,7 @@ MNISTDataset* mnist_dataset_create(uint32_t max_samples) {
 
     dataset->length = max_samples;
     for (uint32_t i = 0; i < max_samples; i++) {
-        dataset->samples[i].pixels = malloc(sizeof(float) * IMAGE_SIZE);
+        dataset->samples[i].pixels = aligned_malloc(alignof(float), sizeof(float) * IMAGE_SIZE);
         dataset->samples[i].label = -1;
 
         if (!dataset->samples[i].pixels) {
@@ -307,12 +333,12 @@ Parameters* mlp_create_params(
     uint32_t* layer_sizes
 ) {
     // Allocate memory for hyperparameters
-    Parameters* params = (Parameters*) malloc(sizeof(Parameters));
+    Parameters* params = (Parameters*) aligned_malloc(alignof(Parameters), sizeof(Parameters));
     if (!params) {
         LOG_ERROR("%s: Failed to allocate memory for Parameters.\n", __func__);
         return NULL;
     }
-    
+
     // Set hyperparameter values
     params->error_threshold = error_threshold;
     params->learning_rate = learning_rate;
@@ -321,7 +347,7 @@ Parameters* mlp_create_params(
     params->n_layers = n_layers;
     
     // Allocate memory for the layer sizes
-    params->layer_sizes = (uint32_t*) malloc(sizeof(uint32_t) * n_layers);
+    params->layer_sizes = (uint32_t*) aligned_malloc(alignof(uint32_t), sizeof(uint32_t) * n_layers);
     if (!params->layer_sizes) {
         LOG_ERROR("%s: Failed to allocate memory for layer sizes.\n", __func__);
         free(params);
@@ -351,14 +377,14 @@ MLP* mlp_create_model(Parameters* params) {
         return NULL;
     }
 
-    MLP* model = malloc(sizeof(MLP));
+    MLP* model = (MLP*) aligned_malloc(alignof(MLP), sizeof(MLP));
     if (!model) {
         LOG_ERROR("%s: Failed to allocate memory for MLP.\n", __func__);
         return NULL;
     }
 
     model->params = params; // MLP model takes ownership of Parameters
-    model->layers = malloc(sizeof(Layer) * params->n_layers);
+    model->layers = (Layer*) aligned_malloc(alignof(Layer), sizeof(Layer) * params->n_layers);
     if (!model->layers) {
         LOG_ERROR("%s: Failed to allocate memory for layers.\n", __func__);
         free(model);
@@ -369,10 +395,10 @@ MLP* mlp_create_model(Parameters* params) {
         Layer* layer = &model->layers[i];
         layer->input_size = params->layer_sizes[i];
         layer->output_size = params->layer_sizes[i + 1];
-        layer->weights = malloc(sizeof(float) * layer->input_size * layer->output_size);
-        layer->biases = malloc(sizeof(float) * layer->output_size);
-        layer->activations = malloc(sizeof(float) * layer->output_size);
-        layer->gradients = malloc(sizeof(float) * layer->output_size);
+        layer->weights = (float*) aligned_malloc(alignof(float), sizeof(float) * layer->input_size * layer->output_size);
+        layer->biases = (float*) aligned_malloc(alignof(float), sizeof(float) * layer->output_size);
+        layer->activations = (float*) aligned_malloc(alignof(float), sizeof(float) * layer->output_size);
+        layer->gradients = (float*) aligned_malloc(alignof(float), sizeof(float) * layer->output_size);
 
         if (!layer->weights || !layer->biases || !layer->activations || !layer->gradients) {
             LOG_ERROR("%s: Failed to allocate memory for layer %d.\n", __func__, i);
@@ -416,13 +442,14 @@ void mlp_free_model(MLP* model) {
 void mlp_forward(MLP* model, float* input) {
     float* current_input = input;
 
-    pthread_t threads[model->params->n_threads];
-    ModelArgs args[model->params->n_threads];
+    uint32_t n_threads = model->params->n_threads;
+    pthread_t* threads = (pthread_t*) aligned_malloc(alignof(pthread_t), sizeof(pthread_t) * n_threads);
+    ModelArgs* args = (ModelArgs*) aligned_malloc(alignof(ModelArgs), sizeof(ModelArgs) * n_threads);
 
-    for (uint32_t i = 0; i < model->params->n_layers; i++) {
-        Layer* layer = &model->layers[i];
+    for (uint32_t l = 0; l < model->params->n_layers - 1; l++) { // -1 for connections
+        Layer* layer = &model->layers[l];
 
-        for (uint32_t t = 0; t < model->params->n_threads; t++) {
+        for (uint32_t t = 0; t < n_threads; t++) {
             args[t] = (ModelArgs) {
                 .inputs = current_input,
                 .targets = NULL, // No targets in forward pass
@@ -432,18 +459,21 @@ void mlp_forward(MLP* model, float* input) {
                 .rows = layer->output_size,
                 .cols = layer->input_size,
                 .thread_id = t,
-                .thread_count = model->params->n_threads,
+                .thread_count = n_threads,
                 .learning_rate = 0.0f // Not used in forward pass
             };
             pthread_create(&threads[t], NULL, mlp_forward_parallel, &args[t]);
         }
 
-        for (uint32_t t = 0; t < model->params->n_threads; t++) {
+        for (uint32_t t = 0; t < n_threads; t++) {
             pthread_join(threads[t], NULL);
         }
 
         current_input = layer->activations;
     }
+
+    free(threads);
+    free(args);
 }
 
 void* mlp_forward_parallel(void* args) {
@@ -456,14 +486,14 @@ void* mlp_forward_parallel(void* args) {
         end = fargs->rows;
     }
 
-    for (uint32_t i = start; i < end; i++) {
-        fargs->outputs[i] = fargs->biases[i]; // Start with bias
+    for (uint32_t row = start; row < end; row++) {
+        fargs->outputs[row] = fargs->biases[row]; // Start with bias
         // Apply the dot product
-        for (uint32_t j = 0; j < fargs->cols; j++) {
-            fargs->outputs[i] += fargs->weights[i * fargs->cols + j] * fargs->inputs[j];
+        for (uint32_t col = 0; col < fargs->cols; col++) {
+            fargs->outputs[row] += fargs->weights[row * fargs->cols + col] * fargs->inputs[col];
         }
         // store the activations in the hidden output layer
-        fargs->outputs[i] = activate_relu(fargs->outputs[i]);
+        fargs->outputs[row] = activate_relu(fargs->outputs[row]);
     }
 
     return NULL;
@@ -472,71 +502,81 @@ void* mlp_forward_parallel(void* args) {
 void mlp_backward(MLP* model, float* input, float* target) {
     int32_t n_layers = (int32_t) model->params->n_layers - 1;
 
-    pthread_t threads[model->params->n_threads];
-    ModelArgs args[model->params->n_threads];
+    // Dynamically allocate threads and arguments
+    uint32_t n_threads = model->params->n_threads - 1;
+    pthread_t* threads = (pthread_t*) aligned_malloc(alignof(pthread_t), sizeof(pthread_t) * n_threads);
+    ModelArgs* args = (ModelArgs*) aligned_malloc(alignof(ModelArgs), sizeof(ModelArgs) * n_threads);
+    if (!threads || !args) {
+        LOG_ERROR("%s: Memory allocation for threads or arguments failed.\n", __func__);
+        return;
+    }
 
     // Applying chain-rule requires iterating in reverse order
-    for (int32_t l = n_layers; l >= 0; l--) {
+    for (int32_t l = n_layers; l-- > 0;) {
         Layer* layer = &model->layers[l];
         float* prev_activations = (l == 0) ? input : model->layers[l - 1].activations;
 
-        for (uint32_t t = 0; t < model->params->n_threads; t++) {
+        for (uint32_t t = 0; t < n_threads; t++) {
             args[t] = (ModelArgs) {
-              .inputs = prev_activations,
-              .targets = (l == n_layers) ? target : NULL,
-              .weights = layer->weights,
-              .biases = layer->biases,
-              .outputs = layer->gradients,
-              .rows = layer->output_size,
-              .cols = layer->input_size,
-              .thread_id = t,
-              .thread_count = model->params->n_threads,
-              .learning_rate = model->params->learning_rate};
+                .inputs = prev_activations,
+                .targets = (l == n_layers) ? target : NULL,
+                .weights = layer->weights,
+                .biases = layer->biases,
+                .outputs = layer->gradients,
+                .rows = layer->output_size,
+                .cols = layer->input_size,
+                .thread_id = t,
+                .thread_count = n_threads,
+                .learning_rate = model->params->learning_rate
+            };
             pthread_create(&threads[t], NULL, mlp_backward_parallel, &args[t]);
         }
 
-        for (uint32_t t = 0; t < model->params->n_threads; t++) {
+        for (uint32_t t = 0; t < n_threads; t++) {
             pthread_join(threads[t], NULL);
         }
     }
+
+    free(threads);
+    free(args);
 }
 
 void* mlp_backward_parallel(void* args) {
     ModelArgs* bargs = (ModelArgs*) args;
 
     // Compute start and end indices for this thread
-    uint32_t start = bargs->thread_id * (bargs->rows / bargs->thread_count);
-    uint32_t end = (bargs->thread_id + 1) * (bargs->rows / bargs->thread_count);
-
+    uint32_t start = bargs->thread_id * (bargs->rows / bargs->thread_count); // First row
+    uint32_t end = (bargs->thread_id + 1) * (bargs->rows / bargs->thread_count); // Last row
     // Handle remainder rows in the last thread
     if (bargs->thread_id == bargs->thread_count - 1) {
         end = bargs->rows;
     }
 
     // Backpropagate error and update weights for assigned rows
-    for (uint32_t i = start; i < end; i++) {
-        float* weights = bargs->weights + i * bargs->cols;
-        float error
-            = (bargs->targets) ? bargs->targets[i] - bargs->outputs[i] : 0.0f; // Output layer error
-
-        if (!bargs->targets) {
-            // Hidden layer error: sum of weighted gradients from the next layer
-            for (uint32_t j = 0; j < bargs->cols; j++) {
-                error += weights[j] * bargs->inputs[j];
+    for (uint32_t row = start; row < end; row++) {
+        // Inputs are naturally aligned and no transposition is needed
+        float* weights = bargs->weights + row * bargs->cols; // Flat matrix manually transposed by index
+        // Output layer error
+        float error = 0.0f;
+        if (bargs->targets) {
+            // Output layer: compute error from target
+            error = bargs->targets[row] - bargs->outputs[row];
+        } else {
+            // Hidden layer: propagate error backward
+            for (uint32_t col = 0; col < bargs->cols; col++) {
+                error += weights[col] * bargs->inputs[col];
             }
         }
 
         // Compute gradient
-        float gradient = error * activate_relu_prime(bargs->outputs[i]);
-
+        float gradient = error * activate_relu_prime(bargs->outputs[row]);
         // Update weights and biases
-        for (uint32_t j = 0; j < bargs->cols; j++) {
-            weights[j] += bargs->learning_rate * gradient * bargs->inputs[j];
+        for (uint32_t col = 0; col < bargs->cols; col++) {
+            weights[col] += bargs->learning_rate * gradient * bargs->inputs[col];
         }
-        bargs->biases[i] += bargs->learning_rate * gradient;
-
+        bargs->biases[row] += bargs->learning_rate * gradient;
         // Store gradient for next layer
-        bargs->outputs[i] = gradient;
+        bargs->outputs[row] = gradient;
     }
 
     return NULL;
@@ -544,33 +584,40 @@ void* mlp_backward_parallel(void* args) {
 
 void mlp_train(MLP* model, MNISTDataset* dataset) {
     for (uint32_t epoch = 0; epoch < model->params->n_epochs; epoch++) {
-        // Shuffle the dataset at the start of each epoch
         mnist_dataset_shuffle(dataset);
-
         float total_error = 0.0f;
 
-        // Iterate over each sample in the dataset
-        for (uint32_t i = 0; i < dataset->length; i++) {
-            MNISTSample* sample = &dataset->samples[i];
+        for (uint32_t k = 0; k < dataset->length; k++) {
+            MNISTSample* sample = &dataset->samples[k];
 
             // Perform forward pass
             mlp_forward(model, sample->pixels);
 
-            // Compute target vector (one-hot encoding)
-            float target[10] = {0};
-            target[sample->label] = 1.0f;
+            // Allocate aligned memory for target
+            float* target = aligned_malloc(alignof(float), sizeof(float) * 10);
+            if (!target) {
+                LOG_ERROR("%s: Aligned memory allocation for target failed.\n", __func__);
+                return;
+            }
+            memset(target, 0, sizeof(float) * 10);
+            target[sample->label] = 1.0f; // one-hot encoding
 
             // Perform backward pass
             mlp_backward(model, sample->pixels, target);
 
-            // Accumulate error (mean squared error for simplicity)
-            for (uint32_t j = 0; j < 10; j++) {
-                float error = target[j] - model->layers[model->params->n_layers - 1].activations[j];
-                total_error += error * error;
+            // Accumulate error
+            uint32_t n_layers = model->params->n_layers - 1;
+            for (int32_t l = n_layers; l-- > 0;) { /// @patch this fixes the alignment crash
+                for (uint32_t col = 0; col < 10; col++) {
+                    float error = target[col] - model->layers[l].activations[col];
+                    total_error += error * error; // mse for simplicity
+                }
             }
 
+            free(target); // Free target after backward pass
+
             // Progress tracking
-            float progress = (float) i / dataset->length;
+            float progress = (float) k / dataset->length;
             print_progress("Training", progress, 50, '#');
         }
         printf("\n");
@@ -1112,7 +1159,7 @@ uint32_t* parse_layer_sizes(Parameters* params, const char* sizes) {
     count++;
 
     // Allocate memory for layer sizes
-    layer_sizes = malloc(sizeof(uint32_t) * count);
+    layer_sizes = aligned_malloc(alignof(uint32_t), sizeof(uint32_t) * count);
     if (!layer_sizes) {
         LOG_ERROR("%s: Failed to allocate memory for layer sizes.\n", __func__);
         return NULL;
@@ -1186,6 +1233,10 @@ int main(int argc, char* argv[]) {
             print_usage(argv[0]);
             return EXIT_FAILURE;
         }
+    }
+
+    for (uint32_t i = 0; i < params->n_layers; i++) {
+        LOG_DEBUG("%s: Layer Sizes[%d] = %d\n", __func__, i, params->layer_sizes[i]);
     }
 
     // Prepare paths
