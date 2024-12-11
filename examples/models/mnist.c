@@ -122,6 +122,7 @@ void print_progress(char* title, float percentage, uint32_t width, char ch);
 MNISTDataset* mnist_dataset_create(uint32_t max_samples);
 void mnist_dataset_free(MNISTDataset* dataset);
 
+// load and shuffle return the number of samples
 uint32_t mnist_dataset_load(const char* path, MNISTDataset* dataset);
 uint32_t mnist_dataset_shuffle(MNISTDataset* dataset);
 
@@ -421,7 +422,7 @@ MLP* mlp_create_model(Parameters* params) {
 void mlp_free_model(MLP* model) {
     if (model) {
         if (model->layers) {
-            for (uint32_t i = 0; i < model->params->n_layers; i++) {
+            for (uint32_t i = 0; i < model->params->n_layers - 1; i++) {
                 Layer* layer = &model->layers[i];
                 if (layer) {
                     free(layer->weights);
@@ -594,12 +595,13 @@ void mlp_train(MLP* model, MNISTDataset* dataset) {
             mlp_forward(model, sample->pixels);
 
             // Allocate aligned memory for target
-            float* target = aligned_malloc(alignof(float), sizeof(float) * 10);
+            uint32_t target_len = 10;
+            float* target = aligned_malloc(alignof(float), sizeof(float) * target_len);
             if (!target) {
                 LOG_ERROR("%s: Aligned memory allocation for target failed.\n", __func__);
                 return;
             }
-            memset(target, 0, sizeof(float) * 10);
+            memset(target, 0, sizeof(float) * target_len);
             target[sample->label] = 1.0f; // one-hot encoding
 
             // Perform backward pass
@@ -608,7 +610,7 @@ void mlp_train(MLP* model, MNISTDataset* dataset) {
             // Accumulate error
             uint32_t n_layers = model->params->n_layers - 1;
             for (int32_t l = n_layers; l-- > 0;) { /// @patch this fixes the alignment crash
-                for (uint32_t col = 0; col < 10; col++) {
+                for (uint32_t col = 0; col < target_len; col++) {
                     float error = target[col] - model->layers[l].activations[col];
                     total_error += error * error; // mse for simplicity
                 }
@@ -899,9 +901,14 @@ MagicState load_parameters_section(MagicFile* magic_file, Parameters* params) {
 }
 
 MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
+    if (model->params->n_layers < 2) {
+        LOG_ERROR("Invalid number of layers: %u\n", model->params->n_layers);
+        return MAGIC_ERROR;
+    }
+
     // Calculate the size of the Tensors Section
     uint64_t tensors_size = 0;
-    for (uint32_t i = 0; i < model->params->n_layers; i++) {
+    for (uint32_t i = 0; i < model->params->n_layers - 1; i++) {
         Layer* layer = &model->layers[i];
         tensors_size += sizeof(uint32_t) * 2; // input_size, output_size
         tensors_size += sizeof(float) * (layer->input_size * layer->output_size); // weights
@@ -915,8 +922,13 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
     }
 
     // Write each layer's tensors
-    for (uint32_t i = 0; i < model->params->n_layers; i++) {
+    for (uint32_t i = 0; i < model->params->n_layers - 1; i++) {
         Layer* layer = &model->layers[i];
+        // Guard against null pointers
+        if (!layer->weights || !layer->biases) {
+            LOG_ERROR("Layer %d has uninitialized weights or biases\n", i);
+            return MAGIC_ERROR;
+        }
         // Write input and output sizes
         if (fwrite(&layer->input_size, sizeof(uint32_t), 1, magic_file->model) != 1 ||
             fwrite(&layer->output_size, sizeof(uint32_t), 1, magic_file->model) != 1) {
@@ -924,12 +936,8 @@ MagicState save_tensors_section(MagicFile* magic_file, MLP* model) {
             return MAGIC_ERROR;
         }
         // Write weights
-        if (fwrite(
-                layer->weights,
-                sizeof(float),
-                layer->input_size * layer->output_size,
-                magic_file->model
-            ) != layer->input_size * layer->output_size) {
+        uint32_t weights_length = layer->input_size * layer->output_size;
+        if (fwrite(layer->weights, sizeof(float), weights_length, magic_file->model) != weights_length) {
             LOG_ERROR("%s: Failed to write layer weights.\n", __func__);
             return MAGIC_ERROR;
         }
@@ -1081,8 +1089,8 @@ MagicState mlp_load(MLP* model, const char* filepath) {
         magic_file.close(&magic_file);
         return MAGIC_ERROR;
     }
-    LOG_INFO("%s: ALT model file format version %i", __func__, version);
-    LOG_INFO("%s: ALT model file format alignment %i", __func__, alignment);
+    LOG_INFO("%s: ALT model file format version %i\n", __func__, version);
+    LOG_INFO("%s: ALT model file format alignment %i\n", __func__, alignment);
 
     // General Section
     char *model_name = NULL, *author = NULL, *uuid = NULL;
@@ -1264,10 +1272,7 @@ int main(int argc, char* argv[]) {
         path_free_string(training_path);
         return EXIT_FAILURE;
     }
-    LOG_INFO("%s: Loaded %d samples.", __func__, sample_count);
-
-    // Shuffle dataset
-    mnist_dataset_shuffle(dataset);
+    LOG_INFO("%s: Loaded %d samples.\n", __func__, sample_count);
 
     // Timer stop for loading and shuffling
     clock_t load_time = clock();
