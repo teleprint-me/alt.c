@@ -584,7 +584,9 @@ void* mlp_backward_parallel(void* args) {
 }
 
 void mlp_train(MLP* model, MNISTDataset* dataset) {
+    LOG_INFO("%s: Training for %d epochs.\n", __func__, model->params->n_epochs);
     for (uint32_t epoch = 0; epoch < model->params->n_epochs; epoch++) {
+        LOG_INFO("%s: Starting epoch %d...\n", __func__, epoch);
         mnist_dataset_shuffle(dataset);
         float total_error = 0.0f;
 
@@ -809,24 +811,6 @@ MagicState save_parameters_section(MagicFile* magic_file, Parameters* params) {
         return MAGIC_ERROR;
     }
 
-    // Write error threshold
-    if (fwrite(&params->error_threshold, sizeof(float), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to write error threshold.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
-    // Write learning rate
-    if (fwrite(&params->learning_rate, sizeof(float), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to write learning rate.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
-    // Write number of epochs
-    if (fwrite(&params->n_epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to write number of epochs.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
     // Write number of layers
     if (fwrite(&params->n_layers, sizeof(uint32_t), 1, magic_file->model) != 1) {
         LOG_ERROR("%s: Failed to write number of layers.\n", __func__);
@@ -852,24 +836,6 @@ MagicState load_parameters_section(MagicFile* magic_file, Parameters* params) {
     if (section_marker != MAGIC_PARAMETERS) {
         LOG_ERROR("%s: Invalid section marker for parameters section.\n", __func__);
         return MAGIC_INVALID_MARKER;
-    }
-
-    // Read error threshold
-    if (fread(&params->error_threshold, sizeof(float), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read error threshold.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
-    // Read learning rate
-    if (fread(&params->learning_rate, sizeof(float), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read learning rate.\n", __func__);
-        return MAGIC_ERROR;
-    }
-
-    // Read epochs
-    if (fread(&params->n_epochs, sizeof(uint32_t), 1, magic_file->model) != 1) {
-        LOG_ERROR("%s: Failed to read epochs.\n", __func__);
-        return MAGIC_ERROR;
     }
 
     // Read number of layers
@@ -1243,6 +1209,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    LOG_DEBUG("%s: User wants %d epochs.\n", __func__, params->n_epochs);
     for (uint32_t i = 0; i < params->n_layers; i++) {
         LOG_DEBUG("%s: Layer Sizes[%d] = %d\n", __func__, i, params->layer_sizes[i]);
     }
