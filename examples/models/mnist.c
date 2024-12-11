@@ -92,8 +92,8 @@ typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) Parameters {
  * @brief Represents a multi-layer perceptron (MLP) model.
  */
 typedef struct __attribute__((aligned(OBJECT_ALIGNMENT))) MLP {
-    Parameters* params;  /**< Hyperparameters of the model. */
-    Layer* layers;       /**< Array of layers in the model. */
+    Parameters* params; /**< Hyperparameters of the model. */
+    Layer* layers;      /**< Array of layers in the model. */
 } MLP;
 
 /**
@@ -303,7 +303,6 @@ uint32_t mnist_dataset_shuffle(MNISTDataset* dataset) {
     uint32_t sample_count = 0;
 
     if (dataset && dataset->samples) {
-        srand((unsigned int) time(NULL)); // Seed for randomness
         for (uint32_t i = 0; i < dataset->length - 1; i++) {
             float progress = (float) i / (float) dataset->length;
             print_progress("Shuffling", progress, 50, '#'); // Track progress
@@ -584,7 +583,11 @@ void* mlp_backward_parallel(void* args) {
 }
 
 void mlp_train(MLP* model, MNISTDataset* dataset) {
-    LOG_INFO("%s: Training for %d epochs.\n", __func__, model->params->n_epochs);
+    LOG_INFO("%s: error_threshold=%.6f\n", __func__, (double) model->params->error_threshold);
+    LOG_INFO("%s: learning_rate=%.6f\n", __func__, (double) model->params->learning_rate);
+    LOG_INFO("%s: threads=%d\n", __func__, model->params->n_threads);
+    LOG_INFO("%s: epochs=%d\n", __func__, model->params->n_epochs);
+    LOG_INFO("%s: layers=%d\n", __func__, model->params->n_layers);
     for (uint32_t epoch = 0; epoch < model->params->n_epochs; epoch++) {
         LOG_INFO("%s: Starting epoch %d...\n", __func__, epoch);
         mnist_dataset_shuffle(dataset);
@@ -1159,6 +1162,7 @@ void print_usage(const char* program_name) {
     fprintf(stderr, "\t--epochs <int> Number of epochs to train (default: 1)\n");
     fprintf(stderr, "\t--learning-rate <float> Learning rate (default: 0.1)\n");
     fprintf(stderr, "\t--error-threshold <float> Early stopping threshold (default: 0.01)\n");
+    fprintf(stderr, "\t--seed <int> Early stopping threshold (default: auto)\n");
     fprintf(stderr, "\t--model <path> Path to save/load the model (default: models/mnist/model.alt)\n");
 }
 
@@ -1169,6 +1173,9 @@ int main(int argc, char* argv[]) {
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
+
+    // Default seed for rng
+    uint32_t seed = (uint32_t) time(NULL);
 
     // Default model file path
     char* model_file_path = "models/mnist/model.alt";
@@ -1186,7 +1193,7 @@ int main(int argc, char* argv[]) {
     // Parse CLI arguments
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--epochs") == 0 && i + 1 < argc) {
-            params->n_epochs = (uint32_t)atoi(argv[++i]);
+            params->n_epochs = (uint32_t) atoi(argv[++i]);
         } else if (strcmp(argv[i], "--learning-rate") == 0 && i + 1 < argc) {
             params->learning_rate = atof(argv[++i]);
         } else if (strcmp(argv[i], "--error-threshold") == 0 && i + 1 < argc) {
@@ -1200,7 +1207,9 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
-            params->n_threads = (uint32_t)atoi(argv[++i]);
+            params->n_threads = (uint32_t) atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+            seed = (uint32_t) atoi(argv[++i]);
         } else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
             model_file_path = argv[++i];
         } else {
@@ -1209,7 +1218,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    LOG_DEBUG("%s: User wants %d epochs.\n", __func__, params->n_epochs);
+    LOG_DEBUG("%s: seed=%d\n", __func__, seed);
+    random_seed(seed); // Seed the rng
+
     for (uint32_t i = 0; i < params->n_layers; i++) {
         LOG_DEBUG("%s: Layer Sizes[%d] = %d\n", __func__, i, params->layer_sizes[i]);
     }
@@ -1243,7 +1254,7 @@ int main(int argc, char* argv[]) {
 
     // Timer stop for loading and shuffling
     clock_t load_time = clock();
-    LOG_INFO("%s: Loading and shuffling time: %.2f seconds\n",
+    LOG_INFO("%s: Loading time: %.2f seconds\n",
              __func__, (double)(load_time - start_time) / CLOCKS_PER_SEC);
 
     // Create or load model
