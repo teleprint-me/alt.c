@@ -171,7 +171,7 @@ $$
 b_{new} = b_{old} + \eta \cdot \Delta b
 $$
 
-Where $ \eta $ is the learning rate.
+Where $\eta$ is the learning rate.
 
 ---
 
