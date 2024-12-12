@@ -31,6 +31,8 @@
 
 #include <stdio.h>
 
+// Data structures
+
 // Can be used for anything requiring an array and array length
 // e.g. an object requiring sample related information.
 typedef struct Vector {
@@ -103,6 +105,8 @@ typedef struct Dataset {
     char* samples;
 } Dataset;
 
+// Prototypes
+
 // Utilities
 
 void print_progress(char* title, float percentage, uint32_t width, char ch);
@@ -124,6 +128,16 @@ Matrix* matrix_transpose(Matrix* matrix);
 
 void matrix_print_flat(Matrix* matrix);
 void matrix_print_grid(Matrix* matrix);
+
+// Dataset operations
+
+Dataset* dataset_create(uint32_t start, uint32_t end);
+void dataset_free(Dataset* dataset);
+
+uint32_t dataset_shuffle(Dataset* dataset);
+void dataset_print(Dataset* dataset);
+
+// Implementations
 
 // Utilities
 
@@ -294,6 +308,29 @@ void dataset_free(Dataset* dataset) {
     }
 }
 
+uint32_t dataset_shuffle(Dataset* dataset) {
+    uint32_t sample_count = 0; // Track swaps
+
+    if (!dataset && !dataset->samples) {
+        return 0;
+    }
+
+    for (uint32_t i = 0; i < dataset->length; i++, sample_count++) {
+        float progress = (float) i / (float) dataset->length;
+        print_progress("Shuffling", progress, 50, '#'); // Track progress
+
+        uint32_t j = rand() % (dataset->length - i); // Pick a random index
+
+        // Swap samples[i] and samples[j]
+        char sample = dataset->samples[i];
+        dataset->samples[i] = dataset->samples[j];
+        dataset->samples[j] = sample;
+    }
+    printf("\n");
+
+    return sample_count;
+}
+
 void dataset_print(Dataset* dataset) {
     for(uint32_t i = 0; i < dataset->length; i++) {
         char code = dataset->samples[i];
@@ -305,6 +342,8 @@ int main(void) {
     random_seed(1337); // Fix seed for reproducibility
 
     Dataset* dataset = dataset_create(32, 127);
+
+    dataset_shuffle(dataset);
 
     dataset_print(dataset);
 
