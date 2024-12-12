@@ -3,6 +3,7 @@ set(EXAMPLES
     "array"
     "compare_float"
     "random"
+    "char"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/scratchpad)
