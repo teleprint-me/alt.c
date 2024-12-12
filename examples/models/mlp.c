@@ -27,6 +27,7 @@
  */
 
 #include "random.h"
+#include "logger.h"
 
 #include <stdio.h>
 
@@ -43,12 +44,6 @@ typedef struct Matrix {
     uint32_t height; // rows
     float* data; // flat matrix
 } Matrix;
-
-// Useful for SDG and Epoch metrics
-typedef struct ErrorTracker {
-    Matrix* layer_errors; /**< Per-layer errors for the current sample. */
-    Vector* epoch_errors; /**< Aggregate errors for each epoch. */
-} ErrorTracker;
 
 // User input model hyperparameters for runtime configuration
 typedef struct Parameters {
@@ -68,6 +63,12 @@ typedef struct Layer {
     Vector* gradients;
 } Layer;
 
+// Useful for SDG and Epoch metrics
+typedef struct ErrorTracker {
+    Matrix* layer_errors; /**< Per-layer errors for the current sample. */
+    Vector* epoch_errors; /**< Aggregate errors for each epoch. */
+} ErrorTracker;
+
 // Multi-layer perceptron
 typedef struct MLP {
     Parameters* params;
@@ -75,8 +76,60 @@ typedef struct MLP {
     Layer* layers;
 } MLP;
 
+typedef struct MLPForwardArgs {
+    uint32_t thread_count; /**< Total number of threads. */
+    uint32_t thread_id; /**< Thread ID for this thread. */
+    Vector* inputs; /**< Input vector (e.g., MNIST pixels). */
+    Vector* outputs; /**< Output activations vector. */
+    Vector* biases; /**< Bias vector. */
+    Matrix* weights; /**< Flattened weight matrix. */
+} MLPForwardArgs;
+
+typedef struct MLPBackwardArgs {
+    uint32_t thread_count; /**< Total number of threads. */
+    uint32_t thread_id; /**< Thread ID for this thread. */
+    float learning_rate; /**< Learning rate for gradient descent. */
+    Vector* targets; /**< One-hot encoded target vector. */
+    Vector* inputs; /**< Input vector (e.g., MNIST pixels). */
+    Vector* outputs; /**< Output gradients vector. */
+    Vector* biases; /**< Bias vector. */
+    Matrix* weights; /**< Flattened weight matrix. */
+} MLPBackwardArgs;
+
+// Utilities
+void print_progress(char* title, float percentage, uint32_t width, char ch);
+
+// Vectors
 Vector* vector_create(uint32_t width);
 void vector_free(Vector* vector);
+
+// Matrices
+Matrix* matrix_create(uint32_t height, uint32_t width);
+void matrix_free(Matrix* matrix);
+
+float matrix_get_element(const Matrix* matrix, const uint32_t row, const uint32_t col);
+int matrix_set_element(Matrix* matrix, uint32_t row, uint32_t col, const float value);
+
+Matrix* matrix_transpose(Matrix* matrix);
+
+void matrix_print_flat(Matrix* matrix);
+void matrix_print_grid(Matrix* matrix);
+
+// @ref https://stackoverflow.com/a/36315819/20035933
+void print_progress(char* title, float percentage, uint32_t width, char ch) {
+    char bar[width + 1];
+    for (uint32_t i = 0; i < width; i++) {
+        bar[i] = ch;
+    }
+    bar[width] = '\0'; // Null-terminate the bar for safety
+
+    uint32_t progress = (uint32_t) (percentage * 100 + 0.5f); // Round percentage
+    uint32_t left = (uint32_t) (percentage * width + 0.5f); // Round bar width
+    uint32_t right = width - left;
+
+    printf("\r%s: %3u%% [%.*s%*s]", title, progress, left, bar, right, "");
+    fflush(stdout);
+}
 
 // Useful for managing one-dimensional arrays
 Vector* vector_create(uint32_t width) {
@@ -149,7 +202,7 @@ float matrix_get_element(const Matrix* matrix, const uint32_t row, const uint32_
     return matrix->data[row * matrix->width + col];
 }
 
-int matrix_set_element(Matrix* matrix, uint32_t row, uint32_t col, float value) {
+int matrix_set_element(Matrix* matrix, uint32_t row, uint32_t col, const float value) {
     if (row >= matrix->height || col >= matrix->width) {
         return 1; // error
     }
@@ -215,6 +268,13 @@ int main(void) {
     // Free both matrices
     matrix_free(matrix);
     matrix_free(transposed);
+
+    // print ascii table to stdout
+    // start with printable characters
+    printf("\n");
+    for(char i = 32; i < 127; i++) {
+        printf("code=%d, char=%c\n", i, i);
+    }
 
     return 0;
 }
