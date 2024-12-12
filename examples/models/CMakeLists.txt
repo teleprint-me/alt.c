@@ -2,6 +2,7 @@
 set(EXAMPLES
     perceptron
     xor
+    mlp
     mnist # mnist depends upon stb
 )
 
