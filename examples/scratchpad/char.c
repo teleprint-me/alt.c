@@ -4,6 +4,7 @@
  * @brief Prototype for auto-generating input characters.
  *
  * @ref https://www.cprogramming.com/tutorial/unicode.html
+ * @ref https://en.wikipedia.org/wiki/List_of_Unicode_characters
  */
 
 #include <locale.h>
