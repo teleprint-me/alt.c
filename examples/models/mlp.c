@@ -1,5 +1,5 @@
 /**
- * @file examples/scratchpad/mlp.c
+ * @file examples/models/mlp.c
  *
  * @brief A Multi-layer perceptron completely from scratch in pure C.
  * 
