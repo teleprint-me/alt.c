@@ -76,6 +76,7 @@ typedef struct MLP {
     Layer* layers;
 } MLP;
 
+// POSIX forward pass
 typedef struct MLPForwardArgs {
     uint32_t thread_count; /**< Total number of threads. */
     uint32_t thread_id; /**< Thread ID for this thread. */
@@ -85,6 +86,7 @@ typedef struct MLPForwardArgs {
     Matrix* weights; /**< Flattened weight matrix. */
 } MLPForwardArgs;
 
+// POSIX backward pass
 typedef struct MLPBackwardArgs {
     uint32_t thread_count; /**< Total number of threads. */
     uint32_t thread_id; /**< Thread ID for this thread. */
@@ -96,14 +98,22 @@ typedef struct MLPBackwardArgs {
     Matrix* weights; /**< Flattened weight matrix. */
 } MLPBackwardArgs;
 
+typedef struct Dataset {
+    uint32_t length;
+    char* samples;
+} Dataset;
+
 // Utilities
+
 void print_progress(char* title, float percentage, uint32_t width, char ch);
 
-// Vectors
+// Vector operations
+
 Vector* vector_create(uint32_t width);
 void vector_free(Vector* vector);
 
-// Matrices
+// Matrix operations
+
 Matrix* matrix_create(uint32_t height, uint32_t width);
 void matrix_free(Matrix* matrix);
 
@@ -114,6 +124,8 @@ Matrix* matrix_transpose(Matrix* matrix);
 
 void matrix_print_flat(Matrix* matrix);
 void matrix_print_grid(Matrix* matrix);
+
+// Utilities
 
 // @ref https://stackoverflow.com/a/36315819/20035933
 void print_progress(char* title, float percentage, uint32_t width, char ch) {
@@ -130,6 +142,8 @@ void print_progress(char* title, float percentage, uint32_t width, char ch) {
     printf("\r%s: %3u%% [%.*s%*s]", title, progress, left, bar, right, "");
     fflush(stdout);
 }
+
+// Vector operations
 
 // Useful for managing one-dimensional arrays
 Vector* vector_create(uint32_t width) {
@@ -161,6 +175,8 @@ void vector_free(Vector* vector) {
         free(vector);
     }
 }
+
+// Matrix operations
 
 // Simplifies operations related to weights
 Matrix* matrix_create(uint32_t height, uint32_t width) {
@@ -246,35 +262,53 @@ void matrix_print_grid(Matrix* matrix) {
     }
 }
 
+// Dataset managements
+
+Dataset* dataset_create(uint32_t start, uint32_t end) {
+    if (start >= end) {
+        return NULL; // end must be greater than start
+    }
+
+    Dataset* dataset = (Dataset*) malloc(sizeof(Dataset));
+
+    dataset->length = end - start; // use the difference as the length
+    dataset->samples = (char*) malloc(sizeof(char) * dataset->length);
+    if (!dataset->samples) {
+        return NULL;
+    }
+
+    // populate samples
+    for (uint32_t i = 0, s = start; i < dataset->length && s < end; i++) {
+        dataset->samples[i] = (char) i + s;
+    }
+
+    return dataset;
+}
+
+void dataset_free(Dataset* dataset) {
+    if (dataset) {
+        if (dataset->samples) {
+            free(dataset->samples);
+        }
+        free(dataset);
+    }
+}
+
+void dataset_print(Dataset* dataset) {
+    for(uint32_t i = 0; i < dataset->length; i++) {
+        char code = dataset->samples[i];
+        printf("index=%d, code=%d, char=%c\n", i, code, code);
+    }
+}
+
 int main(void) {
     random_seed(1337); // Fix seed for reproducibility
 
-    // Create a randomly initialized 3x4 matrix
-    Matrix* matrix = matrix_create(3, 4);
-    printf("Flat Matrix:\n");
-    matrix_print_flat(matrix);
-    printf("\n");
+    Dataset* dataset = dataset_create(32, 127);
 
-    printf("Original Matrix:\n");
-    matrix_print_grid(matrix);
+    dataset_print(dataset);
 
-    // Transpose the matrix
-    Matrix* transposed = matrix_transpose(matrix);
-    if (transposed) {
-        printf("\nTransposed Matrix:\n");
-        matrix_print_grid(transposed);
-    }
-
-    // Free both matrices
-    matrix_free(matrix);
-    matrix_free(transposed);
-
-    // print ascii table to stdout
-    // start with printable characters
-    printf("\n");
-    for(char i = 32; i < 127; i++) {
-        printf("code=%d, char=%c\n", i, i);
-    }
+    dataset_free(dataset);
 
     return 0;
 }
