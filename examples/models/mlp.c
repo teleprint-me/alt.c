@@ -2,15 +2,15 @@
  * @file examples/models/mlp.c
  *
  * @brief A Multi-layer perceptron completely from scratch in pure C.
- * 
+ *
  * The goal is to train a MLP model to recognize english characters.
- * 
+ *
  * - a-z
  * - A-Z
  * - 0-9
  * - Punctuation
  * - etc.
- * 
+ *
  * Requirements:
  * - Hyperparameters should be configurable at runtime.
  * - The dataset can be automatically generated at runtime.
@@ -20,14 +20,14 @@
  * - Use 32-bit floats for enhanced learning.
  * - Use one-hot encoding for probabilities.
  * - Use SDG to keep the implementation simple and straightforward.
- * 
+ *
  * Keep it lightweight and simple, don't assume or anticipate anything, and reiterate as needed!
- * 
+ *
  * Oh, and have fun!
  */
 
-#include "random.h"
 #include "logger.h"
+#include "random.h"
 
 #include <stdio.h>
 
@@ -101,6 +101,8 @@ typedef struct MLPBackwardArgs {
 } MLPBackwardArgs;
 
 typedef struct Dataset {
+    uint32_t start;
+    uint32_t end;
     uint32_t length;
     char* samples;
 } Dataset;
@@ -284,16 +286,22 @@ Dataset* dataset_create(uint32_t start, uint32_t end) {
     }
 
     Dataset* dataset = (Dataset*) malloc(sizeof(Dataset));
-
-    dataset->length = end - start; // use the difference as the length
-    dataset->samples = (char*) malloc(sizeof(char) * dataset->length);
-    if (!dataset->samples) {
+    if (!dataset) {
         return NULL;
     }
 
-    // populate samples
-    for (uint32_t i = 0, s = start; i < dataset->length && s < end; i++) {
-        dataset->samples[i] = (char) i + s;
+    dataset->start = start;
+    dataset->end = end;
+    dataset->length = end - start;
+    dataset->samples = (char*) malloc(sizeof(char) * dataset->length);
+    if (!dataset->samples) {
+        free(dataset);
+        return NULL;
+    }
+
+    // Populate samples
+    for (uint32_t i = 0, s = start; i < dataset->length; i++, s++) {
+        dataset->samples[i] = (char) s;
     }
 
     return dataset;
@@ -311,12 +319,12 @@ void dataset_free(Dataset* dataset) {
 uint32_t dataset_shuffle(Dataset* dataset) {
     uint32_t sample_count = 0; // Track swaps
 
-    if (!dataset && !dataset->samples) {
+    if (!dataset || !dataset->samples) {
         return 0;
     }
 
     for (uint32_t i = 0; i < dataset->length; i++, sample_count++) {
-        float progress = (float) i / (float) dataset->length;
+        float progress = (float) i / (float) (dataset->length - 1);
         print_progress("Shuffling", progress, 50, '#'); // Track progress
 
         uint32_t j = rand() % (dataset->length - i); // Pick a random index
@@ -332,22 +340,52 @@ uint32_t dataset_shuffle(Dataset* dataset) {
 }
 
 void dataset_print(Dataset* dataset) {
-    for(uint32_t i = 0; i < dataset->length; i++) {
+    for (uint32_t i = 0; i < dataset->length; i++) {
         char code = dataset->samples[i];
         printf("index=%d, code=%d, char=%c\n", i, code, code);
     }
 }
 
+Vector* one_hot_encode(char input, Dataset* dataset) {
+    if ((uint32_t) input < dataset->start || (uint32_t) input >= dataset->end) {
+        return NULL; // Out of range
+    }
+
+    uint32_t range = dataset->end - dataset->start;
+    Vector* vector = vector_create(range);
+    if (!vector) {
+        return NULL; // Memory allocation failed
+    }
+
+    for (uint32_t i = 0; i < range; i++) {
+        vector->data[i] = (i == (input - dataset->start)) ? 1.0f : 0.0f;
+    }
+
+    return vector;
+}
+
 int main(void) {
-    random_seed(1337); // Fix seed for reproducibility
+    random_seed((uint32_t) time(NULL)); // Fix seed for reproducibility
 
     Dataset* dataset = dataset_create(32, 127);
-
     dataset_shuffle(dataset);
 
-    dataset_print(dataset);
+    char input = (char)((rand() % dataset->length) + dataset->start); // randomly pick a char
+    Vector* one_hot = one_hot_encode(input, dataset);
+    if (!one_hot) {
+        printf("Encoding failed for '%c'\n", input);
+        dataset_free(dataset);
+        return EXIT_FAILURE;
+    }
+    printf("One-hot encoding for '%c':\n", input);
+    for (uint32_t i = 0; i < one_hot->width; i++) {
+        printf("%.0f ", (double) one_hot->data[i]);
+    }
+    printf("\n");
 
+    // Cleanup
+    vector_free(one_hot);
     dataset_free(dataset);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
