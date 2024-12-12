@@ -46,7 +46,7 @@ typedef struct Matrix {
 
 // Useful for SDG and Epoch metrics
 typedef struct ErrorTracker {
-    Matrix** layer_errors; /**< Per-layer errors for the current sample. */
+    Matrix* layer_errors; /**< Per-layer errors for the current sample. */
     Vector* epoch_errors; /**< Aggregate errors for each epoch. */
 } ErrorTracker;
 
