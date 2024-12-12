@@ -8,17 +8,18 @@ A transformer model built completely from scratch in C.
 
 ### System Dependencies
 
-- `libc`
-- `libuuid`
-- `stb`
-- `pthread`
-- `vulkan`
-- `cmake`
+- `libc`: Standard C library
+- `libuuid`: DCE compatible Universally Unique Identifier library
+- `libutf8proc`: C library for Unicode handling
+- `stb`: Image loading/decoding library
+- `pthread`: POSIX multi-threading library for portable CPUs
+- `vulkan`: Portable GPU multi-threading C library
+- `cmake`: Tool for managing source code building
 
 #### Install System Dependencies (Arch Linux)
 
 ```sh
-sudo pacman -S gcc gdb cmake stb vulkan-headers vulkan-tools
+sudo pacman -S gcc gdb cmake util-linux-libs libutf8proc stb vulkan-headers vulkan-tools
 ```
 
 ### Python Dependencies
