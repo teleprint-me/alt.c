@@ -14,7 +14,9 @@
 #include <string.h>
 
 // Example UTF-8 strings
-const char* utf8_chars[] = {"A", "B", "C", "α", "β", "γ", "😀", "🚀", "你好", "こんにちは"};
+const char* utf8_chars[] = {
+    "A", "B", "C", "\u03B1", "\u03B2", "\u03B3", "😀", "🚀", "\u263A", "你好", "こんにちは"
+};
 
 typedef struct Dataset {
     size_t length;
