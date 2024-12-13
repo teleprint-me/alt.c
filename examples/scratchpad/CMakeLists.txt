@@ -5,6 +5,7 @@ set(EXAMPLES
     "random"
     "char"
     "utf8"
+    "u8proc"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/scratchpad)
