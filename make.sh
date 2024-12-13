@@ -10,7 +10,7 @@ function compile_shaders() {
         pathname="$(dirname $filepath)"
         basename="$(basename $filepath)"
         filename="${basename%.*}"
-        glslc "${pathname}/${filename}.comp" -o "${pathname}/${filename}.spv"
+        glslang -V "${pathname}/${filename}.comp" -o "${pathname}/${filename}.spv"
     done
 }
 
