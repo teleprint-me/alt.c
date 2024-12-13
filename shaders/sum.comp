@@ -1,0 +1,28 @@
+/**
+ * Copyright © 2024 Austin Berrio
+ *
+ * @file sum.comp
+ *
+ * InputBuffer: Contains an array of float values we want to sum.
+ * OutputBuffer: Stores the resulting sum.
+ * Atomic Add: We use atomic addition to ensure the sum is computed correctly
+ * when multiple workgroups are involved.
+ */
+
+#version 450
+#extension GL_EXT_shader_atomic_float : enable
+
+layout(local_size_x = 1) in;
+
+layout(binding = 0) buffer InputBuffer {
+    float data[];
+};
+
+layout(binding = 1) buffer OutputBuffer {
+    float result;
+};
+
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+    atomicAdd(result, data[index]);
+}

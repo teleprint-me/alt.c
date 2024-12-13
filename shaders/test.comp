@@ -1,0 +1,18 @@
+/**
+ * @file shaders/test.comp
+ */
+
+#version 450
+
+layout(local_size_x = 1) in;
+
+layout(binding = 0) buffer InputOutput {
+    int data[];
+}
+
+buf;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    buf.data[idx] *= 2; // Example operation: double the values
+}
