@@ -1,5 +1,6 @@
 # Add ALT related examples
 set(EXAMPLES
+    "simple"
     "instance"
     "device"
     "shader"
