@@ -1,6 +1,8 @@
 # Add ALT related examples
 set(EXAMPLES
     "instance"
+    "device"
+    "shader"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/vk)
