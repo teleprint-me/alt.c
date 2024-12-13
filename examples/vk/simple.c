@@ -7,6 +7,8 @@
 #include <string.h>
 #include <vulkan/vulkan.h>
 
+#include "path.h"
+
 // Helper to load SPIR-V
 uint32_t* load_shader(const char* filename, size_t* size) {
     FILE* fp = fopen(filename, "rb");
@@ -26,7 +28,7 @@ uint32_t* load_shader(const char* filename, size_t* size) {
 
 int main() {
     char* cwd = getenv("PWD");
-    char* shaderPath = strcat(cwd, "/shaders/test.spv");
+    char* shaderPath = path_join(cwd, "/shaders/test.spv"); // malloc, must use free()!
     printf("Current working directory: %s\n", cwd);
     printf("Shader path: %s\n", shaderPath);
 
@@ -34,13 +36,33 @@ int main() {
 
     // Vulkan instance
     VkInstance instance;
-    VkApplicationInfo appInfo
-        = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-           .pApplicationName = "Compute Example",
-           .apiVersion = VK_API_VERSION_1_2};
-    VkInstanceCreateInfo createInfo
-        = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pApplicationInfo = &appInfo};
-    result = vkCreateInstance(&createInfo, NULL, &instance);
+
+    // Vulkan application information
+    VkApplicationInfo applicationInfo = {0}; // Zero-initialize all members
+    applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;  // Structure type
+    applicationInfo.pApplicationName = "Vulkan Compute Example"; // Application name (optional)
+    applicationInfo.applicationVersion = VK_API_VERSION_1_0;     // Application version
+    applicationInfo.pEngineName = "No Engine";                   // Engine name (optional)
+    applicationInfo.engineVersion = VK_API_VERSION_1_0;          // Engine version
+    applicationInfo.apiVersion = VK_API_VERSION_1_2;             // API version (Vulkan 1.2)
+
+    printf("Application Name: %s\n", applicationInfo.pApplicationName);
+    printf("Application Version: %u\n", applicationInfo.applicationVersion);
+    printf("Engine Name: %s\n", applicationInfo.pEngineName);
+    printf("Engine Version: %u\n", applicationInfo.engineVersion);
+    printf("API Version: %u.%u.%u\n",
+        VK_API_VERSION_MAJOR(applicationInfo.apiVersion),
+        VK_API_VERSION_MINOR(applicationInfo.apiVersion),
+        VK_API_VERSION_PATCH(applicationInfo.apiVersion));
+
+    VkInstanceCreateInfo instanceInfo = {0}; // Zero-initialize all members
+    instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceInfo.pApplicationInfo = &applicationInfo;
+    instanceInfo.enabledExtensionCount = 0;
+    instanceInfo.ppEnabledExtensionNames = NULL;
+    instanceInfo.enabledLayerCount = 0;
+    instanceInfo.ppEnabledLayerNames = NULL;
+    result = vkCreateInstance(&instanceInfo, NULL, &instance);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to create VkInstance.\n");
         return EXIT_FAILURE;
@@ -81,6 +103,7 @@ int main() {
         fprintf(stderr, "Failed to read shader code.\n");
         return EXIT_FAILURE;
     }
+    free(shaderPath); // free the string
 
     VkShaderModuleCreateInfo shaderModuleCreateInfo
         = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
