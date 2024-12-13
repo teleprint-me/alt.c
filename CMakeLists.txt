@@ -47,8 +47,11 @@ set(
     "src/magic.c"
     "src/data_types.c"
     "src/random.c"
-    "src/flex_array.c"
     "src/activation.c"
+    "src/vk/instance.c"
+    "src/vk/device.c"
+    "src/vk/shader.c"
+    "src/flex_array.c"
     "src/tensors.c"
 )
 add_library("alt" ${C_SOURCES})
@@ -60,6 +63,7 @@ target_include_directories("alt" PUBLIC include)
 add_subdirectory(examples)
 add_subdirectory(examples/scratchpad)
 add_subdirectory(examples/path)
+add_subdirectory(examples/vk)
 add_subdirectory(examples/quants)
 add_subdirectory(examples/models)
 
