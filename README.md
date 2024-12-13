@@ -16,6 +16,15 @@ A transformer model built completely from scratch in C.
 - `vulkan`: Portable GPU multi-threading C library
 - `cmake`: Tool for managing source code building
 
+### System Requirements
+
+- Any Linux distribution should work.
+- Officially supports Arch Linux.
+- Requires POSIX for CPU multi-threading.
+- Requires Vulkan for GPU multi-threading.
+
+**NOTE:** Currently, I only officially support Arch Linux. I may consider Android support further down the line once the codebase matures.
+
 #### Install System Dependencies (Arch Linux)
 
 ```sh
