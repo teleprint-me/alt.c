@@ -1,20 +1,12 @@
 # Paths
 
-build/
-build-em/
-build-debug/
-build-release/
-build-static/
-build-no-accel/
-build-sanitize-addr/
-build-sanitize-thread/
-
 /papers
+/build
 /models
-/main
-/quantize
-/tokenizer
 /data
+
+# Shaders
+*.spv
 
 # C
 
