@@ -99,7 +99,7 @@ Input: 1, 1 -> Prediction: 0.934
 
 ## License
 
-**TBD**
+This project is licensed under the AGPL License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
