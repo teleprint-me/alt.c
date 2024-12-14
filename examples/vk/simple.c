@@ -17,6 +17,9 @@ typedef struct ShaderCode {
 } ShaderCode;
 
 size_t shader_size(FILE* fp) {
+    if (!fp) {
+        return 0;
+    }
     fseek(fp, 0, SEEK_END);
     size_t size = ftell(fp);
     rewind(fp);
@@ -101,26 +104,23 @@ void shader_free(ShaderCode* code) {
     }
 }
 
-int main() {
-    // Load the compute shader
-    char* cwd = getenv("PWD"); // get the current working directory
-    char* filepath = path_join(cwd, "/shaders/test.spv"); // malloc, must use free()!
-    printf("Current working directory: %s\n", cwd);
-    printf("Shader path: %s\n", filepath);
-    ShaderCode* shader = shader_create(filepath);
-    free(filepath); // free the malloced filepath
-    if (!shader) {
-        fprintf(stderr, "Failed to load shader\n");
-        return EXIT_FAILURE;
+ShaderCode* shader_load(const char* cwd, const char* relative_path) {
+    char* filepath = path_join(cwd, relative_path);
+    if (!filepath) {
+        fprintf(stderr, "Error: Failed to construct path\n");
+        return NULL;
     }
-    printf("Loaded shader: %s\n", shader->path);
-    printf("File size: %zu bytes\n", shader->size);
-    printf("Data count: %zu\n", shader->count);
+    ShaderCode* shader = shader_create(filepath);
+    free(filepath);
+    return shader;
+}
 
-    VkResult result;
+int main() {
+    /** Create a vulkan instance object */
 
     // Create vulkan instance
     VkInstance instance;
+    VkResult result;
 
     // Create application information
     VkApplicationInfo applicationInfo = {0}; // Zero-initialize all members
@@ -141,53 +141,97 @@ int main() {
         VK_API_VERSION_MINOR(applicationInfo.apiVersion),
         VK_API_VERSION_PATCH(applicationInfo.apiVersion));
 
+    // Define validation layers
+    #define VALIDATION_LAYER_LIMIT 1 /// @warning Cannot be a variable
+    const char* validationLayers[VALIDATION_LAYER_LIMIT] = {"VK_LAYER_KHRONOS_validation"};
+
+    // Get the number of validation layers
+    uint32_t validationLayerCount = 0;
+    vkEnumerateInstanceLayerProperties(&validationLayerCount, NULL);
+    // Allocate memory for validation layer properties
+    VkLayerProperties* availableLayers = malloc(validationLayerCount * sizeof(VkLayerProperties));
+    vkEnumerateInstanceLayerProperties(&validationLayerCount, availableLayers);
+    // Discover enumerated validation layers
+    for (size_t i = 0; i < VALIDATION_LAYER_LIMIT; i++) {
+        bool found = false;
+        for (uint32_t j = 0; j < validationLayerCount; j++) {
+            if (strcmp(validationLayers[i], availableLayers[j].layerName) == 0) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            free(availableLayers);
+            return EXIT_FAILURE;
+        }
+    }
+    free(availableLayers);
+
     // Create device info
     VkInstanceCreateInfo instanceInfo = {0}; // Zero-initialize all members
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pApplicationInfo = &applicationInfo;
     instanceInfo.enabledExtensionCount = 0;
     instanceInfo.ppEnabledExtensionNames = NULL;
-    instanceInfo.enabledLayerCount = 0;
-    instanceInfo.ppEnabledLayerNames = NULL;
+    instanceInfo.enabledLayerCount = VALIDATION_LAYER_LIMIT;
+    instanceInfo.ppEnabledLayerNames = validationLayers;
     result = vkCreateInstance(&instanceInfo, NULL, &instance);
-    if (result != VK_SUCCESS) {
+    if (VK_SUCCESS != result) {
         fprintf(stderr, "Failed to create VkInstance.\n");
         return EXIT_FAILURE;
     }
 
-    // Enumerate physical device count
+    /** Create a physical device object */
+
+    // Get the physical device count
     uint32_t deviceCount = 0;
     result = vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
-    if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to enumerate physical devices! (Error code: %d)\n", result);
-        exit(EXIT_FAILURE);
+    if (VK_SUCCESS != result || 0 == deviceCount) {
+        fprintf(stderr, "Failed to enumerate physical devices or no Vulkan-supported GPU found!\n");
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
     }
-    if (0 == deviceCount) {
-        fprintf(stderr, "No GPUs with Vulkan support found!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Enumerate physical device list
-    VkPhysicalDevice* physicalDeviceList
-        = (VkPhysicalDevice*) malloc(deviceCount * sizeof(VkPhysicalDevice));
-    if (NULL == physicalDeviceList) {
+    // Allocate memory for the device list
+    VkPhysicalDevice* physicalDeviceList = (VkPhysicalDevice*) malloc(deviceCount * sizeof(VkPhysicalDevice));
+    if (!physicalDeviceList) {
         fprintf(stderr, "Failed to allocate memory for physical device list!\n");
-        return NULL;
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
     }
+    // Enumerate the physical device list
     result = vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDeviceList);
     if (VK_SUCCESS != result) {
         fprintf(stderr, "Failed to enumerate physical devices! (Error code: %d)\n", result);
         free(physicalDeviceList);
-        return NULL;
-    }
-
-    // Physical device
-    VkPhysicalDevice physicalDevice;
-    result = vkEnumeratePhysicalDevices(instance, &deviceCount, &physicalDevice);
-    if (result != VK_SUCCESS) {
-        fprintf(stderr, "Failed to create enumerate physical devices.\n");
+        vkDestroyInstance(instance, NULL);
         return EXIT_FAILURE;
     }
+
+    // Iterate through devices and select one
+    VkPhysicalDeviceProperties properties = {0};
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    for (uint32_t i = 0; i < deviceCount; i++) {
+        vkGetPhysicalDeviceProperties(physicalDeviceList[i], &properties);
+
+        printf("Device Name: %s\n", properties.deviceName);
+        printf("Device Type: %d\n", properties.deviceType);
+        printf("API Version: %u.%u.%u\n",
+               VK_API_VERSION_MAJOR(properties.apiVersion),
+               VK_API_VERSION_MINOR(properties.apiVersion),
+               VK_API_VERSION_PATCH(properties.apiVersion));
+        
+        // Prefer discrete GPU
+        if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            physicalDevice = physicalDeviceList[i];
+            break; // Stop at the first discrete GPU
+        }
+    }
+    // Fallback to first device if no discrete GPU is found
+    if (VK_NULL_HANDLE == physicalDevice) {
+        fprintf(stderr, "No discrete GPU found. Selecting first available device.\n");
+        physicalDevice = physicalDeviceList[0];
+    }
+    free(physicalDeviceList); // cleanup allocated device list
 
     // Logical device
     float queuePriority = 1.0f;
@@ -204,26 +248,41 @@ int main() {
     result = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to create virtual device.\n");
+        vkDestroyInstance(instance, NULL);
         return EXIT_FAILURE;
     }
 
-    // Compute shader module
-    size_t shaderSize;
-    uint32_t* shaderCode = load_shader(shaderPath, &shaderSize);
-    if (!shaderCode) {
-        fprintf(stderr, "Failed to read shader code.\n");
+    /** Read shader into memory */
+
+    // Get current working directory
+    char* cwd = getenv("PWD");
+    if (!cwd) {
+        fprintf(stderr, "Error: Failed to get current working directory\n");
         return EXIT_FAILURE;
     }
+    // Load the compute shader
+    ShaderCode* shader = shader_load(cwd, "/shaders/test.spv");
+    if (!shader) {
+        fprintf(stderr, "Failed to load compute shader\n");
+        return EXIT_FAILURE;
+    }
+    // Display shader details
+    printf("Loaded shader: %s\n", shader->path);
+    printf("File size: %zu bytes\n", shader->size);
+    printf("Data count: %zu\n", shader->count);
 
-    VkShaderModuleCreateInfo shaderModuleCreateInfo
-        = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-           .codeSize = shaderSize,
-           .pCode = shaderCode};
+    // Create the shader module info object
+    VkShaderModuleCreateInfo shaderModuleCreateInfo = {0};
+    shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderModuleCreateInfo.codeSize = shader->size;
+    shaderModuleCreateInfo.pCode = shader->data;
+
+    // Create the shader module object
     VkShaderModule shaderModule;
     result = vkCreateShaderModule(device, &shaderModuleCreateInfo, NULL, &shaderModule);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to read shader module.\n");
-        free(shaderCode);
+        shader_free(shader);
         return EXIT_FAILURE;
     }
 
