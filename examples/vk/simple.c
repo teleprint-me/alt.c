@@ -1,5 +1,7 @@
 /**
  * @file examples/vk/simple.c
+ * 
+ * @warning All objects must be zero-initialized.
  */
 
 #include <stdio.h>
@@ -233,24 +235,74 @@ int main() {
     }
     free(physicalDeviceList); // cleanup allocated device list
 
-    // Logical device
-    float queuePriority = 1.0f;
-    VkDeviceQueueCreateInfo queueCreateInfo
-        = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-           .queueFamilyIndex = 0,
-           .queueCount = 1,
-           .pQueuePriorities = &queuePriority};
-    VkDeviceCreateInfo deviceCreateInfo
-        = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-           .queueCreateInfoCount = 1,
-           .pQueueCreateInfos = &queueCreateInfo};
-    VkDevice device;
-    result = vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device);
-    if (result != VK_SUCCESS) {
-        fprintf(stderr, "Failed to create virtual device.\n");
+    /** Create a logical device object */
+
+    // Get the number of available queue families
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
+    if (0 == queueFamilyCount) {
+        fprintf(stderr, "No queue families found on the physical device.\n");
         vkDestroyInstance(instance, NULL);
         return EXIT_FAILURE;
     }
+    // Allocate memory for queueing device family properties
+    VkQueueFamilyProperties* queueFamilies = (VkQueueFamilyProperties*) malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
+    if (!queueFamilies) {
+        fprintf(stderr, "Failed to allocate memory for queueing device family properties.\n");
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+    // Queue device family properties
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
+    // Discover the compute-capable queue
+    uint32_t computeQueueFamilyIndex = UINT32_MAX; // Set to an invalid index by default
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+            computeQueueFamilyIndex = i; // Pick the first compute-capable queue
+            break;
+        }
+    }
+    free(queueFamilies); // Clean up allocated memory
+    if (computeQueueFamilyIndex == UINT32_MAX) {
+        fprintf(stderr, "No compute-capable queue family found.\n");
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+
+    // Define the device queue info object
+    float queuePriority = 1.0f;
+    VkDeviceQueueCreateInfo deviceQueueInfo = {0};
+    deviceQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    deviceQueueInfo.queueFamilyIndex = computeQueueFamilyIndex; // Use the discovered queue index
+    deviceQueueInfo.queueCount = 1;
+    deviceQueueInfo.pQueuePriorities = &queuePriority;
+
+    // Specify enabled device features
+    VkPhysicalDeviceFeatures deviceFeatures = {0};
+    // Enable specific features if required here, e.g., deviceFeatures.samplerAnisotropy = VK_TRUE;
+
+    // Device the device info object
+    VkDeviceCreateInfo deviceInfo = {0};
+    deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceInfo.queueCreateInfoCount = 1;
+    deviceInfo.pQueueCreateInfos = &deviceQueueInfo; // Pass the queue info array
+    deviceInfo.enabledExtensionCount = 0; // Modify this if extensions are required
+    deviceInfo.ppEnabledExtensionNames = NULL;
+    deviceInfo.pEnabledFeatures = &deviceFeatures;
+
+    // Create the logical device
+    VkDevice logicalDevice;
+    result = vkCreateDevice(physicalDevice, &deviceInfo, NULL, &logicalDevice);
+    if (result != VK_SUCCESS) {
+        fprintf(stderr, "Failed to create logical device! (Error code: %d)\n", result);
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+
+    // Retrieve the compute queue from the logical device
+    VkQueue computeQueue;
+    vkGetDeviceQueue(logicalDevice, computeQueueFamilyIndex, 0, &computeQueue);
+    printf("Logical device and compute queue created successfully.\n");
 
     /** Read shader into memory */
 
@@ -279,7 +331,7 @@ int main() {
 
     // Create the shader module object
     VkShaderModule shaderModule;
-    result = vkCreateShaderModule(device, &shaderModuleCreateInfo, NULL, &shaderModule);
+    result = vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, NULL, &shaderModule);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to read shader module.\n");
         shader_free(shader);
@@ -299,7 +351,7 @@ int main() {
            .pSetLayouts = NULL,
            .pushConstantRangeCount = 0,
            .pPushConstantRanges = NULL};
-    result = vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, NULL, &pipelineLayout);
+    result = vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, NULL, &pipelineLayout);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to create VkPipelineLayout.\n");
         return EXIT_FAILURE;
@@ -310,8 +362,7 @@ int main() {
            .stage = stageCreateInfo,
            .layout = pipelineLayout};
     VkPipeline pipeline;
-    result
-        = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline);
+    result = vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to create VkPipeline.\n");
         return EXIT_FAILURE;
@@ -320,10 +371,10 @@ int main() {
     printf("Compute pipeline created successfully.\n");
 
     // Cleanup
-    vkDestroyPipeline(device, pipeline, NULL);
-    vkDestroyPipelineLayout(device, pipelineLayout, NULL);
-    vkDestroyShaderModule(device, shaderModule, NULL);
-    vkDestroyDevice(device, NULL);
+    vkDestroyPipeline(logicalDevice, pipeline, NULL);
+    vkDestroyPipelineLayout(logicalDevice, pipelineLayout, NULL);
+    vkDestroyShaderModule(logicalDevice, shaderModule, NULL);
+    vkDestroyDevice(logicalDevice, NULL);
     vkDestroyInstance(instance, NULL);
     shader_free(shader);
 
