@@ -18,13 +18,6 @@
 extern "C" {
 #endif
 
-// @brief Structure representing a Vulkan instance and its creation parameters.
-typedef struct VulkanInstance {
-    VkApplicationInfo applicationInfo; // Application-level info
-    VkInstanceCreateInfo instanceCreateInfo; // Vulkan instance creation info
-    VkInstance handle; // Actual Vulkan instance handle
-} vulkan_instance_t;
-
 /**
  * @brief Create a VkApplicationInfo structure with the provided application and engine names.
  *
@@ -34,8 +27,7 @@ typedef struct VulkanInstance {
  *
  * @note The returned structure should be used to populate VkInstanceCreateInfo.
  */
-VkApplicationInfo
-vulkan_create_application_info(const char* pApplicationName, const char* pEngineName);
+VkApplicationInfo vulkan_create_application_info(const char* pApplicationName, const char* pEngineName);
 
 /**
  * @brief Create a VkInstanceCreateInfo structure using the provided VkApplicationInfo.
@@ -63,27 +55,19 @@ void vulkan_set_instance_info_extensions(
  * @param layers Array of validation layer names to enable.
  * @param layerCount Number of layers in the array.
  */
-void vulkan_set_instance_info_validation_layers(
+VkResult vulkan_set_instance_info_validation_layers(
     VkInstanceCreateInfo* pInstanceInfo, const char* const* layers, uint32_t layerCount
 );
 
-/**
- * @brief Create a VulkanInstance with the specified application and engine names.
- *
- * @param pApplicationName Name of the application.
- * @param pEngineName Name of the engine.
- * @return vulkan_instance_t* Pointer to the newly created VulkanInstance.
- *
- * @note The caller is responsible for destroying the VulkanInstance using destroy_vulkan_instance.
- */
-vulkan_instance_t* vulkan_create_instance(const char* pApplicationName, const char* pEngineName);
+
+VkInstance vulkan_create_instance(const char* pApplicationName, const char* pEngineName);
 
 /**
  * @brief Destroy a VulkanInstance and free associated memory.
  *
  * @param vkInstance Pointer to the VulkanInstance to destroy.
  */
-void vulkan_destroy_instance(vulkan_instance_t* vkInstance);
+void vulkan_destroy_instance(VkInstance instance);
 
 #ifdef __cplusplus
 }
