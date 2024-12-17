@@ -2,9 +2,10 @@
  * @file shaders/test.comp
  */
 
+#version 450
+
 #pragma optimize(off)
 #pragma debug(on)
-#version 450
 
 layout(local_size_x = 1) in;
 
