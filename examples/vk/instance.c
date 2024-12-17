@@ -4,7 +4,8 @@
  * @file examples/vk/instance.c
  */
 
-#include "logger.h"
+/// @todo Need to substitute logger or integrate into vk pipeline upon instance creation
+#include "logger.h" /// @note Logger is thread safe and has a mutex lock
 #include "vk/instance.h"
 
 #include <stdio.h>
@@ -23,27 +24,27 @@ int main(void) {
     const char* applicationName = "InstanceApp";
     const char* engineName = "InstanceEngine";
 
+    // Create the app and instance info objects
     VkApplicationInfo applicationInfo = vulkan_create_application_info(applicationName, engineName);
-
-    // Output application information
-    vulkan_print_application_info(&applicationInfo);
-
     VkInstanceCreateInfo instanceInfo = vulkan_create_instance_info(&applicationInfo);
+    vulkan_print_application_info(&applicationInfo); // Output application information
 
+    // Enable validation layers for exposing vk related issues
     result = vulkan_set_instance_info_validation_layers(&instanceInfo, validationLayers, VALIDATION_LAYER_COUNT);
     if (VK_SUCCESS != result) {
         return result;
     }
 
+    // Create the instance object
     VkInstance instance;
     result = vkCreateInstance(&instanceInfo, NULL, &instance);
     if (VK_SUCCESS != result) {
         LOG_ERROR("%s: Failed to create Vulkan instance! (Error code: %d)\n", __func__, result);
         return result;
     }
-
     printf("Successfully created Vulkan instance!\n");
 
+    // Free the instance object
     vkDestroyInstance(instance, NULL);
     printf("Successfully destroyed Vulkan instance!\n");
 
