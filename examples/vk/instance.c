@@ -26,16 +26,7 @@ int main(void) {
     VkApplicationInfo applicationInfo = vulkan_create_application_info(applicationName, engineName);
 
     // Output application information
-    printf("Application Name: %s\n", applicationInfo.pApplicationName);
-    printf("Application Version: %u\n", applicationInfo.applicationVersion);
-    printf("Engine Name: %s\n", applicationInfo.pEngineName);
-    printf("Engine Version: %u\n", applicationInfo.engineVersion);
-    printf(
-        "API Version: %u.%u.%u\n",
-        VK_API_VERSION_MAJOR(applicationInfo.apiVersion),
-        VK_API_VERSION_MINOR(applicationInfo.apiVersion),
-        VK_API_VERSION_PATCH(applicationInfo.apiVersion)
-    );
+    vulkan_print_application_info(&applicationInfo);
 
     VkInstanceCreateInfo instanceInfo = vulkan_create_instance_info(&applicationInfo);
 

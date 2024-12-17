@@ -24,6 +24,8 @@ VkApplicationInfo vulkan_create_application_info(const char* pApplicationName, c
 
 VkInstanceCreateInfo vulkan_create_instance_info(const VkApplicationInfo* pApplicationInfo);
 
+void vulkan_print_application_info(const VkApplicationInfo* pApplicationInfo);
+
 void vulkan_set_instance_info_extensions(
     VkInstanceCreateInfo* pInstanceInfo, const char* const* extensions, uint32_t extensionCount
 );
