@@ -36,8 +36,6 @@ VkResult vulkan_set_instance_info_validation_layers(
     VkInstanceCreateInfo* pInstanceInfo, const char* const* layers, uint32_t layerCount
 );
 
-void vulkan_destroy_instance(VkInstance instance);
-
 #ifdef __cplusplus
 }
 #endif

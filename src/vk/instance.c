@@ -161,9 +161,3 @@ VkResult vulkan_set_instance_info_validation_layers(
 
     return VK_SUCCESS;
 }
-
-void vulkan_destroy_instance(VkInstance instance) {
-    if (instance) {
-        vkDestroyInstance(instance, NULL);
-    }
-}
