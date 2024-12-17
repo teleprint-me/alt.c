@@ -60,5 +60,11 @@ export LSAN_OPTIONS LD_PRELOAD
 #   - Use 'verbosity=1' in LSAN_OPTIONS for troubleshooting.
 #   - Valgrind can be used as a backup to verify memory integrity.
 
+# Check for input arguments
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <program> [args...]"
+    exit 1
+fi
+
 # Run the Vulkan example binary
-$1
+"$@"
