@@ -6,7 +6,7 @@ function compile_alt() {
 }
 
 function compile_shaders() {
-    for filepath in shaders/*.comp; do
+    for filepath in "$(pwd)"/shaders/*.comp; do
         pathname="$(dirname $filepath)"
         basename="$(basename $filepath)"
         filename="${basename%.*}"
