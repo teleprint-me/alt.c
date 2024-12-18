@@ -9,212 +9,136 @@
  *       and other device-related operations.
  */
 
-#include "vk/device.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
-/**
- * @brief Vulkan Device API that handles physical and logical device management.
- */
+#include "logger.h"
+#include "vk/device.h"
 
-VkDeviceCreateInfo vulkan_create_device_info(
-    VkDeviceQueueCreateInfo* pQueueCreateInfos, uint32_t queueCreateInfoCount
-) {
+VkDeviceQueueCreateInfo
+vulkan_create_device_queue_info(uint32_t queueFamilyIndex, uint32_t queueCount) {
+    float queuePriority = 1.0f; /// @note Maybe use a parameter for this???
+    VkDeviceQueueCreateInfo deviceQueueInfo = {0};
+    deviceQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    deviceQueueInfo.queueFamilyIndex = queueFamilyIndex; // Use the discovered queue index
+    deviceQueueInfo.queueCount = queueCount;
+    deviceQueueInfo.pQueuePriorities = &queuePriority;
+    return deviceQueueInfo;
+}
+
+VkDeviceCreateInfo vulkan_create_device_info(VkDeviceQueueCreateInfo deviceQueueInfo) {
+    // Device the device info object
     VkDeviceCreateInfo deviceInfo = {0};
     deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceInfo.queueCreateInfoCount = queueCreateInfoCount;
-    deviceInfo.pQueueCreateInfos = pQueueCreateInfos;
-    deviceInfo.enabledExtensionCount = 0;
+    deviceInfo.queueCreateInfoCount = 1;
+    deviceInfo.pQueueCreateInfos = &deviceQueueInfo; // Pass the queue info array
+    deviceInfo.enabledExtensionCount = 0; // Modify this if extensions are required
     deviceInfo.ppEnabledExtensionNames = NULL;
-    deviceInfo.enabledLayerCount = 0;
-    deviceInfo.ppEnabledLayerNames = NULL;
+    /// @note pEnabledFeatures is required for half and quarter precision.
+    /// Using single precision for simplicity for now.
     deviceInfo.pEnabledFeatures = NULL;
     return deviceInfo;
 }
 
-uint32_t vulkan_enumerate_physical_device_count(VkInstance vkInstance) {
-    uint32_t deviceCount = 0;
-    VkResult result = vkEnumeratePhysicalDevices(vkInstance, &deviceCount, NULL);
-
-    if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to enumerate physical devices! (Error code: %d)\n", result);
-        exit(EXIT_FAILURE);
-    }
-
-    if (0 == deviceCount) {
-        fprintf(stderr, "No GPUs with Vulkan support found!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    return deviceCount;
+void vulkan_print_physical_device_properties(VkPhysicalDeviceProperties* properties) {
+    LOG_INFO("%s: Device Name: %s\n", __func__, properties->deviceName);
+    LOG_INFO("%s: Device Type: %d\n", __func__, properties->deviceType);
+    LOG_INFO(
+        "%s: API Version: %u.%u.%u\n",
+        __func__,
+        VK_API_VERSION_MAJOR(properties->apiVersion),
+        VK_API_VERSION_MINOR(properties->apiVersion),
+        VK_API_VERSION_PATCH(properties->apiVersion)
+    );
 }
 
-VkPhysicalDevice*
-vulkan_enumerate_physical_device_list(VkInstance vkInstance, uint32_t deviceCount) {
+/// @note Not sure how to decouple the logic in a sane way to get device properties.
+/// This matters because it allows the user to select a device.
+/// This is fine for now, but needs to be reasoned out and improved upon.
+VkPhysicalDevice vulkan_create_physical_device(VkInstance instance) {
+    // Get the physical device count
+    uint32_t deviceCount = 0;
+    VkResult result = vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
+    if (VK_SUCCESS != result || 0 == deviceCount) {
+        LOG_ERROR(
+            "%s: Failed to enumerate physical devices or no Vulkan-supported GPU found!\n", __func__
+        );
+        vkDestroyInstance(instance, NULL);
+        return NULL;
+    }
+    // Allocate memory for the device list
     VkPhysicalDevice* physicalDeviceList
         = (VkPhysicalDevice*) malloc(deviceCount * sizeof(VkPhysicalDevice));
-
-    if (NULL == physicalDeviceList) {
-        fprintf(stderr, "Failed to allocate memory for physical device list!\n");
+    if (!physicalDeviceList) {
+        LOG_ERROR("%s: Failed to allocate memory for physical device list!\n", __func__);
+        vkDestroyInstance(instance, NULL);
         return NULL;
     }
-
-    VkResult result = vkEnumeratePhysicalDevices(vkInstance, &deviceCount, physicalDeviceList);
+    // Enumerate the physical device list
+    result = vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDeviceList);
     if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to enumerate physical devices! (Error code: %d)\n", result);
+        LOG_ERROR("%s: Failed to enumerate physical devices! (Error code: %d)\n", __func__, result);
         free(physicalDeviceList);
+        vkDestroyInstance(instance, NULL);
         return NULL;
     }
 
-    return physicalDeviceList;
-}
-
-void vulkan_free_device_list(VkPhysicalDevice* physicalDeviceList) {
-    if (NULL != physicalDeviceList) {
-        free(physicalDeviceList);
-    }
-}
-
-VkPhysicalDeviceProperties
-vulkan_get_physical_device_properties(VkPhysicalDevice selectedPhysicalDevice) {
-    VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(selectedPhysicalDevice, &properties);
-    return properties;
-}
-
-// attempt to guess which device should be returned
-VkPhysicalDevice
-vulkan_select_physical_device(VkPhysicalDevice* physicalDeviceList, uint32_t deviceCount) {
+    // Iterate through devices and select one
+    VkPhysicalDeviceProperties properties = {0};
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     for (uint32_t i = 0; i < deviceCount; i++) {
-        VkPhysicalDeviceProperties properties
-            = vulkan_get_physical_device_properties(physicalDeviceList[i]);
-
+        vkGetPhysicalDeviceProperties(physicalDeviceList[i], &properties);
+        vulkan_print_physical_device_properties(&properties);
+        // Prefer discrete GPU
         if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            return physicalDeviceList[i];
+            physicalDevice = physicalDeviceList[i];
+            break; // Stop at the first discrete GPU
         }
     }
-
-    // Fallback to first available device
-    return physicalDeviceList[0];
-}
-
-VkDevice vulkan_create_logical_device(
-    VkPhysicalDevice selectedPhysicalDevice, VkDeviceCreateInfo deviceInfo
-) {
-    VkDevice logicalDevice;
-    VkResult result = vkCreateDevice(selectedPhysicalDevice, &deviceInfo, NULL, &logicalDevice);
-
-    if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to create logical device! (Error code: %d)\n", result);
-        exit(EXIT_FAILURE);
+    // Fallback to first device if no discrete GPU is found
+    if (VK_NULL_HANDLE == physicalDevice) {
+        LOG_ERROR("%s: No discrete GPU found. Selecting first available device.\n", __func__);
+        physicalDevice = physicalDeviceList[0];
     }
-
-    return logicalDevice;
+    free(physicalDeviceList); // cleanup allocated device list
+    return physicalDevice;
 }
 
-/**
- * @brief Vulkan Queue API that handles setup
- */
-
-VkDeviceQueueCreateInfo vulkan_create_device_queue_info(uint32_t queueFamilyIndex) {
-    static float queuePriority = 1.0f;
-    VkDeviceQueueCreateInfo queueInfo = {0};
-    queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueInfo.queueFamilyIndex = queueFamilyIndex;
-    queueInfo.queueCount = 1; // Using a single queue
-    queueInfo.pQueuePriorities = &queuePriority; // Single priority value for one queue
-    return queueInfo;
-}
-
-uint32_t vulkan_get_queue_family_property_count(VkPhysicalDevice selectedPhysicalDevice) {
-    uint32_t queueFamilyPropertyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        selectedPhysicalDevice, &queueFamilyPropertyCount, NULL
-    );
-    return queueFamilyPropertyCount;
-}
-
-void vulkan_get_queue_family_properties(
-    VkPhysicalDevice selectedPhysicalDevice, VkQueueFamilyProperties* queueFamilyProperties
-) {
-    uint32_t queueFamilyPropertyCount
-        = vulkan_get_queue_family_property_count(selectedPhysicalDevice);
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        selectedPhysicalDevice, &queueFamilyPropertyCount, queueFamilyProperties
-    );
-}
-
-uint32_t vulkan_get_compute_queue_family_index(
-    VkQueueFamilyProperties* queueFamilyProperties, uint32_t queueFamilyPropertyCount
-) {
-    for (uint32_t i = 0; i < queueFamilyPropertyCount; i++) {
-        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
-            return i; // Return the index of the compute-capable queue
+uint32_t
+vulkan_get_compute_queue_family_index(VkInstance instance, VkPhysicalDevice physicalDevice) {
+    // Get the number of available queue families
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
+    if (0 == queueFamilyCount) {
+        LOG_ERROR("%s: No queue families found on the physical device.\n", __func__);
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+    // Allocate memory for queueing device family properties
+    VkQueueFamilyProperties* queueFamilies
+        = (VkQueueFamilyProperties*) malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
+    if (!queueFamilies) {
+        LOG_ERROR(
+            "%s: Failed to allocate memory for queueing device family properties.\n", __func__
+        );
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+    // Queue device family properties
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
+    // Discover the compute-capable queue
+    uint32_t computeQueueFamilyIndex = UINT32_MAX; // Set to an invalid index by default
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+            computeQueueFamilyIndex = i; // Pick the first compute-capable queue
+            break;
         }
     }
-    return 0; // Fallback to first available queue family
-}
-
-/**
- * @brief Create and destroy vulkan device types
- */
-
-vulkan_device_t* vulkan_create_device(VkInstance vkInstance) {
-    vulkan_device_t* vkDevice = (vulkan_device_t*) malloc(sizeof(vulkan_device_t));
-
-    // Enumerate and select the physical device
-    vkDevice->physicalDeviceCount = vulkan_enumerate_physical_device_count(vkInstance);
-    VkPhysicalDevice* physicalDeviceList
-        = vulkan_enumerate_physical_device_list(vkInstance, vkDevice->physicalDeviceCount);
-    vkDevice->physicalDevice
-        = vulkan_select_physical_device(physicalDeviceList, vkDevice->physicalDeviceCount);
-    vulkan_free_device_list(physicalDeviceList);
-
-    // Get device properties
-    vkDevice->physicalDeviceProperties
-        = vulkan_get_physical_device_properties(vkDevice->physicalDevice);
-
-    // Create the queue create info on the stack
-    uint32_t queueFamilyPropertyCount
-        = vulkan_get_queue_family_property_count(vkDevice->physicalDevice);
-    VkQueueFamilyProperties queueFamilyProperties[16];
-    vulkan_get_queue_family_properties(vkDevice->physicalDevice, queueFamilyProperties);
-
-    uint32_t computeQueueFamilyIndex
-        = vulkan_get_compute_queue_family_index(queueFamilyProperties, queueFamilyPropertyCount);
-
-    // Create queue creation info
-    VkDeviceQueueCreateInfo queueCreateInfo
-        = vulkan_create_device_queue_info(computeQueueFamilyIndex);
-
-    // Set up the device creation info
-    VkDeviceCreateInfo deviceCreateInfo = vulkan_create_device_info(&queueCreateInfo, 1);
-
-    // Create the logical device
-    VkResult result = vkCreateDevice(
-        vkDevice->physicalDevice, &deviceCreateInfo, NULL, &vkDevice->logicalDevice
-    );
-
-    if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to create logical device! (Error code: %d)\n", result);
-        exit(EXIT_FAILURE);
+    free(queueFamilies); // Clean up allocated memory
+    if (computeQueueFamilyIndex == UINT32_MAX) {
+        LOG_ERROR("%s: No compute-capable queue family found.\n", __func__);
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
     }
-
-    // Retrieve the queue handle from the logical device
-    vkGetDeviceQueue(vkDevice->logicalDevice, computeQueueFamilyIndex, 0, &vkDevice->logicalQueue);
-
-    // Create the queue structure and assign the handle
-    vkDevice->queueFamilyIndex = computeQueueFamilyIndex;
-
-    return vkDevice;
-}
-
-void vulkan_destroy_device(vulkan_device_t* vkDevice) {
-    if (NULL != vkDevice) {
-        if (VK_NULL_HANDLE != vkDevice->logicalDevice) {
-            vkDestroyDevice(vkDevice->logicalDevice, NULL);
-        }
-        free(vkDevice);
-    }
+    return computeQueueFamilyIndex;
 }
