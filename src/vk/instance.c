@@ -68,12 +68,13 @@ VkInstanceCreateInfo vulkan_create_instance_info(const VkApplicationInfo* pAppli
 
 void vulkan_print_application_info(const VkApplicationInfo* pApplicationInfo) {
     // Output application information
-    printf("Application Name: %s\n", pApplicationInfo->pApplicationName);
-    printf("Application Version: %u\n", pApplicationInfo->applicationVersion);
-    printf("Engine Name: %s\n", pApplicationInfo->pEngineName);
-    printf("Engine Version: %u\n", pApplicationInfo->engineVersion);
-    printf(
-        "API Version: %u.%u.%u\n",
+    LOG_INFO("%s: Application Name: %s\n", __func__, pApplicationInfo->pApplicationName);
+    LOG_INFO("%s: Application Version: %u\n", __func__, pApplicationInfo->applicationVersion);
+    LOG_INFO("%s: Engine Name: %s\n", __func__, pApplicationInfo->pEngineName);
+    LOG_INFO("%s: Engine Version: %u\n", __func__, pApplicationInfo->engineVersion);
+    LOG_INFO(
+        "%s: API Version: %u.%u.%u\n",
+        __func__,
         VK_API_VERSION_MAJOR(pApplicationInfo->apiVersion),
         VK_API_VERSION_MINOR(pApplicationInfo->apiVersion),
         VK_API_VERSION_PATCH(pApplicationInfo->apiVersion)
