@@ -118,11 +118,19 @@ ShaderCode* shader_load(const char* cwd, const char* relative_path) {
 }
 
 int main() {
-    /** Create a vulkan instance object */
+    /** 
+     * Initialization
+     *
+     * @brief Before using Vulkan, an application must initialize it by loading the Vulkan commands,
+     * and creating a VkInstance object.
+     * 
+     * @ref https://docs.vulkan.org/spec/latest/chapters/initialization.html
+     */
 
+    // Set the result object for references
+    VkResult result;
     // Create vulkan instance
     VkInstance instance;
-    VkResult result;
 
     // Create application information
     VkApplicationInfo applicationInfo = {0}; // Zero-initialize all members
@@ -177,13 +185,22 @@ int main() {
     instanceInfo.ppEnabledExtensionNames = NULL;
     instanceInfo.enabledLayerCount = VALIDATION_LAYER_LIMIT;
     instanceInfo.ppEnabledLayerNames = validationLayers;
+
+    // Create the vulkan instance object
     result = vkCreateInstance(&instanceInfo, NULL, &instance);
     if (VK_SUCCESS != result) {
         fprintf(stderr, "Failed to create VkInstance.\n");
         return EXIT_FAILURE;
     }
 
-    /** Create a physical device object */
+    /** 
+     * Devices
+     * 
+     * @brief Once Vulkan is initialized, devices and queues are the primary objects used to
+     * interact with a Vulkan implementation.
+     * 
+     * @ref https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html
+     */
 
     // Get the physical device count
     uint32_t deviceCount = 0;
@@ -235,7 +252,13 @@ int main() {
     }
     free(physicalDeviceList); // cleanup allocated device list
 
-    /** Create a logical device object */
+    /** 
+     * Queues
+     * 
+     * @brief Creating a logical device also creates the queues associated with that device.
+     * 
+     * @ref https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#devsandqueues-queues
+    */
 
     // Get the number of available queue families
     uint32_t queueFamilyCount = 0;
@@ -293,7 +316,7 @@ int main() {
     // Create the logical device
     VkDevice logicalDevice;
     result = vkCreateDevice(physicalDevice, &deviceInfo, NULL, &logicalDevice);
-    if (result != VK_SUCCESS) {
+    if (VK_SUCCESS != result) {
         fprintf(stderr, "Failed to create logical device! (Error code: %d)\n", result);
         vkDestroyInstance(instance, NULL);
         return EXIT_FAILURE;
@@ -304,7 +327,15 @@ int main() {
     vkGetDeviceQueue(logicalDevice, computeQueueFamilyIndex, 0, &computeQueue);
     printf("Logical device and compute queue created successfully.\n");
 
-    /** Read shader into memory */
+    /** 
+     * Shaders
+     * 
+     * @brief A shader specifies programmable operations that execute for each vertex,
+     * control point, tessellated vertex, primitive, fragment, or workgroup in the
+     * corresponding stage(s) of the graphics and compute pipelines.
+     * 
+     * @ref https://docs.vulkan.org/spec/latest/chapters/shaders.html
+     */
 
     // Get current working directory
     char* cwd = getenv("PWD");
@@ -339,36 +370,129 @@ int main() {
     }
 
     // Compute pipeline
-    VkPipelineShaderStageCreateInfo stageCreateInfo
-        = {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-           .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-           .module = shaderModule,
-           .pName = "main"};
-    VkPipelineLayout pipelineLayout;
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo
-        = {.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-           .setLayoutCount = 0,
-           .pSetLayouts = NULL,
-           .pushConstantRangeCount = 0,
-           .pPushConstantRanges = NULL};
-    result = vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, NULL, &pipelineLayout);
-    if (result != VK_SUCCESS) {
-        fprintf(stderr, "Failed to create VkPipelineLayout.\n");
+    VkPipelineShaderStageCreateInfo stageCreateInfo = {0};
+    stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    stageCreateInfo.module = shaderModule;
+    stageCreateInfo.pName = "main";
+
+    /** Add descriptor set layout */
+
+    // Descriptor set layout binding for the storage buffer
+    VkDescriptorSetLayoutBinding binding = {0};
+    binding.binding = 0; // Matches `binding = 0` in the shader
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    binding.descriptorCount = 1; // We're binding a single buffer
+    binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT; // Used in the compute shader
+    binding.pImmutableSamplers = NULL; // No immutable samplers
+
+    // Create the descriptor set layout
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {0};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1; // Number of bindings
+    layoutInfo.pBindings = &binding;
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    result = vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, NULL, &descriptorSetLayout);
+    if (VK_SUCCESS != result) {
+        fprintf(stderr, "Failed to create descriptor set layout!\n");
         return EXIT_FAILURE;
     }
 
-    VkComputePipelineCreateInfo pipelineCreateInfo
-        = {.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-           .stage = stageCreateInfo,
-           .layout = pipelineLayout};
+    /** Create pipline layout */
+
+    // Create the pipline info object
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {0};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1; // One descriptor set layout
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Attach the descriptor set layout
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = NULL;
+
+    // Create the pipeline layout
+    VkPipelineLayout pipelineLayout;
+    result = vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, NULL, &pipelineLayout);
+    if (result != VK_SUCCESS) {
+        fprintf(stderr, "Failed to create pipeline layout!\n");
+        return EXIT_FAILURE;
+    }
+
+    VkComputePipelineCreateInfo computePipelineInfo = {0};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.stage = stageCreateInfo;
+    computePipelineInfo.layout = pipelineLayout;
+
     VkPipeline pipeline;
-    result = vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline);
+    result = vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &computePipelineInfo, NULL, &pipeline);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "Failed to create VkPipeline.\n");
         return EXIT_FAILURE;
     }
 
-    printf("Compute pipeline created successfully.\n");
+    /** Bind buffers to descriptor */
+
+    // Descriptor pool creation
+    VkDescriptorPoolSize poolSize = {0};
+    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSize.descriptorCount = 1; // Number of descriptors
+
+    VkDescriptorPoolCreateInfo poolInfo = {0};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.maxSets = 1; // Number of descriptor sets
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+
+    VkDescriptorPool descriptorPool;
+    result = vkCreateDescriptorPool(logicalDevice, &poolInfo, NULL, &descriptorPool);
+    if (result != VK_SUCCESS) {
+        fprintf(stderr, "Failed to create descriptor pool!\n");
+        return EXIT_FAILURE;
+    }
+
+    // Allocate descriptor set
+    VkDescriptorSetAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &descriptorSetLayout;
+
+    VkDescriptorSet descriptorSet;
+    result = vkAllocateDescriptorSets(logicalDevice, &allocInfo, &descriptorSet);
+    if (result != VK_SUCCESS) {
+        fprintf(stderr, "Failed to allocate descriptor set!\n");
+        return EXIT_FAILURE;
+    }
+
+    VkBufferCreateInfo bufferCreateInfo = {0};
+    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCreateInfo.size = sizeof(int) * arrayLength; // Size of your buffer
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // Usage matches the shader
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // Accessed by a single queue
+
+    VkBuffer buffer;
+    result = vkCreateBuffer(logicalDevice, &bufferCreateInfo, NULL, &buffer);
+    if (result != VK_SUCCESS) {
+        fprintf(stderr, "Failed to create buffer!\n");
+        return EXIT_FAILURE;
+    }
+
+    // Update the descriptor set with the buffer
+    VkDescriptorBufferInfo bufferInfo = {0};
+    bufferInfo.buffer = buffer; // The Vulkan buffer you created for the storage buffer
+    bufferInfo.offset = 0;
+    bufferInfo.range = VK_WHOLE_SIZE;
+
+    VkWriteDescriptorSet descriptorWrite = {0};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptorSet;
+    descriptorWrite.dstBinding = 0; // Matches the binding in the shader
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, NULL);
+
 
     // Cleanup
     vkDestroyPipeline(logicalDevice, pipeline, NULL);
