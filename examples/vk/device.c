@@ -84,6 +84,41 @@ VkPhysicalDevice vulkan_create_physical_device(VkInstance instance) {
     return physicalDevice;
 }
 
+uint32_t vulkan_get_compute_queue_family_index(VkInstance instance, VkPhysicalDevice physicalDevice) {
+        // Get the number of available queue families
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
+    if (0 == queueFamilyCount) {
+        LOG_ERROR("%s: No queue families found on the physical device.\n", __func__);
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+    // Allocate memory for queueing device family properties
+    VkQueueFamilyProperties* queueFamilies = (VkQueueFamilyProperties*) malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
+    if (!queueFamilies) {
+        LOG_ERROR("%s: Failed to allocate memory for queueing device family properties.\n", __func__);
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+    // Queue device family properties
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
+    // Discover the compute-capable queue
+    uint32_t computeQueueFamilyIndex = UINT32_MAX; // Set to an invalid index by default
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        if (queueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+            computeQueueFamilyIndex = i; // Pick the first compute-capable queue
+            break;
+        }
+    }
+    free(queueFamilies); // Clean up allocated memory
+    if (computeQueueFamilyIndex == UINT32_MAX) {
+        LOG_ERROR("%s: No compute-capable queue family found.\n", __func__);
+        vkDestroyInstance(instance, NULL);
+        return EXIT_FAILURE;
+    }
+    return computeQueueFamilyIndex;
+}
+
 int main(void) {
     const char* applicationName = "DeviceApp";
     const char* engineName = "DeviceEngine";
