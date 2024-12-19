@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file examples/device.c
+ * @file examples/vk/device.c
  *
  * @brief A simple example showcasing how to create and destroy custom vulkan instance, device, and
  * queue objects.
