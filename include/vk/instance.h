@@ -11,12 +11,12 @@
 #ifndef VK_INSTANCE_H
 #define VK_INSTANCE_H
 
-#include <stdint.h>
-#include <vulkan/vulkan.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stdint.h>
+#include <vulkan/vulkan.h>
 
 uint32_t vulkan_get_api_version(void);
 
