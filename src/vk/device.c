@@ -97,7 +97,7 @@ VkPhysicalDevice vulkan_create_physical_device(VkInstance instance) {
     }
     // Fallback to first device if no discrete GPU is found
     if (VK_NULL_HANDLE == physicalDevice) {
-        LOG_ERROR("%s: No discrete GPU found. Selecting first available device.\n", __func__);
+        LOG_WARN("%s: No discrete GPU found. Selecting first available device.\n", __func__);
         physicalDevice = physicalDeviceList[0];
     }
     free(physicalDeviceList); // cleanup allocated device list
@@ -112,7 +112,7 @@ vulkan_get_compute_queue_family_index(VkInstance instance, VkPhysicalDevice phys
     if (0 == queueFamilyCount) {
         LOG_ERROR("%s: No queue families found on the physical device.\n", __func__);
         vkDestroyInstance(instance, NULL);
-        return EXIT_FAILURE;
+        return UINT32_MAX;
     }
     // Allocate memory for queueing device family properties
     VkQueueFamilyProperties* queueFamilies
@@ -122,7 +122,7 @@ vulkan_get_compute_queue_family_index(VkInstance instance, VkPhysicalDevice phys
             "%s: Failed to allocate memory for queueing device family properties.\n", __func__
         );
         vkDestroyInstance(instance, NULL);
-        return EXIT_FAILURE;
+        return UINT32_MAX;
     }
     // Queue device family properties
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
@@ -138,7 +138,7 @@ vulkan_get_compute_queue_family_index(VkInstance instance, VkPhysicalDevice phys
     if (computeQueueFamilyIndex == UINT32_MAX) {
         LOG_ERROR("%s: No compute-capable queue family found.\n", __func__);
         vkDestroyInstance(instance, NULL);
-        return EXIT_FAILURE;
+        return UINT32_MAX;
     }
     return computeQueueFamilyIndex;
 }
