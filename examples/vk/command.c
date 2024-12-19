@@ -43,15 +43,26 @@ VkBufferCreateInfo vulkan_create_buffer_info(VkDeviceSize bufferSize) {
     return bufferInfo;
 }
 
-VkMemoryAllocateInfo vulkan_create_memory_alloc_info(VkMemoryRequirements memRequirements) {
+VkMemoryAllocateInfo vulkan_create_memory_alloc_info(VkMemoryRequirements memReqs, uint32_t memTypeIndex) {
     VkMemoryAllocateInfo memAllocInfo = {0};
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memAllocInfo.allocationSize = memRequirements.size;
-    memAllocInfo.memoryTypeIndex = findMemoryType(
-        memRequirements.memoryTypeBits, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-    );
+    memAllocInfo.allocationSize = memReqs.size;
+    memAllocInfo.memoryTypeIndex = memTypeIndex;
     return memAllocInfo;
+}
+
+uint32_t vulkan_get_device_mem_type_index(VkPhysicalDevice physicalDevice, VkMemoryRequirements memReqs, VkMemoryPropertyFlags flags) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+    uint32_t memoryTypeIndex = UINT32_MAX;
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        VkMemoryPropertyFlags props = memProperties.memoryTypes[i].propertyFlags & flags;
+        if ((memReqs.memoryTypeBits & (1 << i)) && (props == flags)) {
+            memoryTypeIndex = i;
+            break;
+        }
+    }
+    return memoryTypeIndex;
 }
 
 int main(void) {
@@ -151,8 +162,11 @@ int main(void) {
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(logicalDevice, buffer, &memRequirements);
-
-    VkMemoryAllocateInfo memAllocInfo = vulkan_create_memory_alloc_info(memRequirements);
+    uint32_t memTypeIndex = vulkan_get_device_mem_type_index(physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (UINT32_MAX == memTypeIndex) {
+        return EXIT_FAILURE;
+    }
+    VkMemoryAllocateInfo memAllocInfo = vulkan_create_memory_alloc_info(memRequirements, memTypeIndex);
 
     VkDeviceMemory bufferDeviceMemory;
     result = vkAllocateMemory(logicalDevice, &memAllocInfo, NULL, &bufferDeviceMemory);
