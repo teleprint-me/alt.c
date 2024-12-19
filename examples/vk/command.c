@@ -34,6 +34,26 @@ VkCommandBufferAllocateInfo vulkan_create_command_buffer_alloc_info(VkCommandPoo
     return commandBufferAllocInfo;
 }
 
+VkBufferCreateInfo vulkan_create_buffer_info(VkDeviceSize bufferSize) {
+    VkBufferCreateInfo bufferInfo = {0};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    return bufferInfo;
+}
+
+VkMemoryAllocateInfo vulkan_create_memory_alloc_info(VkMemoryRequirements memRequirements) {
+    VkMemoryAllocateInfo memAllocInfo = {0};
+    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memAllocInfo.allocationSize = memRequirements.size;
+    memAllocInfo.memoryTypeIndex = findMemoryType(
+        memRequirements.memoryTypeBits, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+    return memAllocInfo;
+}
+
 int main(void) {
     /**
      * Initialization
@@ -105,17 +125,43 @@ int main(void) {
     VkCommandPoolCreateInfo commandPoolInfo = vulkan_create_command_pool_info(queueFamilyIndex);    
 
     VkCommandPool commandPool;
-    if (vkCreateCommandPool(logicalDevice, &commandPoolInfo, NULL, &commandPool) != VK_SUCCESS) {
+    result = vkCreateCommandPool(logicalDevice, &commandPoolInfo, NULL, &commandPool);
+    if (VK_SUCCESS != result) {
         fprintf(stderr, "Failed to create command pool.\n");
         return EXIT_FAILURE;
     }
-    VkCommandBufferAllocateInfo allocInfo = vulkan_create_command_buffer_alloc_info(commandPool, 1);
+    VkCommandBufferAllocateInfo commandBufferAllocInfo = vulkan_create_command_buffer_alloc_info(commandPool, 1);
 
     VkCommandBuffer commandBuffer;
-    if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+    result = vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocInfo, &commandBuffer);
+    if (VK_SUCCESS != result) {
         fprintf(stderr, "Failed to allocate command buffer.\n");
         return EXIT_FAILURE;
     }
+
+    /// @note how do I know what the buffer size should be???
+    VkBufferCreateInfo bufferInfo = vulkan_create_buffer_info(128); // 128 bytes until i understand this better
+
+    VkBuffer buffer;
+    result = vkCreateBuffer(logicalDevice, &bufferInfo, NULL, &buffer);
+    if (VK_SUCCESS != result) {
+        fprintf(stderr, "Failed to create buffer.\n");
+        return EXIT_FAILURE;
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(logicalDevice, buffer, &memRequirements);
+
+    VkMemoryAllocateInfo memAllocInfo = vulkan_create_memory_alloc_info(memRequirements);
+
+    VkDeviceMemory bufferDeviceMemory;
+    result = vkAllocateMemory(logicalDevice, &memAllocInfo, NULL, &bufferDeviceMemory);
+    if (VK_SUCCESS != result) {
+        fprintf(stderr, "Failed to allocate buffer memory.\n");
+        return EXIT_FAILURE;
+    }
+
+    vkBindBufferMemory(logicalDevice, buffer, bufferDeviceMemory, 0);
 
     // Cleanup
     vkDestroyDevice(logicalDevice, NULL);
