@@ -20,7 +20,7 @@
 /**
  * @brief Seeds the random number generator.
  *
- * Seeds the random number generator using the provided seed value. 
+ * Seeds the random number generator using the provided seed value.
  * Should be called before using other random functions to ensure reproducibility.
  *
  * @param seed The seed value to initialize the random number generator.
@@ -36,6 +36,33 @@ void random_seed(uint32_t seed);
  * @return A random float between 0.0 and 1.0.
  */
 float random_linear(void);
+
+/**
+ * @brief Initializes a flat vector using random_linear.
+ *
+ * This function initializes the given array with random numbers in the range [0, 1].
+ * The array's size should be provided as width for vectors.
+ *
+ * This function is useful for initializing model weights or biases in neural networks.
+ *
+ * @param vector The array to be initialized.
+ * @param width The number of columns in the vector.
+ */
+void random_linear_init_vector(float* vector, uint32_t width);
+
+/**
+ * @brief Initializes a flat matrix using random_linear.
+ *
+ * This function initializes the given array with random numbers in the range [0, 1].
+ *
+ * This function is useful for initializing model weights or biases in neural networks.
+ * If the array represents a matrix, the height and width parameters should be provided.
+ *
+ * @param matrix The array to be initialized.
+ * @param width The number of columns in the matrix.
+ * @param height The number of rows in the matrix.
+ */
+void random_linear_init_matrix(float* matrix, uint32_t width, uint32_t height);
 
 /**
  * @brief Generates a random number in a specified uniform range.

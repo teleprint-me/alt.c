@@ -17,6 +17,28 @@ float random_linear(void) {
     return (float) rand() / (float) RAND_MAX;
 }
 
+// Initializes a vector, flat matrix, flat tensor, etc.
+void random_linear_init_vector(float* vector, uint32_t width) {
+    if (!(width > 0 && width < UINT32_MAX)) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < width; i++) {
+        vector[i] = random_linear();
+    }
+}
+
+void random_linear_init_matrix(float* matrix, uint32_t height, uint32_t width) {
+    uint32_t size = height * width;
+    if (!(size > 0 && size < UINT32_MAX)) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < size; i++) {
+        matrix[i] = random_linear();
+    }
+}
+
 // Uniform distribution
 float random_uniform(float min, float max) {
     assert(max > min);
