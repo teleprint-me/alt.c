@@ -4,6 +4,8 @@
  */
 
 #version 450
+#pragma optimize(off)
+#pragma debug(on)
 
 layout(local_size_x = 256) in; // Number of workgroup threads (adjust based on hardware).
 
