@@ -66,6 +66,16 @@ uint32_t vulkan_get_device_mem_type_index(VkPhysicalDevice physicalDevice, VkMem
     return memoryTypeIndex;
 }
 
+// can't think of reason to need parameters, so it's void for now.
+// I think one time submit bit is okay for this example, but simultaneous use bit might
+// be more apt as a general implementation.
+VkCommandBufferBeginInfo vulkan_create_command_buffer_begin_info(void) {
+    VkCommandBufferBeginInfo beginInfo = {0};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // Optimize for one-time execution
+    return beginInfo;
+}
+
 int main(void) {
     // Define some dummy data to emulate a forward pass workflow.
     /// @note We can use const int types for arrays.
@@ -159,7 +169,7 @@ int main(void) {
     VkCommandPool commandPool;
     result = vkCreateCommandPool(logicalDevice, &commandPoolInfo, NULL, &commandPool);
     if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to create command pool.\n");
+        LOG_ERROR("Failed to create command pool.\n");
         return EXIT_FAILURE;
     }
     VkCommandBufferAllocateInfo commandBufferAllocInfo = vulkan_create_command_buffer_alloc_info(commandPool, 1);
@@ -167,7 +177,7 @@ int main(void) {
     VkCommandBuffer commandBuffer;
     result = vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocInfo, &commandBuffer);
     if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to allocate command buffer.\n");
+        LOG_ERROR("Failed to allocate command buffer.\n");
         return EXIT_FAILURE;
     }
 
@@ -177,7 +187,7 @@ int main(void) {
     VkBuffer buffer;
     result = vkCreateBuffer(logicalDevice, &bufferInfo, NULL, &buffer);
     if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to create buffer.\n");
+        LOG_ERROR("Failed to create buffer.\n");
         return EXIT_FAILURE;
     }
 
@@ -192,11 +202,17 @@ int main(void) {
     VkDeviceMemory bufferDeviceMemory;
     result = vkAllocateMemory(logicalDevice, &memAllocInfo, NULL, &bufferDeviceMemory);
     if (VK_SUCCESS != result) {
-        fprintf(stderr, "Failed to allocate buffer memory.\n");
+        LOG_ERROR("Failed to allocate buffer memory.\n");
         return EXIT_FAILURE;
     }
-
     vkBindBufferMemory(logicalDevice, buffer, bufferDeviceMemory, 0);
+
+    VkCommandBufferBeginInfo beginInfo = vulkan_create_command_buffer_begin_info();
+    result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    if (VK_SUCCESS != result) {
+        LOG_ERROR("Failed to begin command buffer recording!\n");
+        return EXIT_FAILURE;
+    }
 
     // Cleanup
     vkDestroyDevice(logicalDevice, NULL);
