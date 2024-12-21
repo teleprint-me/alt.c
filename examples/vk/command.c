@@ -71,17 +71,17 @@ int main(void) {
     const uint32_t width = 3;
     const uint32_t height = 2;
 
-    float input[width] = {0.0f};
-    random_linear_init(input, width);
+    float input[width];
+    random_linear_init_vector(input, width);
 
-    float weights[width * height] = {0.0f};
-    random_linear_init(weights, width * height);
+    float weights[width * height]; // flat matrix
+    random_linear_init_matrix(weights, width, height); // expects a flat matrix
 
-    float biases[width] = {0.0f};
-    random_linear_init(biases, width);
+    float biases[width];
+    random_linear_init_vector(biases, width);
 
-    float output[height] = {0.0f}; // Activations should match height
-    random_linear_init(output, height);
+    float output[height]; // Activations should match height
+    random_linear_init_vector(output, height);
 
     /**
      * Initialization
