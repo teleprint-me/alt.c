@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "logger.h"
+#include "random.h"
 #include "vk/device.h"
 #include "vk/instance.h"
 
@@ -66,6 +67,22 @@ uint32_t vulkan_get_device_mem_type_index(VkPhysicalDevice physicalDevice, VkMem
 }
 
 int main(void) {
+    // Define some dummy data to emulate a forward pass workflow.
+    const uint32_t width = 3;
+    const uint32_t height = 2;
+
+    float input[width] = {0.0f};
+    random_linear_init(input, width);
+
+    float weights[width * height] = {0.0f};
+    random_linear_init(weights, width * height);
+
+    float biases[width] = {0.0f};
+    random_linear_init(biases, width);
+
+    float output[height] = {0.0f}; // Activations should match height
+    random_linear_init(output, height);
+
     /**
      * Initialization
      *
