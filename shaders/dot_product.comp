@@ -1,0 +1,54 @@
+/**
+ * @file shaders/dot_product.comp
+ * @brief Compute the dot product for a multi-layer perceptron.
+ */
+
+#version 450
+
+layout(local_size_x = 256) in; // Number of workgroup threads (adjust based on hardware).
+
+// Input data buffers
+layout(std430, binding = 0) readonly buffer InputBuffer {
+    float inputs[]; // Flattened input vector
+};
+
+layout(std430, binding = 1) readonly buffer WeightBuffer {
+    float weights[]; // Flattened weight matrix
+};
+
+layout(std430, binding = 2) readonly buffer BiasBuffer {
+    float biases[]; // Bias vector
+};
+
+// Output data buffer
+layout(std430, binding = 3) writeonly buffer OutputBuffer {
+    float outputs[]; // Output activations
+};
+
+// Uniforms for metadata
+layout(push_constant) uniform Metadata {
+    uint inputSize; // Number of columns (input size)
+    uint outputSize; // Number of rows (output size)
+} metadata;
+
+// Activation function (ReLU example)
+float activate_relu(float x) {
+    return max(0.0, x);
+}
+
+void main() {
+    uint row = gl_GlobalInvocationID.x; // Each thread computes one row (output element)
+
+    if (row >= metadata.outputSize) {
+        return; // Out of bounds check
+    }
+
+    // Compute dot product for the current row
+    float sum = biases[row];
+    for (uint col = 0; col < metadata.inputSize; col++) {
+        sum += weights[row * metadata.inputSize + col] * inputs[col];
+    }
+
+    // Apply activation function and store the result
+    outputs[row] = activate_relu(sum);
+}
