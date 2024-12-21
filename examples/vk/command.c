@@ -68,20 +68,24 @@ uint32_t vulkan_get_device_mem_type_index(VkPhysicalDevice physicalDevice, VkMem
 
 int main(void) {
     // Define some dummy data to emulate a forward pass workflow.
+    /// @note We can use const int types for arrays.
     const uint32_t width = 3;
     const uint32_t height = 2;
 
-    float input[width];
+    /// @note Arrays must be empty initializers when using const int.
+    float input[width]; // 3 * 4 = 12 bytes
     random_linear_init_vector(input, width);
 
-    float weights[width * height]; // flat matrix
+    float weights[width * height]; // flat matrix, 3 * 2 * 4 = 24 bytes
     random_linear_init_matrix(weights, width, height); // expects a flat matrix
 
-    float biases[width];
+    float biases[width]; // 3 * 4 = 12 bytes
     random_linear_init_vector(biases, width);
 
-    float output[height]; // Activations should match height
+    float output[height]; // Activations should match height, 2 * 4 = 8 bytes
     random_linear_init_vector(output, height);
+
+    /// @note 12 + 24 + 12 + 8 = 56 bytes total
 
     /**
      * Initialization
