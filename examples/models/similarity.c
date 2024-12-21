@@ -13,20 +13,23 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef N_THREADS
+    #define N_THREADS sysconf(_SC_NPROCESSORS_ONLN)
+#endif // N_THREADS
+
 typedef struct Vector {
-    float* data;
-    size_t width;
+    size_t width; // Number of elements
+    float* data; // Pointer to data
 } Vector;
 
-typedef struct VectorArgs {
-    size_t thread_count;
-    size_t thread_id;
-    float partial_dot;
-    float partial_magnitude_a;
-    float partial_magnitude_b;
-    Vector* a;
-    Vector* b;
-} VectorArgs;
+// Arguments for thread-based vector operations
+typedef struct VectorScalarArgs {
+    size_t thread_id; // Thread ID
+    size_t thread_count; // Total number of threads
+    Vector* a_in; // Input vector 1
+    Vector* b_in; // Input vector 2 (or NULL for single-vector operations)
+    float partial_out; // Partial result (dot product or magnitude)
+} VectorScalarArgs;
 
 void random_seed(uint32_t seed);
 float random_linear(void);
@@ -85,19 +88,49 @@ void vector_free(Vector* vector) {
     }
 }
 
-// Computes the dot product between two vectors
-float vector_dot(Vector* a, Vector* b) {
-    if (a == NULL || b == NULL) {
+// Thread function for partial dot product
+void* vector_dot_partial(void* args) {
+    VectorScalarArgs* v_args = (VectorScalarArgs*) args;
+    size_t start = (v_args->a_in->width / v_args->thread_count) * v_args->thread_id;
+    size_t end = 0;
+    if (v_args->thread_id == v_args->thread_count - 1) {
+        end = v_args->a_in->width;
+    } else {
+        end = start + (v_args->a_in->width / v_args->thread_count);
+    }
+
+    v_args->partial_out = 0;
+    for (size_t i = start; i < end; i++) {
+        v_args->partial_out += v_args->a_in->data[i] * v_args->b_in->data[i];
+    }
+
+    return NULL;
+}
+
+// Parallel dot product
+float vector_dot(Vector* a, Vector* b, float bias) {
+    if (!a || !b || a->width != b->width || N_THREADS == 0) {
+        fprintf(stderr, "Error: Invalid parameters for vector_dot.\n");
         return 0;
     }
 
-    if (a->width != b->width) {
-        return 0;
+    const size_t n_threads = N_THREADS;
+
+    pthread_t threads[n_threads];
+    VectorScalarArgs args[n_threads];
+
+    // Initialize thread arguments
+    for (size_t i = 0; i < n_threads; i++) {
+        args[i] = (VectorScalarArgs
+        ){.thread_id = i, .thread_count = n_threads, .a_in = a, .b_in = b, .partial_out = 0};
+        pthread_create(&threads[i], NULL, vector_dot_partial, &args[i]);
     }
 
-    float dot_product = 0;
-    for (size_t i = 0; i < a->width; i++) {
-        dot_product += a->data[i] * b->data[i];
+    // Wait for threads and combine results
+    float dot_product = bias; // start with bias
+    for (size_t i = 0; i < n_threads; i++) {
+        pthread_join(threads[i], NULL);
+        dot_product += args[i].partial_out;
     }
 
     return dot_product;
@@ -118,7 +151,7 @@ float vector_magnitude(Vector* vector) {
 }
 
 // Computes the cosine similarity between two vectors
-float vector_cosine_similarity(Vector* a, Vector* b) {
+float vector_cosine_similarity(Vector* a, Vector* b, float bias) {
     if (a == NULL || b == NULL) {
         return 0;
     }
@@ -127,7 +160,7 @@ float vector_cosine_similarity(Vector* a, Vector* b) {
         return 0;
     }
 
-    float dot_product = vector_dot(a, b);
+    float dot_product = vector_dot(a, b, bias);
     float magnitude1 = vector_magnitude(a);
     float magnitude2 = vector_magnitude(b);
 
@@ -138,19 +171,33 @@ float vector_cosine_similarity(Vector* a, Vector* b) {
     return dot_product / (magnitude1 * magnitude2);
 }
 
-int main() {
+// Example tokenization function
+void tokenize(const char* text) {
+    const char* delimiters = " .,!?;:\"()";
+    char* text_copy = strdup(text); // Make a mutable copy
+    char* token = strtok(text_copy, delimiters);
+
+    while (token) {
+        printf("Token: %s\n", token);
+        token = strtok(NULL, delimiters);
+    }
+
+    free(text_copy);
+}
+
+int main(void) {
     // Create two vectors
-    Vector* a = vector_create(10);
-    Vector* b = vector_create(10);
+    Vector* a = vector_create(32000);
+    Vector* b = vector_create(32000);
 
     // Initialize vectors with random values
     random_linear_init_vector(a);
     random_linear_init_vector(b);
 
     // Compute cosine similarity
-    float similarity = vector_cosine_similarity(a, b);
+    float similarity = vector_cosine_similarity(a, b, 0.0f); // no bias
 
-    printf("Cosine similarity: %f\n", similarity);
+    printf("Cosine similarity: %f\n", (double) similarity);
 
     // Free memory
     vector_free(a);
