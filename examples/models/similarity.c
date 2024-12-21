@@ -1,6 +1,7 @@
 /**
  * @file examples/models/similarity.c
  * @brief Create a function to compute the Cosine Similarity for any string of text
+ * @todo Add cpu parallelism using posix threads
  */
 
 #include <ctype.h>
@@ -20,40 +21,43 @@ typedef struct Vector {
 typedef struct VectorArgs {
     size_t thread_count;
     size_t thread_id;
+    float partial_dot;
+    float partial_magnitude_a;
+    float partial_magnitude_b;
     Vector* a;
     Vector* b;
 } VectorArgs;
 
 void random_seed(uint32_t seed);
-
 float random_linear(void);
 void random_linear_init_vector(Vector* vector);
 
 Vector* vector_create(size_t width);
 void vector_free(Vector* vector);
 
+// Initializes the random seed
 void random_seed(uint32_t seed) {
     srand(seed);
 }
 
-// Linear initialization [0, 1]
+// Generates a random float in the range [0, 1]
 float random_linear(void) {
     return (float) rand() / (float) RAND_MAX;
 }
 
-// Initializes a flat vector
+// Initializes a flat vector with random values
 void random_linear_init_vector(Vector* vector) {
     if (!(vector->width > 0 && vector->width < UINT32_MAX)) {
         return;
     }
 
-    for (uint32_t i = 0; i < vector->width; i++) {
+    for (size_t i = 0; i < vector->width; i++) {
         vector->data[i] = random_linear();
     }
 }
 
-Vector* vector_create(size_t length) {
-    if (length == 0) {
+Vector* vector_create(size_t width) {
+    if (width == 0) {
         return NULL;
     }
 
@@ -62,19 +66,23 @@ Vector* vector_create(size_t length) {
         return NULL;
     }
 
-    vector->data = malloc(sizeof(float) * length);
+    vector->data = malloc(sizeof(float) * width);
     if (!vector->data) {
         free(vector);
         return NULL;
     }
 
-    vector->width = length;
+    vector->width = width;
     return vector;
 }
 
 void vector_free(Vector* vector) {
-    free(vector->data);
-    free(vector);
+    if (vector) {
+        if (vector->data) {
+            free(vector->data);
+        }
+        free(vector);
+    }
 }
 
 // Computes the dot product between two vectors
