@@ -9,7 +9,7 @@ Each section aligns to a 32-byte boundary. The required padding is calculated as
 - $\text{position} = \text{file.tell()}$
 - $\text{offset} = \text{position} \mod \text{alignment}$
 - $\text{pad} = (\text{alignment} - \text{offset}) \mod \text{alignment}$
-- If $\text{pad} > 0$, insert `\text{pad}` bytes of `0x00` padding.
+- If $\text{pad} > 0$, insert \text{pad} bytes of `0x00` padding.
 
 ### Example
 
