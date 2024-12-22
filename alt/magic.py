@@ -153,13 +153,13 @@ class MagicReader(BaseMagic):
     def read_section_marker(self) -> Tuple[int, int]:
         """Read a section marker and its size."""
         marker = struct.unpack("q", self.alt_file.read(8))[0]
-        if not self.is_valid(marker):
+        if not self.magic_type.is_valid(marker):
             raise ValueError(f"Invalid section marker: {marker:#x}")
         size = struct.unpack("q", self.alt_file.read(8))[0]
         self.logger.debug(f"Read section marker: {marker:#x}, size: {size}")
         return marker, size
 
-    def read_end_marker(self):
+    def read_end_marker(self) -> None:
         """Read the end marker."""
         # NOTE: This is **not** a section handler. It is a null terminator.
         self._read_alignment()
@@ -221,9 +221,9 @@ class MagicModel(BaseModel):
         version = struct.unpack("i", self.alt_file.read(4))[0]
         alignment = struct.unpack("i", self.alt_file.read(4))[0]
         self.logger.debug(f"Magic Version: {version}, Magic Alignment: {alignment}")
-        if not self.is_version(version):
+        if not self.magic_type.is_version(version):
             raise ValueError(f"Invalid ALT version: {version}")
-        if not self.is_aligned(alignment):
+        if not self.magic_type.is_aligned(alignment):
             raise ValueError(f"Invalid ALT alignment: {alignment}")
 
         self.reader.read_alignment()
