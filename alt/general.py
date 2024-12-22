@@ -177,13 +177,15 @@ if __name__ == "__main__":
     from pathlib import Path
 
     from alt.logger import get_default_logger
+    from alt.magic import MagicModel
 
     parser = ArgumentParser()
-    parser.add_argument("directory", help="Path to the models files.")
+    parser.add_argument("directory", help="Path to the model files.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output.")
     args = parser.parse_args()
 
-    logger = get_default_logger(__name__, logging.INFO)
+    # Setup logger and CLI parameters
+    logger = get_default_logger(__name__, logging.DEBUG if args.verbose else logging.INFO)
     path = Path(args.directory)
     filename = "general.alt"
     cli_params = CLIParams(
@@ -192,15 +194,42 @@ if __name__ == "__main__":
         verbose=args.verbose,
         logger=logger,
     )
+
+    # Write the ALT file
+    logger.info("Writing the ALT file...")
     with open(path / filename, "wb") as alt_write:
         cli_params.alt_file = alt_write
-        general = GeneralModel(cli_params=cli_params)
 
+        # Write Start Section
+        magic = MagicModel(cli_params=cli_params)
+        magic.write_model()
+
+        # Write General Section
+        general = GeneralModel(cli_params=cli_params)
+        general.write_model()
+
+        # Write End Marker
+        magic.writer.write_end_marker()
+
+    logger.info("ALT file written successfully.")
+
+    # Read and validate the ALT file
+    logger.info("Reading the ALT file...")
     with open(path / filename, "rb") as alt_read:
         cli_params.alt_file = alt_read
-        metadata = general.read_model()
-        for k, v in metadata.items():
-            print(k, v)
 
-    if not args.verbose:
-        logger.info("Fin.")
+        # Read and validate Start Section
+        magic_data = magic.read_model()
+
+        # Read and validate General Section
+        general_data = general.read_model()
+
+        # Read and validate End Marker
+        magic.reader.read_end_marker()
+
+    # Display General Section Metadata
+    logger.info("General Section Metadata:")
+    for key, value in general_data.items():
+        print(f"{key}: {value}")
+
+    logger.info("Operation complete.")
