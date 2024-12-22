@@ -66,13 +66,12 @@ def print_layer_weights(model_parts: list, threshold: int = 10, verbose: bool = 
         if verbose:
             print(f"Model Part {i}: Layer Weights")
         for name, weight in part.items():
-            if weight.numel() <= threshold:  # Adjust this threshold as needed
-                print(f"Layer: {name}, Weights: {weight}")
-            elif verbose:
-                print(f"Layer: {name}, Weights: {weight}")
+            if verbose:
+                print(f"Layer: {name}, Shape: {weight.shape}, Weights: {weight}")
             else:
                 print(
                     f"Layer: {name}, "
+                    f"Shape: {weight.shape}, "
                     "Weights Summary: "
                     f"Mean={weight.mean().item()}, "
                     f"Std={weight.std().item()}"
