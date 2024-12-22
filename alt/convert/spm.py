@@ -133,7 +133,7 @@ class Magic:
     TENSORS = 0xFACEFEED  # 8 bytes
     END = 0x0FFFFFFF  # 8 bytes
     ALIGNMENT = 32  # Default 32-byte alignment
-    VERSION = 1  # ALT model file format
+    VERSION = 2  # ALT model file format
 
     def __init__(self, meta_params: Optional[MetaParams] = None):
         """Initialize the Magic class with optional MetaParams."""
@@ -168,7 +168,7 @@ class Magic:
 
     def write_alignment(self):
         """Write alignment padding to the ALT file."""
-        padding_needed = self.calculate_alignment(self.alt)
+        padding_needed = self.calculate_alignment()
         if padding_needed > 0:
             self.alt.write(b"\x00" * padding_needed)
             if self.verbose:
@@ -176,7 +176,7 @@ class Magic:
 
     def read_alignment(self):
         """Read alignment padding from the ALT file."""
-        padding_needed = self.calculate_alignment(self.alt)
+        padding_needed = self.calculate_alignment()
         if padding_needed > 0:
             padding = self.alt.read(padding_needed)
             if padding != b"\x00" * padding_needed:
@@ -323,7 +323,7 @@ class AltModel(BaseModel):
     def __init__(self, meta_params: MetaParams):
         super().__init__(meta_params)
         self.model_dir = meta_params.model_dir
-        self.path = Path(self.model_dir) / "model.alt"
+        self.path = Path(self.model_dir) / "tokenizer.alt"
         self.verbose = meta_params.verbose
         self.logger = meta_params.logger
 
@@ -338,9 +338,9 @@ class AltModel(BaseModel):
                 # Set the file object
                 self.meta_params.alt = alt
                 # Create the magic instance
-                magic = Magic(self.meta_params)
+                self.magic = Magic(self.meta_params)
                 # Create the tokenizer instance
-                tokenizer = Tokenizer(self.meta_params)
+                self.tokenizer = TokenizerModel(self.meta_params)
                 # Write the ALT header
                 self.write_header()
                 # Write the tokenizer section
@@ -369,7 +369,7 @@ class AltModel(BaseModel):
         alt_file.write(struct.pack("<i", magic.ALIGNMENT))
 
         # Add alignment padding if necessary
-        alignment_padding = magic.calculate_alignment(alt_file.tell())
+        alignment_padding = magic.calculate_alignment()
         if alignment_padding:
             alt_file.write(b"\x00" * alignment_padding)
 
@@ -421,7 +421,7 @@ def main() -> None:
     args = parse_args()
     logger = get_logger(__name__, logging.DEBUG if args.verbose else logging.INFO)
     meta_params = MetaParams(model_dir=args.model_dir, verbose=args.verbose, logger=logger)
-    alt = Alt(meta_params)
+    alt = AltModel(meta_params)
     alt.write_model()
 
 
