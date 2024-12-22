@@ -114,7 +114,7 @@ class MagicType:
     TENSORS = 0xFACEFEED  # 8 bytes
     END = 0x0FFFFFFF  # 8 bytes
     ALIGNMENT = 32  # Default 32-byte alignment
-    VERSION = 3  # ALT model file format
+    VERSION = 2  # ALT model file format
 
     @staticmethod
     def is_valid(marker: int) -> bool:
