@@ -49,6 +49,8 @@ from typing import IO, Any, Optional
 
 from sentencepiece import SentencePieceProcessor
 
+from alt.logger import get_default_logger
+
 
 # Definitions for data types and profiles
 @dataclass(frozen=True)
@@ -154,11 +156,11 @@ class MagicType:
         return marker == MagicType.END
 
     @staticmethod
-    def is_version(self, value: int) -> bool:
+    def is_version(value: int) -> bool:
         return value == MagicType.VERSION
 
     @staticmethod
-    def is_aligned(self, value: int) -> bool:
+    def is_aligned(value: int) -> bool:
         return value == MagicType.ALIGNMENT
 
 
@@ -177,7 +179,9 @@ class CLIParams:
 class BaseType:
     def __init__(self, cli_params: Optional[CLIParams] = None):
         self.cli_params = cli_params if cli_params else CLIParams()
-        if self.cli_params.verbose and self.cli_params.logger:
+        if not self.cli_params.logger:
+            self.cli_params.logger = get_default_logger(self.__name__, logging.INFO)
+        if self.cli_params.verbose:
             self.cli_params.logger.setLevel(logging.DEBUG)
         self.magic_type = MagicType()
 
