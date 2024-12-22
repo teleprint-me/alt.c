@@ -1,7 +1,22 @@
 /**
  * @file examples/models/similarity.c
- * @brief Create a function to compute the Cosine Similarity for any string of text
- * @todo Add cpu parallelism using posix threads
+ * @brief A simple embedding model leveraging basic NLP techniques.
+ *
+ * ## Overview
+ * This implementation focuses on creating a naive embedding model
+ * using the simplest approach: Cosine Similarity. 
+ * While advanced methods like Word2Vec and GloVe are common in NLP,
+ * this example intentionally avoids their complexity.
+ *
+ * ## Context
+ * Techniques such as Continuous Bag of Words (CBOW) and Skip-gram
+ * are often employed for embeddings, but they are not the focus here.
+ * Instead, the goal is to demonstrate a minimalistic approach to 
+ * embedding models.
+ *
+ * ## Note
+ * This implementation is primarily educational and is not concerned 
+ * with the intricacies or optimizations of more sophisticated methods.
  */
 
 #include <ctype.h>
@@ -17,26 +32,32 @@
     #define N_THREADS sysconf(_SC_NPROCESSORS_ONLN)
 #endif // N_THREADS
 
+/// @brief Vector structures
+
 typedef struct Vector {
-    size_t width; // Number of elements
+    uint32_t width; // Number of elements
     float* data; // Pointer to data
 } Vector;
 
 // Arguments for thread-based vector operations
 typedef struct VectorScalarArgs {
-    size_t thread_id; // Thread ID
-    size_t thread_count; // Total number of threads
+    uint32_t thread_id; // Thread ID
+    uint32_t thread_count; // Total number of threads
     Vector* a_in; // Input vector 1
     Vector* b_in; // Input vector 2 (or NULL for single-vector operations)
     float partial_out; // Partial result (dot product or magnitude)
 } VectorScalarArgs;
 
-void random_seed(uint32_t seed);
-float random_linear(void);
-void random_linear_init_vector(Vector* vector);
+/// @brief Matrix structures
 
-Vector* vector_create(size_t width);
-void vector_free(Vector* vector);
+typedef struct Matrix {
+    uint32_t width; // embedding dimensions
+    uint32_t height; // vocabulary size
+    float* data; // flat matrix
+} Matrix;
+
+/// @brief Random: Initialize a vector or matrix with normalized values.
+/// @note This is intentionally kept as simple as possible.
 
 // Initializes the random seed
 void random_seed(uint32_t seed) {
@@ -49,33 +70,56 @@ float random_linear(void) {
 }
 
 // Initializes a flat vector with random values
-void random_linear_init_vector(Vector* vector) {
+int random_linear_init_vector(Vector* vector) {
     if (!(vector->width > 0 && vector->width < UINT32_MAX)) {
-        return;
+        return EXIT_FAILURE;
     }
 
     for (size_t i = 0; i < vector->width; i++) {
         vector->data[i] = random_linear();
     }
+
+    return EXIT_SUCCESS;
+}
+
+// Initializes a flat matrix with random values
+int random_linear_init_matrix(Matrix* matrix) {
+    uint32_t size = matrix->height * matrix->width;
+    if (!(size > 0 && size < UINT32_MAX)) {
+        return EXIT_FAILURE;
+    }
+
+    for (uint32_t i = 0; i < size; i++) {
+        matrix->data[i] = random_linear();
+    }
+
+    return EXIT_SUCCESS;
 }
 
 Vector* vector_create(size_t width) {
-    if (width == 0) {
+    if (0 == width) {
         return NULL;
     }
 
-    Vector* vector = malloc(sizeof(Vector));
+    Vector* vector = (Vector*) malloc(sizeof(Vector));
     if (!vector) {
         return NULL;
     }
 
-    vector->data = malloc(sizeof(float) * width);
+    vector->width = width;
+    vector->data = malloc(sizeof(float) * vector->width);
     if (!vector->data) {
         free(vector);
         return NULL;
     }
 
-    vector->width = width;
+    int result = random_linear_init_vector(vector);
+    if (EXIT_FAILURE == result) {
+        free(vector->data);
+        free(vector);
+        return NULL;
+    }
+
     return vector;
 }
 
@@ -86,6 +130,78 @@ void vector_free(Vector* vector) {
         }
         free(vector);
     }
+}
+
+Matrix* matrix_create(uint32_t height, uint32_t width) {
+    if (0 == width) { // it's okay if height is 0.
+        return NULL;
+    }
+
+    Matrix* matrix = (Matrix*) malloc(sizeof(Matrix));
+    if (!matrix) {
+        return NULL;
+    }
+
+    matrix->height = height;
+    matrix->width = width;
+    matrix->data = (float*) malloc(sizeof(float) * matrix->height * matrix->width);
+    if (!matrix->data) {
+        free(matrix);
+        return NULL;
+    }
+
+    int result = random_linear_init_matrix(matrix);
+    if (EXIT_FAILURE == result) {
+        free(matrix->data);
+        free(matrix);
+        return NULL;
+    }
+
+    return matrix;
+}
+
+void matrix_free(Matrix* matrix) {
+    if (matrix) {
+        if (matrix->data) {
+            free(matrix->data);
+        }
+        free(matrix);
+    }
+}
+
+// Utilities for getting and setting elements for matrices to minimize errors
+float matrix_get_element(const Matrix* matrix, const uint32_t row, const uint32_t col) {
+    if (row >= matrix->height || col >= matrix->width) {
+        return NAN;
+    }
+    return matrix->data[row * matrix->width + col];
+}
+
+int matrix_set_element(Matrix* matrix, uint32_t row, uint32_t col, const float value) {
+    if (row >= matrix->height || col >= matrix->width) {
+        return 1; // error
+    }
+    matrix->data[row * matrix->width + col] = value;
+    return 0; // success
+}
+
+// Utility for simplifying required transpose operations
+Matrix* matrix_transpose(Matrix* matrix) {
+    // Create a new matrix with swapped rows and cols
+    Matrix* T = matrix_create(matrix->width, matrix->height);
+    if (!T) {
+        return NULL;
+    }
+
+    // Populate the transposed matrix
+    for (uint32_t row = 0; row < matrix->height; row++) {
+        for (uint32_t col = 0; col < matrix->width; col++) {
+            // Element at (i, j) in original becomes (j, i) in transposed
+            T->data[col * matrix->height + row] = matrix->data[row * matrix->width + col];
+        }
+    }
+
+    return T;
 }
 
 // Thread function for partial dot product
