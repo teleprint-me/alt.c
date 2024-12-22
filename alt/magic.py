@@ -1,4 +1,4 @@
-"""
+r"""
 Module: alt/magic.py
 
 ## File Alignment
@@ -118,7 +118,7 @@ class MagicWriter(BaseMagic):
 
     def write_alignment(self) -> None:
         """Write alignment padding to the ALT file."""
-        padding_needed = self.calculate_padding(self.alt_file)
+        padding_needed = self.calculate_padding()
         if padding_needed > 0:
             self.alt_file.write(b"\x00" * padding_needed)
             self.logger.debug(f"Aligned offset with {padding_needed} bytes of padding.")
@@ -143,7 +143,7 @@ class MagicReader(BaseMagic):
 
     def read_alignment(self):
         """Read alignment padding from the ALT file."""
-        padding_needed = self.calculate_padding(self.alt_file)
+        padding_needed = self.calculate_padding()
         if padding_needed > 0:
             padding = self.alt_file.read(padding_needed)
             if padding != b"\x00" * padding_needed:
@@ -162,9 +162,9 @@ class MagicReader(BaseMagic):
     def read_end_marker(self) -> None:
         """Read the end marker."""
         # NOTE: This is **not** a section handler. It is a null terminator.
-        self._read_alignment()
+        self.read_alignment()
         marker = struct.unpack("q", self.alt_file.read(8))[0]
-        if not self.is_end(marker):
+        if not self.magic_type.is_end(marker):
             raise ValueError(f"Invalid end marker: {marker:#x}")
         self.logger.debug(f"Valid end marker: {marker:#x}")
 
@@ -213,8 +213,8 @@ class MagicModel(BaseModel):
         self.alt_file.seek(0)
 
         # Read the marker and size
-        marker, size = self.read_section_marker()
-        if not self.is_alt(marker):
+        marker, size = self.reader.read_section_marker()
+        if not self.magic_type.is_alt(marker):
             raise ValueError(f"Invalid magic value: {marker}, Size: {size}")
 
         # Read the version and alignment values
