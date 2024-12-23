@@ -76,7 +76,15 @@ cmake --build build --config Debug -j $(nproc)
 
 ## Convert Mistral 7B v0.1
 
-**TODO:** Conversion steps coming soon.
+### Convert tokenizer model to alt
+
+```sh
+python -m alt.convert.spm models/mistralai/Mistral-7B-Instruct-v0.1
+```
+
+### Convert tensors to alt
+
+**TODO:** Tensor conversion coming soon.
 
 ## Examples
 
