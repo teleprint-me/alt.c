@@ -217,6 +217,8 @@ class MagicModel(BaseModel):
         if not self.magic_type.is_alt(marker):
             raise ValueError(f"Invalid magic value: {marker}, Size: {size}")
 
+        metadata = OrderedDict()
+
         # Read the version and alignment values
         version = struct.unpack("i", self.alt_file.read(4))[0]
         alignment = struct.unpack("i", self.alt_file.read(4))[0]
@@ -226,5 +228,10 @@ class MagicModel(BaseModel):
         if not self.magic_type.is_aligned(alignment):
             raise ValueError(f"Invalid ALT alignment: {alignment}")
 
+        metadata["version"] = version
+        metadata["alignment"] = alignment
+
         self.reader.read_alignment()
         self.logger.debug("Valid Start Marker read successfully.")
+
+        return metadata
