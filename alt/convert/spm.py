@@ -102,12 +102,9 @@ NOTE: The byte order is inferred. It is not explicitly provided for flexibility.
 import logging
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-from pathlib import Path
-from typing import IO, Any, Optional
+from typing import Any
 
-from sentencepiece import SentencePieceProcessor
-
-from alt.base import CLIParams
+from alt.base import BaseModel, CLIParams
 from alt.general import GeneralModel
 from alt.logger import get_default_logger
 from alt.magic import MagicModel
@@ -115,9 +112,58 @@ from alt.parameters import ParametersModel
 from alt.tokenizer import TokenizerModel
 
 
+class AltTokenizer(BaseModel):
+    def __init__(self, cli_params: CLIParams):
+        # Set input parameters
+        self.cli_params = cli_params
+
+        # Create model sections
+        self.magic = MagicModel(cli_params=cli_params)
+        self.general = GeneralModel(cli_params=cli_params)
+        self.hparams = ParametersModel(cli_params=cli_params)
+        self.tokenizer = TokenizerModel(cli_params=cli_params)
+
+    def write_model(self) -> None:
+        # Write the ALT file
+        self.logger.info("Writing the ALT file...")
+        with open(self.filepath, "wb") as alt_write:
+            # Update the IO file
+            self.alt_file = alt_write
+            # Write model sections
+            self.magic.write_model()
+            self.general.write_model()
+            self.hparams.write_model()
+            self.tokenizer.write_model()
+            # Write model end of file
+            self.magic.writer.write_end_marker()
+        self.logger.info("ALT file written successfully.")
+
+    def read_model(self) -> OrderedDict[str, Any]:
+        # Read and validate the ALT file
+        self.logger.info("Reading the ALT file...")
+        metadata = OrderedDict()
+        with open(self.filepath, "rb") as alt_read:
+            # Update the IO file
+            self.alt_file = alt_read
+            # Read model sections and aggregate metadata
+            metadata.update(self.magic.read_model())
+            metadata.update(self.general.read_model())
+            metadata.update(self.hparams.read_model())
+            metadata.update(self.tokenizer.read_model())
+            # Read and validate End Marker
+            self.magic.reader.read_end_marker()
+        return metadata
+
+
 def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("directory", help="Path to the model files.")
+    parser.add_argument(
+        "-f",
+        "--filename",
+        default="tokenizer.alt",
+        help="Output filename. Default is 'tokenizer.alt'",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output.")
     return parser.parse_args()
 
@@ -126,9 +172,8 @@ def main():
     args = parse_args()
 
     # Setup logger and CLI parameters
+    filename = args.filename
     logger = get_default_logger(__name__, logging.DEBUG if args.verbose else logging.INFO)
-    path = Path(args.directory)
-    filename = "tokenizer.alt"
     cli_params = CLIParams(
         directory=args.directory,
         filename=filename,
@@ -136,55 +181,10 @@ def main():
         logger=logger,
     )
 
-    # Write the ALT file
-    logger.info("Writing the ALT file...")
-    with open(path / filename, "wb") as alt_write:
-        cli_params.alt_file = alt_write
-
-        # Write Start Section
-        magic = MagicModel(cli_params=cli_params)
-        magic.write_model()
-
-        # Write General Section
-        general = GeneralModel(cli_params=cli_params)
-        general.write_model()
-
-        hparams = ParametersModel(cli_params=cli_params)
-        hparams.write_model()
-
-        tokenizer = TokenizerModel(cli_params=cli_params)
-        tokenizer.write_model()
-
-        # Write End Marker
-        magic.writer.write_end_marker()
-
-    logger.info("ALT file written successfully.")
-
-    # Read and validate the ALT file
-    logger.info("Reading the ALT file...")
-    with open(path / filename, "rb") as alt_read:
-        cli_params.alt_file = alt_read
-
-        # Read and validate Start Section
-        magic_data = magic.read_model()
-
-        # Read and validate General Section
-        general_data = general.read_model()
-
-        hparams_data = hparams.read_model()
-
-        tokenizer_data = tokenizer.read_model()
-
-        # Read and validate End Marker
-        magic.reader.read_end_marker()
-
-    # Display Metadata
+    alt_tokenizer = AltTokenizer(cli_params)
+    alt_tokenizer.write_model()
+    metadata = alt_tokenizer.read_model()
     logger.info("Tokenizer Model Metadata:")
-    metadata = OrderedDict()
-    metadata.update(magic_data)
-    metadata.update(general_data)
-    metadata.update(hparams_data)
-    metadata.update(tokenizer_data)
     for key, value in metadata.items():
         if "vocab" == key:
             if args.verbose:
@@ -192,8 +192,7 @@ def main():
                     print(v)
             continue
         print(f"{key}: {value}")
-
-    logger.info("Operation complete.")
+    logger.info(f"Successfully created {alt_tokenizer.filepath}.")
 
 
 if __name__ == "__main__":
