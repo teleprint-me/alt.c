@@ -65,18 +65,20 @@ The Tokenizer Section must align to the next 32-byte boundary after all tokens a
 5. **Apply Alignment**:
    - Add padding with `0x00` bytes if needed to reach the next 32-byte boundary.
 
-### **Token Types Enum**
+### **Token Types**
 
-Using an enum for token types allows parsers to easily identify special tokens. Here's a proposed enum based on GGUF:
+Using an enum for token types enables parsers to clearly identify special tokens. The original enum was inspired by the GGUF format and closely mirrors SentencePiece's internal token type representations.
 
 ```python
-class TokenType(IntEnum):
-    NORMAL       = 0
-    UNKNOWN      = 1
-    CONTROL      = 2
-    USER_DEFINED = 3
-    UNUSED       = 4
-    BYTE         = 5
+class TokenType:
+    NORMAL: int = 0
+    BYTE: int = 1
+    CONTROL: int = 2
+    UNKNOWN: int = 3
+    UNUSED: int = 4
+    BOS: int = 5
+    EOS: int = 6
+    PAD: int = 7
 ```
 
 ### **Example Binary Layout**
