@@ -202,6 +202,10 @@ class BaseType:
     def alt_file(self) -> IO:
         return self.cli_params.alt_file
 
+    @alt_file.setter
+    def alt_file(self, value: IO):
+        self.cli_params.alt_file = value
+
     @property
     def directory(self) -> Path:
         return Path(self.cli_params.directory)
