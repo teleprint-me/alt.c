@@ -86,6 +86,15 @@ class DataType:
 
 # Token handling with SentencePiece
 class TokenType:
+    NORMAL: int = 0
+    BYTE: int = 1
+    CONTROL: int = 2
+    UNKNOWN: int = 3
+    UNUSED: int = 4
+    BOS: int = 5
+    EOS: int = 6
+    PAD: int = 7
+
     def __init__(self, processor: SentencePieceProcessor):
         self.processor = processor
 
