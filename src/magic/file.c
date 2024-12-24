@@ -3,8 +3,14 @@
  *
  * @file src/magic/file.c
  *
- * @brief Provides an implementation for managing ALT model files,
- *        including file operations, validation, and marker handling.
+ * @brief Provides an interface for managing ALT model files,
+ *        including file operations, validation, alignment, and marker handling.
+ *
+ * This header defines the API for interacting with ALT model files. The primary
+ * focus is to partition the file into structured, predictable sections while
+ * adhering to the ALT file format specification. Each function is designed to
+ * handle a specific aspect of file management without making assumptions about
+ * the content of the file.
  */
 
 #include "magic/file.h"
