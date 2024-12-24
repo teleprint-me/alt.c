@@ -8,12 +8,12 @@
  * @ref docs/model/specification.md
  */
 
-#ifndef ALT_MAGIC_MODEL_H
-#define ALT_MAGIC_MODEL_H
+#ifndef ALT_MODEL_MISTRAL_H
+#define ALT_MODEL_MISTRAL_H
 
 #include <stdbool.h>
 
-#include "magic/file.h"
+#include "model/file.h"
 
 typedef struct String {
     uint32_t length;
@@ -88,4 +88,4 @@ typedef struct AltModel {
     TokenizerModel* tokenizer;
 } AltModel;
 
-#endif // ALT_MAGIC_MODEL_H
+#endif // ALT_MODEL_MISTRAL_H
