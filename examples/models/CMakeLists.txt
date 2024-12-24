@@ -2,6 +2,8 @@
 set(EXAMPLES
     perceptron
     xor
+    tokenizer
+    similarity
     mlp
     mnist # mnist depends upon stb
 )
