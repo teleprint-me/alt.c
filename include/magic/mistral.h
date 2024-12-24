@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/magic/model.c
+ * @file include/model/mistral.h
  *
  * See specification for more details about the Altiera model file format.
  *
