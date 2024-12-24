@@ -45,9 +45,9 @@ typedef struct ParametersModel {
     int32_t num_hidden_layers;
     int32_t num_key_value_heads;
     int32_t sliding_window;
-    int32_t rope_theta;
-    int32_t rms_norm_eps;
-    int32_t initializer_range;
+    float rope_theta;
+    float rms_norm_eps;
+    float initializer_range;
 } ParametersModel;
 
 typedef enum TokenType {
@@ -81,11 +81,11 @@ typedef struct TokenizerModel {
 /// @todo TensorsModel
 /// @note Tensors are a currently a work in progress.
 
-typedef struct AltModel {
+typedef struct MistralModel {
     MagicModel* magic;
     GeneralModel* general;
     ParametersModel* parameters;
     TokenizerModel* tokenizer;
-} AltModel;
+} MistralModel;
 
 #endif // ALT_MODEL_MISTRAL_H

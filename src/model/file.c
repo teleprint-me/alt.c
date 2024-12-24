@@ -13,8 +13,8 @@
  * the content of the file.
  */
 
-#include "magic/file.h"
 #include "logger.h"
+#include "model/file.h"
 
 /**
  * @brief Constructs and initializes a MagicFile instance.
