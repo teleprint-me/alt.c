@@ -14,13 +14,17 @@
  * @brief Constructs and initializes a MagicFile instance.
  */
 MagicFile magic_file_create(const char* filepath, const char* mode) {
+    // Create a structure on the stack
     MagicFile magic_file;
+    // Add member variables
     magic_file.filepath = filepath;
     magic_file.mode = mode;
-    magic_file.model = NULL;
+    magic_file.data = NULL;
+    // Add member functions
     magic_file.open = magic_file_open;
     magic_file.validate = magic_file_validate;
     magic_file.close = magic_file_close;
+    // Log results
     LOG_DEBUG("%s: MagicFile created for %s in mode %s.\n", __func__, filepath, mode);
     return magic_file;
 }
@@ -33,8 +37,8 @@ MagicState magic_file_open(MagicFile* magic_file) {
         LOG_ERROR("%s: MagicFile is NULL.\n", __func__);
         return MAGIC_ERROR;
     }
-    magic_file->model = fopen(magic_file->filepath, magic_file->mode);
-    if (magic_file->model == NULL) {
+    magic_file->data = fopen(magic_file->filepath, magic_file->mode);
+    if (magic_file->data == NULL) {
         LOG_ERROR("%s: Unable to open file %s\n", __func__, magic_file->filepath);
         return MAGIC_FILE_ERROR;
     }
@@ -46,9 +50,9 @@ MagicState magic_file_open(MagicFile* magic_file) {
  * @brief Closes the model file.
  */
 void magic_file_close(MagicFile* magic_file) {
-    if (magic_file && magic_file->model) {
-        fclose(magic_file->model);
-        magic_file->model = NULL;
+    if (magic_file && magic_file->data) {
+        fclose(magic_file->data);
+        magic_file->data = NULL;
         LOG_DEBUG("%s: File closed successfully.\n", __func__);
     }
 }
@@ -57,7 +61,7 @@ void magic_file_close(MagicFile* magic_file) {
  * @brief Validates the model file, checking existence, permissions, and the header.
  */
 MagicState magic_file_validate(MagicFile* magic_file) {
-    if (magic_file == NULL || magic_file->model == NULL) {
+    if (magic_file == NULL || magic_file->data == NULL) {
         LOG_ERROR("%s: Invalid MagicFile structure or file pointer is NULL.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -72,7 +76,7 @@ MagicState magic_file_validate(MagicFile* magic_file) {
     }
 
     // Reset the file pointer to the start
-    if (fseek(magic_file->model, 0, SEEK_SET) != 0) {
+    if (fseek(magic_file->data, 0, SEEK_SET) != 0) {
         LOG_ERROR("%s: Failed to reset the file pointer after validation.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -90,7 +94,7 @@ MagicState magic_file_validate(MagicFile* magic_file) {
  * @brief Helper function for guarding write and read operations.
  */
 MagicState magic_file_guard(MagicFile* magic_file) {
-    if (magic_file == NULL || magic_file->model == NULL) {
+    if (magic_file == NULL || magic_file->data == NULL) {
         LOG_ERROR("%s: Invalid file pointer.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -105,7 +109,7 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
         return MAGIC_ALIGNMENT_ERROR;
     }
 
-    long current_offset = ftell(magic_file->model);
+    long current_offset = ftell(magic_file->data);
     if (current_offset < 0) {
         LOG_ERROR("%s: Failed to get file offset.\n", __func__);
         return MAGIC_ALIGNMENT_ERROR;
@@ -118,7 +122,7 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
         // Writing mode: Pad with `0x00` bytes
         if (padding_needed > 0) {
             char padding[MAGIC_ALIGNMENT] = {0};
-            if (fwrite(padding, 1, padding_needed, magic_file->model) != padding_needed) {
+            if (fwrite(padding, 1, padding_needed, magic_file->data) != padding_needed) {
                 LOG_ERROR("%s: Failed to write padding bytes.\n", __func__);
                 return MAGIC_ALIGNMENT_ERROR;
             }
@@ -126,7 +130,7 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
         }
     } else if (magic_file->mode[0] == 'r') {
         // Reading mode: Skip padding bytes
-        if (fseek(magic_file->model, padding_needed, SEEK_CUR) != 0) {
+        if (fseek(magic_file->data, padding_needed, SEEK_CUR) != 0) {
             LOG_ERROR("%s: Failed to skip padding bytes.\n", __func__);
             return MAGIC_ALIGNMENT_ERROR;
         }
@@ -147,10 +151,10 @@ MagicState magic_write_start_marker(MagicFile* magic_file, int32_t version, int3
         = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t); // 24 bytes
 
     // Write the Start Marker section fields
-    if (fwrite(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1
-        || fwrite(&section_size, sizeof(int64_t), 1, magic_file->model) != 1
-        || fwrite(&version, sizeof(int32_t), 1, magic_file->model) != 1
-        || fwrite(&alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
+    if (fwrite(&section_marker, sizeof(int64_t), 1, magic_file->data) != 1
+        || fwrite(&section_size, sizeof(int64_t), 1, magic_file->data) != 1
+        || fwrite(&version, sizeof(int32_t), 1, magic_file->data) != 1
+        || fwrite(&alignment, sizeof(int32_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to write Start Marker section.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -179,10 +183,10 @@ MagicState magic_read_start_marker(MagicFile* magic_file, int32_t* version, int3
     int32_t magic_alignment = 0;
 
     // Read the Start Marker section fields
-    if (fread(&section_marker, sizeof(int64_t), 1, magic_file->model) != 1
-        || fread(&section_size, sizeof(int64_t), 1, magic_file->model) != 1
-        || fread(&magic_version, sizeof(int32_t), 1, magic_file->model) != 1
-        || fread(&magic_alignment, sizeof(int32_t), 1, magic_file->model) != 1) {
+    if (fread(&section_marker, sizeof(int64_t), 1, magic_file->data) != 1
+        || fread(&section_size, sizeof(int64_t), 1, magic_file->data) != 1
+        || fread(&magic_version, sizeof(int32_t), 1, magic_file->data) != 1
+        || fread(&magic_alignment, sizeof(int32_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to read Start Marker section.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -243,8 +247,8 @@ MagicState magic_write_section_marker(MagicFile* magic_file, int64_t marker, int
         return MAGIC_ALIGNMENT_ERROR;
     }
 
-    if (fwrite(&marker, sizeof(int64_t), 1, magic_file->model) != 1
-        || fwrite(&section_size, sizeof(int64_t), 1, magic_file->model) != 1) {
+    if (fwrite(&marker, sizeof(int64_t), 1, magic_file->data) != 1
+        || fwrite(&section_size, sizeof(int64_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to write section marker or size.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -266,8 +270,8 @@ magic_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* secti
         return MAGIC_ALIGNMENT_ERROR;
     }
 
-    if (fread(marker, sizeof(int64_t), 1, magic_file->model) != 1
-        || fread(section_size, sizeof(int64_t), 1, magic_file->model) != 1) {
+    if (fread(marker, sizeof(int64_t), 1, magic_file->data) != 1
+        || fread(section_size, sizeof(int64_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to read section marker or size.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -289,7 +293,7 @@ MagicState magic_write_end_marker(MagicFile* magic_file) {
     }
 
     int32_t magic = MAGIC_END;
-    if (fwrite(&magic, sizeof(int32_t), 1, magic_file->model) != 1) {
+    if (fwrite(&magic, sizeof(int32_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to write end marker.\n", __func__);
         return MAGIC_ERROR;
     }
@@ -311,7 +315,7 @@ MagicState magic_read_end_marker(MagicFile* magic_file) {
     }
 
     int32_t magic;
-    if (fread(&magic, sizeof(int32_t), 1, magic_file->model) != 1 || magic != MAGIC_END) {
+    if (fread(&magic, sizeof(int32_t), 1, magic_file->data) != 1 || magic != MAGIC_END) {
         LOG_ERROR("%s: Invalid end marker.\n", __func__);
         return MAGIC_ERROR;
     }

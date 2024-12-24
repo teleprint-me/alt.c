@@ -64,7 +64,7 @@ typedef enum MagicState {
 typedef struct MagicFile {
     const char* filepath; /**< Path to the model file. */
     const char* mode; /**< File mode (e.g., "rb" for read binary). */
-    FILE* model; /**< File pointer to the open model. */
+    FILE* data; /**< File pointer to the open model. */
 
     /**
      * @brief Opens the model file based on the MagicFile structure.
