@@ -39,20 +39,26 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Define the core C library
+# Define the core C library (still feeling this out)
 set(
+    # sources are still in early development
     C_SOURCES
+    # Core tool kit
     "src/logger.c"
     "src/path.c"
-    "src/magic.c"
     "src/data_types.c"
     "src/random.c"
     "src/activation.c"
-    "src/vk/instance.c"
-    "src/vk/device.c"
-    "src/vk/shader.c"
     "src/flex_array.c"
     "src/tensors.c"
+    # Vulkan backend
+    "src/vk/instance.c"
+    "src/vk/device.c"
+    # "src/vk/shader.c"
+    # model format
+    "src/model/file.c"
+    "src/model/mistral.c"
+
 )
 add_library("alt" ${C_SOURCES})
 
