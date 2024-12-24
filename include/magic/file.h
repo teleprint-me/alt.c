@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file include/magic.h
+ * @file include/magic/file.h
  *
  * @brief Provides an interface for managing ALT model files,
  *        including file operations, validation, alignment, and marker handling.
@@ -13,8 +13,8 @@
  * the content of the file.
  */
 
-#ifndef ALT_MAGIC_H
-#define ALT_MAGIC_H
+#ifndef ALT_MAGIC_FILE_H
+#define ALT_MAGIC_FILE_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -229,4 +229,4 @@ MagicState magic_write_end_marker(MagicFile* magic_file);
  */
 MagicState magic_read_end_marker(MagicFile* magic_file);
 
-#endif // ALT_MAGIC_H
+#endif // ALT_MAGIC_FILE_H

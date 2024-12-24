@@ -1,13 +1,13 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/magic.c
+ * @file src/magic/file.c
  *
  * @brief Provides an implementation for managing ALT model files,
  *        including file operations, validation, and marker handling.
  */
 
-#include "magic.h"
+#include "magic/file.h"
 #include "logger.h"
 
 /**
@@ -77,8 +77,12 @@ MagicState magic_file_validate(MagicFile* magic_file) {
         return MAGIC_ERROR;
     }
 
-    LOG_DEBUG("%s: Model file validated successfully. Version: %d, Alignment: %d.\n",
-              __func__, magic_version, magic_alignment);
+    LOG_DEBUG(
+        "%s: Model file validated successfully. Version: %d, Alignment: %d.\n",
+        __func__,
+        magic_version,
+        magic_alignment
+    );
     return MAGIC_SUCCESS;
 }
 
@@ -107,7 +111,8 @@ MagicState magic_apply_padding(MagicFile* magic_file) {
         return MAGIC_ALIGNMENT_ERROR;
     }
 
-    size_t padding_needed = (MAGIC_ALIGNMENT - (current_offset % MAGIC_ALIGNMENT)) % MAGIC_ALIGNMENT;
+    size_t padding_needed
+        = (MAGIC_ALIGNMENT - (current_offset % MAGIC_ALIGNMENT)) % MAGIC_ALIGNMENT;
 
     if (magic_file->mode[0] == 'w') {
         // Writing mode: Pad with `0x00` bytes
