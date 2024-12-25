@@ -6,6 +6,7 @@ set(EXAMPLES
     similarity
     mlp
     mnist # mnist depends upon stb
+    mistral
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/models)
