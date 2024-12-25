@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/magic/file.c
+ * @file src/model/magic.c
  *
  * @brief Provides an interface for managing ALT model files,
  *        including file operations, validation, alignment, and marker handling.
@@ -13,8 +13,9 @@
  * the content of the file.
  */
 
-#include "model/file.h"
 #include "logger.h"
+
+#include "model/magic.h"
 
 /**
  * @brief Constructs and initializes a MagicFile instance.
