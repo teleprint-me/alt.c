@@ -217,4 +217,8 @@ MagicState magic_file_write_end_marker(MagicFile* magic);
  */
 MagicState magic_file_read_end_marker(MagicFile* magic);
 
+// ------------------------ Magic Field Functions ------------------------
+
+MagicState magic_file_read_string_field(MagicFile* magic, char** string);
+
 #endif // ALT_MODEL_FILE_H

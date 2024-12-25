@@ -314,3 +314,35 @@ MagicState magic_file_read_end_marker(MagicFile* magic) {
     LOG_DEBUG("%s: Read and validated end of file.\n", __func__);
     return MAGIC_SUCCESS;
 }
+
+// Handle magic fields
+
+MagicState magic_file_read_string_field(MagicFile* magic, char** string) {
+    int32_t length = 0;
+
+    // Read the length of the string
+    if (fread(&length, sizeof(int32_t), 1, magic->data) != 1) {
+        LOG_ERROR("%s: Failed to read string length.", __func__);
+        return MAGIC_FILE_ERROR;
+    }
+
+    // Allocate memory for the string (length + 1 for null terminator)
+    *string = (char*) malloc((length + 1) * sizeof(char));
+    if (!*string) {
+        LOG_ERROR("%s: Memory allocation failed for string.", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Read the string data
+    if ((size_t) length != fread(*string, sizeof(char), length, magic->data)) {
+        LOG_ERROR("%s: Failed to read string data.", __func__);
+        free(*string);
+        *string = NULL;  // Prevent dangling pointers
+        return MAGIC_FILE_ERROR;
+    }
+
+    // Null-terminate the string
+    (*string)[length] = '\0';
+
+    return MAGIC_SUCCESS;
+}
