@@ -4,8 +4,10 @@
  * @file include/model/mistral.h
  *
  * See specification for more details about the Altiera model file format.
- *
  * @ref docs/model/specification.md
+ *
+ * @note Mistrals tokenizer is a sentencepiece byte-pair encoding model. Unsure of how I'd like to
+ * handle this at the moment. Will figure it out later.
  */
 
 #ifndef ALT_MODEL_MISTRAL_H
@@ -13,30 +15,24 @@
 
 #include <stdbool.h>
 
-#include "model/file.h"
+#include "model/magic.h"
 
-typedef struct String {
-    uint32_t length;
-    char* data;
-} String;
-
-typedef struct MagicModel {
+typedef struct MistralMagic {
     int32_t version;
     int32_t alignment;
 } MagicModel;
 
-typedef struct GeneralModel {
-    String model_type;
-    String model_base;
-    String author;
-    String created_at;
-    String last_modified;
-    String license;
-    String uuid;
+typedef struct MistralGeneral {
+    char* model_type;
+    char* model_base;
+    char* author;
+    char* created_at;
+    char* last_modified;
+    char* license;
+    char* uuid;
 } GeneralModel;
 
-typedef struct ParametersModel {
-    String hidden_act;
+typedef struct MistralParameters {
     bool tie_word_embeddings;
     int32_t hidden_size;
     int32_t intermediate_size;
@@ -48,7 +44,8 @@ typedef struct ParametersModel {
     float rope_theta;
     float rms_norm_eps;
     float initializer_range;
-} ParametersModel;
+    char* hidden_act;
+} MistralParameters;
 
 typedef enum TokenType {
     NORMAL = 0,
@@ -63,8 +60,8 @@ typedef enum TokenType {
 
 typedef struct Token {
     float score;
-    TokenType type;
     int32_t length;
+    TokenType type;
     char* piece;
 } Token;
 
@@ -79,13 +76,15 @@ typedef struct TokenizerModel {
 } TokenizerModel;
 
 /// @todo TensorsModel
-/// @note Tensors are a currently a work in progress.
+/// @note Tensors are a currently a work in progress. Depends upon specification details and python
+/// implementation.
 
 typedef struct MistralModel {
     MagicModel* magic;
     GeneralModel* general;
-    ParametersModel* parameters;
+    MistralParameters* parameters;
     TokenizerModel* tokenizer;
+    // tensors will go here once implemented
 } MistralModel;
 
 #endif // ALT_MODEL_MISTRAL_H
