@@ -180,3 +180,10 @@ You’ve successfully:
 4. Verified everything works with a virtual environment.
 
 This process ensures you have a standalone, isolated Python setup that doesn’t interfere with system-wide configurations. You can repeat these steps for future Python versions or share them as a reference for others!
+
+---
+
+References:
+
+- [Python Guide](https://devguide.python.org/getting-started/setup-building/)
+- [Python FTP](https://www.python.org/ftp/python/3.12.8/)
