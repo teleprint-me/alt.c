@@ -73,7 +73,7 @@ MagicState magic_file_validate(MagicFile* magic) {
     // Read and validate the Start Marker
     int32_t version = 0;
     int32_t alignment = 0;
-    state = magic_read_start_marker(magic, &version, &alignment);
+    state = magic_file_read_start_marker(magic, &version, &alignment);
     if (MAGIC_SUCCESS != state) {
         LOG_ERROR("%s: Magic marker validation failed.\n", __func__);
         return state;
@@ -151,7 +151,7 @@ MagicState magic_file_pad(MagicFile* magic) {
     return MAGIC_SUCCESS;
 }
 
-MagicState magic_file_write_header(MagicFile* magic, int32_t version, int32_t alignment) {
+MagicState magic_file_write_start_marker(MagicFile* magic, int32_t version, int32_t alignment) {
     MagicState state = magic_file_guard(magic);
     if (MAGIC_SUCCESS != state) {
         return state;
@@ -186,7 +186,7 @@ MagicState magic_file_write_header(MagicFile* magic, int32_t version, int32_t al
     return MAGIC_SUCCESS;
 }
 
-MagicState magic_file_read_header(MagicFile* magic, int32_t* version, int32_t* alignment) {
+MagicState magic_file_read_start_marker(MagicFile* magic, int32_t* version, int32_t* alignment) {
     MagicState state = magic_file_guard(magic);
     if (MAGIC_SUCCESS != state) {
         return state;
@@ -239,7 +239,7 @@ MagicState magic_file_read_header(MagicFile* magic, int32_t* version, int32_t* a
 /**
  * @brief Writes a section marker and its size to the model file.
  */
-MagicState magic_file_write_marker(MagicFile* magic, int64_t marker, int64_t size) {
+MagicState magic_file_write_section_marker(MagicFile* magic, int64_t marker, int64_t size) {
     MagicState state = magic_file_guard(magic);
     if (MAGIC_SUCCESS != state) {
         return state;
@@ -258,7 +258,7 @@ MagicState magic_file_write_marker(MagicFile* magic, int64_t marker, int64_t siz
 /**
  * @brief Reads a section marker and its size from the model file.
  */
-MagicState magic_file_read_marker(MagicFile* magic, int64_t* marker, int64_t* size) {
+MagicState magic_file_read_section_marker(MagicFile* magic, int64_t* marker, int64_t* size) {
     MagicState state = magic_file_guard(magic);
     if (MAGIC_SUCCESS != state) {
         return state;
@@ -283,8 +283,8 @@ MagicState magic_file_write_end_marker(MagicFile* magic) {
         return state;
     }
 
-    int32_t magic = MAGIC_END;
-    if (1 != fwrite(&magic, sizeof(int32_t), 1, magic->data)) {
+    int32_t marker = MAGIC_END;
+    if (1 != fwrite(&marker, sizeof(int32_t), 1, magic->data)) {
         LOG_ERROR("%s: Failed to write end marker.\n", __func__);
         return MAGIC_FILE_ERROR;
     }
@@ -302,12 +302,12 @@ MagicState magic_file_read_end_marker(MagicFile* magic) {
         return state;
     }
 
-    int32_t magic;
-    if (1 != fread(&magic, sizeof(int32_t), 1, magic->data)) {
+    int32_t marker;
+    if (1 != fread(&marker, sizeof(int32_t), 1, magic->data)) {
         LOG_ERROR("%s: Failed to read end of file.\n", __func__);
         return MAGIC_FILE_ERROR;
     }
-    if (MAGIC_END != magic) {
+    if (MAGIC_END != marker) {
         LOG_ERROR("%s: Invalid end marker.\n", __func__);
         return MAGIC_ERROR;
     }
