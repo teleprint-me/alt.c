@@ -14,7 +14,6 @@
  */
 
 #include "logger.h"
-
 #include "model/magic.h"
 
 /**
