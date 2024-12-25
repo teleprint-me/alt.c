@@ -20,7 +20,7 @@
 typedef struct MistralMagic {
     int32_t version;
     int32_t alignment;
-} MagicModel;
+} MistralMagic;
 
 typedef struct MistralGeneral {
     char* model_type;
@@ -30,7 +30,7 @@ typedef struct MistralGeneral {
     char* last_modified;
     char* license;
     char* uuid;
-} GeneralModel;
+} MistralGeneral;
 
 typedef struct MistralParameters {
     bool tie_word_embeddings;
@@ -80,8 +80,8 @@ typedef struct TokenizerModel {
 /// implementation.
 
 typedef struct MistralModel {
-    MagicModel* magic;
-    GeneralModel* general;
+    MistralMagic* magic;
+    MistralGeneral* general;
     MistralParameters* parameters;
     TokenizerModel* tokenizer;
     // tensors will go here once implemented
