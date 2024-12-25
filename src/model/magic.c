@@ -211,7 +211,7 @@ MagicState magic_file_read_start_marker(MagicFile* magic, int32_t* version, int3
     }
 
     // Validate the section size (24 bytes)
-    const int64_t expected = sizeof(int64_t) + sizeof(int64_t) + sizeof(int32_t) + sizeof(int32_t);
+    const int64_t expected = sizeof(int32_t) + sizeof(int32_t);
     if (expected != size) {
         LOG_ERROR(
             "%s: Invalid magic header size. Expected %ld, got %ld.\n", __func__, expected, size
@@ -228,8 +228,8 @@ MagicState magic_file_read_start_marker(MagicFile* magic, int32_t* version, int3
         __func__,
         marker,
         size,
-        version,
-        alignment
+        *version,
+        *alignment
     );
 
     return MAGIC_SUCCESS;
