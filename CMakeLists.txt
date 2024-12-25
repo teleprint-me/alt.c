@@ -56,7 +56,7 @@ set(
     "src/vk/device.c"
     # "src/vk/shader.c"
     # model format
-    "src/model/file.c"
+    "src/model/magic.c"
     "src/model/mistral.c"
 
 )
