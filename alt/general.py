@@ -46,7 +46,7 @@ The section must align to the next 32-byte boundary using padding. Add `0x00` by
 1. **Verify Section Marker**:
    - Read the first 8 bytes and confirm they match `0xCAFEBABE`.
 2. **Read Section Size**:
-   - Retrieve the 8-byte size of the General Section, including padding.
+   - Retrieve the 8-byte size of the General Section.
 3. **Parse Model Information**:
    - For each UTF-8 string field:
      - Read the 4-byte length prefix.
