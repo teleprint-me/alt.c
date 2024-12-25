@@ -41,6 +41,8 @@ sudo pacman -S python-pip python-virtualenv python-isort python-black flake8
 
 ### Clone the Repository
 
+Clone the repository to your local machine and navigate into it:
+
 ```sh
 git clone https://github.com/teleprint-me/alt.c.git alt
 cd alt
@@ -48,12 +50,21 @@ cd alt
 
 ### Python Virtual Environment
 
+Set up a Python virtual environment to manage project dependencies:
+
 ```sh
 virtualenv .venv
 source .venv/bin/activate
 ```
 
+**Important Note:**  
+Arch Linux has recently upgraded Python from **3.12.x** to **3.13.x**. At the time of writing, some critical libraries, such as SentencePiece and PyTorch, are not fully compatible with Python 3.13.x. This causes issues with the development environment.
+
+To resolve this, I have created a Knowledge Base article that provides a detailed guide on building and using a local Python 3.12.x environment without interfering with the system-wide Python installation. Refer to [docs/kb/python.md](docs/kb/python.md) for step-by-step instructions.
+
 ### Install CPU Torch
+
+Install the CPU-only version of PyTorch, along with the TorchText library, to avoid GPU dependency issues (optional if GPU support is not required):
 
 ```sh
 pip install torch torchtext --index-url https://download.pytorch.org/whl/cpu --upgrade
@@ -61,7 +72,7 @@ pip install torch torchtext --index-url https://download.pytorch.org/whl/cpu --u
 
 ### Install Additional Python Requirements
 
-**Warning:** Install these last to avoid potential conflicts.
+Install the additional Python dependencies listed in `requirements.txt`. **It is recommended to install these after PyTorch to avoid potential conflicts:**
 
 ```sh
 pip install -r requirements.txt
