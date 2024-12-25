@@ -1,9 +1,9 @@
 ---
 title: "ALT Model File Format Specification"
 type: "technical"
-version: "v2"
+version: 2
 date: "2024-07-05"
-modified: "2024-11-15"
+modified: "2024-12-24"
 license: "cc-by-nc-sa-4.0"
 ---
 
@@ -26,8 +26,6 @@ A Python-based script will implement this specification, converting model files 
 
 > **Note**: This specification serves as a general guide and can be adapted for use with other models if needed.
 
----
-
 ## File Layout
 
 The ALT file consists of the following sections in sequential order:
@@ -45,7 +43,7 @@ Each section is marked with:
 
 - **Section Marker**: A 64-bit hexadecimal identifier (e.g., `GENERAL = 0xCAFEBABE`) denoting the section type.
 - **Section Size**: A 64-bit integer representing the section size in bytes.
-- **Section Data**: Binary data specific to the section’s function.
+- **Section Data**: Binary data specific to the section's function.
 
 ## File Alignment
 
@@ -55,7 +53,7 @@ Each section aligns to a 32-byte boundary. The required padding is calculated as
 - $\text{position} = \text{file.tell()}$
 - $\text{offset} = \text{position} \mod \text{alignment}$
 - $\text{pad} = (\text{alignment} - \text{offset}) \mod \text{alignment}$
-- If $\text{pad} > 0$, insert `\text{pad}` bytes of `0x00` padding.
+- If $\text{pad} > 0$, insert $\text{pad}$ bytes of `0x00` padding.
 
 ### Example
 
@@ -65,11 +63,7 @@ For a section ending at byte position $68$:
 - $\text{pad} = (32 - 4) \mod 32 = 28$
 - **Result**: Insert $28$ bytes of `0x00` padding.
 
----
-
-## **1. Start Marker**
-
-### **Purpose**
+## **Start Marker**
 
 The Start Marker identifies the file as adhering to the ALT format, establishing compatibility and alignment requirements for the rest of the file. This ensures parsers can validate the file efficiently and proceed with confidence. If the Start Marker is invalid, the file is considered incompatible, and parsing should halt.
 
@@ -81,7 +75,7 @@ The Start Marker includes the **Header** and **Fields**, defining the format ver
 
 | Field            | Description                    | Data Type | Size (bytes) | Notes                 |
 |------------------|--------------------------------|-----------|--------------|-----------------------|
-| `section_marker` | Identifies file format as ALT  | `int64`   | 8            | `0x616C7463` ("altc") |
+| `section_marker` | Identifies file format as ALT  | `int64`   | 8            | `0x616C7400` ("alt") |
 | `section_size`   | Total size of the Start Marker | `int64`   | 8            | Includes all fields   |
 
 ### **Fields**
@@ -99,7 +93,7 @@ The Start Marker includes the **Header** and **Fields**, defining the format ver
 ### **Parsing Steps**
 
 1. **Retrieve and Validate Header**:
-   - Read the first 8 bytes and confirm the `magic_number` matches `0x616C7463`.
+   - Read the first 8 bytes and confirm the `magic_number` matches `0x616C7400`.
    - If the magic number is invalid, halt processing and raise an error.
 2. **Read Section Size**:
    - Retrieve the next 8 bytes to determine the total size of the Start Marker, including any alignment padding.
@@ -110,26 +104,14 @@ The Start Marker includes the **Header** and **Fields**, defining the format ver
    - Calculate the necessary padding to ensure alignment with the next 32-byte boundary.
    - Add `0x00` bytes as required.
 
-### **Example Binary Layout**
-
-Here’s a binary representation of the Start Marker with `magic_version = 2` and `magic_alignment = 32`. This example assumes no unnecessary padding between fields:
-
-| Offset | Field             | Data         | Size (bytes) | Notes                       |
-|--------|-------------------|--------------|--------------|-----------------------------|
-| 0x00   | `magic_number`    | `0x616C7463` | 8            | "altc" in hex               |
-| 0x08   | `section_size`    | `0x00000020` | 8            | 32 bytes total for section  |
-| 0x10   | `magic_version`   | `0x00000002` | 4            | ALT format version          |
-| 0x14   | `magic_alignment` | `0x00000020` | 4            | 32-byte alignment           |
-| 0x18   | Padding           | `0x00`       | 8            | Pad to 32-byte boundary     |
-
----
-
 ## **2. General Section**
 
 ### **Purpose**
+
 The General Section provides high-level metadata that applies to the entire model, including configuration details, versioning, and attribution. This section supports model loading, version control, and traceability.
 
 ### **Structure**
+
 The General Section consists of three parts: **Header**, **Fields**, and **Alignment**.
 
 ### **Header**
@@ -141,39 +123,24 @@ The General Section consists of three parts: **Header**, **Fields**, and **Align
 
 ### **Fields**
 
-#### **Configuration**
-
-| Field           | Description                     | Data Type | Size (bytes) | Notes                                  |
-|-----------------|---------------------------------|-----------|--------------|----------------------------------------|
-| `data_type`     | Primary data type for tensors   | `int32`   | 4            | `0` for float32, `1` for float16, etc. |
-| `quant_profile` | Profile for quantized data      | `int32`   | 4            | `0` if unquantized                     |
-| `context_len`   | Maximum context length (tokens) | `int32`   | 4            | e.g., `8192`                           |
-
-#### **Model Information**
-
 - **Length Encoding**: Each UTF-8 string is prefixed by a 4-byte integer representing its byte length.
 
-| Field            | Description                   | Data Type | Notes                        |
-|------------------|-------------------------------|-----------|------------------------------|
-| `model_name_len` | Length of model name string   | `int32`   | Prefix for `model_name`      |
-| `model_name`     | Model name (UTF-8)            | `string`  | e.g., "mistral"              |
-| `author_len`     | Length of author name string  | `int32`   | Prefix for `author`          |
-| `author`         | Author name (UTF-8)           | `string`  | e.g., "MistralAI"            |
-| `uuid_len`       | Length of UUID string         | `int32`   | Prefix for `uuid`            |
-| `uuid`           | Unique model identifier       | `string`  | e.g., "c1355a8e-..."         |
-| `hash_len`       | Length of Hash string         | `int32`   | Prefix for `hash`            |
-| `hash`           | BLAKE2b hash of model weights | `string`  | Fixed length, e.g., 32 bytes |
-
-#### **Optional Metadata**
-
-| Field               | Description                    | Data Type | Notes                      |
-|---------------------|--------------------------------|-----------|----------------------------|
-| `date_created_len`  | Length of creation date string | `int32`   | Prefix for `date_created`  |
-| `date_created`      | Model creation date (UTF-8)    | `string`  | Format `YYYY-MM-DD`        |
-| `last_modified_len` | Length of modified date string | `int32`   | Prefix for `last_modified` |
-| `last_modified`     | Last modified date (UTF-8)     | `string`  | Format `YYYY-MM-DD`        |
-| `license_len`       | Length of license string       | `int32`   | Prefix for `license`       |
-| `license`           | Model license type (UTF-8)     | `string`  | e.g., "Apache-2.0"         |
+| Field               | Description                    | Data Type | Notes                             |
+|---------------------|--------------------------------|-----------|-----------------------------------|
+| `model_type_len`    | Length of model name string    | `int32`   | Prefix for `model_name`           |
+| `model_type`        | Model name (UTF-8)             | `string`  | e.g., "mistral"                   |
+| `base_model_len`    | Length of model name string    | `int32`   | Prefix for `model_name`           |
+| `base_model`        | Model name (UTF-8)             | `string`  | e.g., "mistralai/Mistral-7B-v0.1" |
+| `author_len`        | Length of author name string   | `int32`   | Prefix for `author`               |
+| `author`            | Author name (UTF-8)            | `string`  | e.g., "MistralAI"                 |
+| `created_at_len`    | Length of creation date string | `int32`   | Prefix for `date_created`         |
+| `created_at`        | Model creation date (UTF-8)    | `string`  | Format `YYYY-MM-DD`               |
+| `last_modified_len` | Length of modified date string | `int32`   | Prefix for `last_modified`        |
+| `last_modified`     | Last modified date (UTF-8)     | `string`  | Format `YYYY-MM-DD`               |
+| `license_len`       | Length of license string       | `int32`   | Prefix for `license`              |
+| `license`           | Model license type (UTF-8)     | `string`  | e.g., "Apache-2.0"                |
+| `uuid_len`          | Length of UUID string          | `int32`   | Prefix for `uuid`                 |
+| `uuid`              | Unique model identifier        | `string`  | e.g., "c1355a8e-..."              |
 
 ### **Alignment**
 
@@ -184,51 +151,50 @@ The section must align to the next 32-byte boundary using padding. Add `0x00` by
 1. **Verify Section Marker**:
    - Read the first 8 bytes and confirm they match `0xCAFEBABE`.
 2. **Read Section Size**:
-   - Retrieve the 8-byte size of the General Section, including padding.
-3. **Parse Configuration**:
-   - Read each `int32` field for `version`, `data_type`, `quant_profile`, and `context_len`.
-4. **Parse Model Information**:
+   - Retrieve the 8-byte size of the General Section.
+3. **Parse Model Information**:
    - For each UTF-8 string field:
      - Read the 4-byte length prefix.
      - Parse the string data of the specified length.
-5. **Parse Optional Metadata**:
-   - If present, repeat the length-and-string parsing process for optional fields like `date_created` and `license`.
-6. **Apply Alignment**:
+4. **Apply Alignment**:
    - Add padding with `0x00` bytes as necessary to align to the next 32-byte boundary.
 
----
-
-### **3. HyperParameters Section**
+### **3. Parameters Section**
 
 #### **Purpose**
 
-The HyperParameters Section provides the core configuration values necessary for model inference. These parameters define the model's structure, including its layers, attention mechanism, and normalization details, ensuring accurate and efficient operation.
+The Parameters Section provides the core configuration values necessary for model inference. These parameters define the model's structure, including its layers, attention mechanism, and normalization details, ensuring accurate and efficient operation.
 
 #### **Structure**
 
-The HyperParameters Section includes three main parts: **Header**, **Fields**, and **Alignment**.
+The Parameters Section includes three main parts: **Header**, **Fields**, and **Alignment**.
 
 #### **Header**
 
-| Field            | Description                        | Data Type | Size (bytes) | Notes               |
-|------------------|------------------------------------|-----------|--------------|---------------------|
-| `section_marker` | Identifies HyperParameters Section | `int64`   | 8            | Set to `0xDEADBEEF` |
-| `section_size`   | Total size of HyperParameters      | `int64`   | 8            | Includes padding    |
+| Field            | Description                   | Data Type | Size (bytes) | Notes               |
+|------------------|-------------------------------|-----------|--------------|---------------------|
+| `section_marker` | Identifies Parameters Section | `int64`   | 8            | Set to `0xDEADBEEF` |
+| `section_size`   | Total size of Parameters      | `int64`   | 8            | Includes padding    |
 
 #### **Fields**
 
 ##### **Model Configuration**
 
-| Field                 | Description                       | Data Type   | Size (bytes) | Notes                             |
-|-----------------------|-----------------------------------|-------------|--------------|-----------------------------------|
-| `hidden_size`         | Embedding dimension (hidden size) | `int32`     | 4            | E.g., `4096`                      |
-| `num_hidden_layers`   | Number of transformer layers      | `int32`     | 4            | E.g., `32`                        |
-| `intermediate_size`   | Feed-forward network size         | `int32`     | 4            | Typically `4 * hidden_size`       |
-| `num_attention_heads` | Total number of attention heads   | `int32`     | 4            | E.g., `32`                        |
-| `num_key_value_heads` | Key-value heads for GQA           | `int32`     | 4            | Defaults to `num_attention_heads` |
-| `sliding_window`      | Sliding window size               | `int32`     | 4            | E.g., `4096`                      |
-| `rope_theta`          | Rotary embedding theta            | `float32`   | 4            | Default `10000.0`                 |
-| `rms_norm_eps`        | Epsilon for RMS normalization     | `float32`   | 4            | Default `1e-5`                    |
+| Field                     | Description                       | Data Type   | Size (bytes) | Notes                             |
+|---------------------------|-----------------------------------|-------------|--------------|-----------------------------------|
+| `hidden_act_len`          | Length of activation function     | `int32`     | 4            | Prefix for `hidden_act`           |
+| `hidden_act`              | Activation function               | `string`    | Variable     | E.g. "silu"                       |
+| `tie_word_embeddings`     |                                   | `bool`      | 1            | Optional                          |
+| `hidden_size`             | Embedding dimension (hidden size) | `int32`     | 4            | E.g., `4096`                      |
+| `intermediate_size`       | Feed-forward network size         | `int32`     | 4            | Typically `4 * hidden_size`       |
+| `max_position_embeddings` | Maximum positions                 | `int32`     | 4            | Default `32768`                   |
+| `num_attention_heads`     | Total number of attention heads   | `int32`     | 4            | E.g., `32`                        |
+| `num_hidden_layers`       | Number of transformer layers      | `int32`     | 4            | E.g., `32`                        |
+| `num_key_value_heads`     | Key-value heads for GQA           | `int32`     | 4            | Defaults to `num_attention_heads` |
+| `sliding_window`          | Sliding window size               | `int32`     | 4            | E.g., `4096`                      |
+| `rope_theta`              | Rotary embedding theta            | `float32`   | 4            | Default `10000.0`                 |
+| `rms_norm_eps`            | Epsilon for RMS normalization     | `float32`   | 4            | Default `1e-5`                    |
+| `initializer_range`       | Weight initialization range       | `float32`   | 4            | Optional                          |
 
 ##### **Derived Parameters**
 
@@ -245,7 +211,7 @@ The section must align to the next 32-byte boundary using padding. Add `0x00` by
 1. **Verify Section Marker**:
    - Confirm the first 8 bytes match `0xDEADBEEF` to identify the section.
 2. **Read Section Size**:
-   - Retrieve the 8-byte value to determine the total byte length of the section, including padding.
+   - Retrieve the 8-byte value to determine the total byte length of the section.
 3. **Parse Configuration Fields**:
    - Read each field in sequence as specified:
      - Parse integers for structural details (`hidden_size`, `num_hidden_layers`, etc.).
@@ -254,8 +220,6 @@ The section must align to the next 32-byte boundary using padding. Add `0x00` by
    - Compute any derived fields (e.g., `head_size`) based on the primary configuration fields.
 5. **Apply Alignment**:
    - Add padding bytes (`0x00`) to ensure the section aligns with the next 32-byte boundary.
-
----
 
 ## **4. Tokenizer Section**
 
@@ -269,22 +233,23 @@ The Tokenizer Section has three main parts: the **Header**, **Tokenizer Metadata
 
 ### **Header**
 
-| Field            | Description                     | Data Type | Size (bytes) | Notes           |
-|------------------|---------------------------------|-----------|--------------|-----------------|
-| `section_marker` | Identifies Tokenizer Section    | `int64`   | 8            | `0xBADDCAFE`    |
-| `section_size`   | Total size of Tokenizer Section | `int64`   | 8            | Varies in size  |
+| Field            | Description                     | Data Type | Size (bytes) | Notes          |
+|------------------|---------------------------------|-----------|--------------|----------------|
+| `section_marker` | Identifies Tokenizer Section    | `int64`   | 8            | `0xBADDCAFE`   |
+| `section_size`   | Total size of Tokenizer Section | `int64`   | 8            | Varies in size |
 
 ### **Fields**
 
 #### **Tokenizer Metadata**
 
-| Field        | Description                    | Data Type | Size (bytes) | Notes             |
-|--------------|--------------------------------|-----------|--------------|-------------------|
-| `vocab_size` | Total number of tokens         | `int32`   | 4            |                   |
-| `bos_id`     | Beginning-of-sequence token ID | `int32`   | 4            |                   |
-| `eos_id`     | End-of-sequence token ID       | `int32`   | 4            |                   |
-| `pad_id`     | Padding token ID               | `int32`   | 4            |                   |
-| `unk_id`     | Unknown token ID               | `int32`   | 4            |                   |
+| Field         | Description                     | Data Type | Size (bytes) | Notes        |
+|---------------|---------------------------------|-----------|--------------|--------------|
+| `vocab_size`  | Total number of tokens          | `int32`   | 4            |              |
+| `bos_id`      | Beginning-of-sequence token ID  | `int32`   | 4            |              |
+| `eos_id`      | End-of-sequence token ID        | `int32`   | 4            |              |
+| `pad_id`      | Padding token ID                | `int32`   | 4            |              |
+| `unk_id`      | Unknown token ID                | `int32`   | 4            |              |
+| `seq_len`     | Maximum sequence length         | `int32`   | 4            | e.g., `8192` |
 
 #### **Vocabulary Tokens**
 
@@ -292,7 +257,7 @@ Each token in the vocabulary is stored sequentially and contains additional fiel
 
 | Field         | Description                      | Data Type | Size (bytes) | Notes                           |
 |---------------|----------------------------------|-----------|--------------|---------------------------------|
-| `token_len`   | Length of each token (per token) | `int32`   | 4            | Prefix for each token’s data    |
+| `token_len`   | Length of each token (per token) | `int32`   | 4            | Prefix for each token's data    |
 | `token_data`  | Token string data (UTF-8)        | `string`  | Variable     | UTF-8 encoded byte sequence     |
 | `token_score` | Score or frequency of the token  | `float32` | 4            | E.g., log probability           |
 | `token_type`  | Token type                       | `int32`   | 4            | Enum: `NORMAL`, `UNKNOWN`, etc. |
@@ -320,23 +285,25 @@ The Tokenizer Section must align to the next 32-byte boundary after all tokens a
 5. **Apply Alignment**:
    - Add padding with `0x00` bytes if needed to reach the next 32-byte boundary.
 
-### **Token Types Enum**
+### **Token Types**
 
-Using an enum for token types allows parsers to easily identify special tokens. Here’s a proposed enum based on GGUF:
+Using an enum for token types enables parsers to clearly identify special tokens. The original enum was inspired by the GGUF format and closely mirrors SentencePiece's internal token type representations.
 
 ```python
-class TokenType(IntEnum):
-    NORMAL       = 0
-    UNKNOWN      = 1
-    CONTROL      = 2
-    USER_DEFINED = 3
-    UNUSED       = 4
-    BYTE         = 5
+class TokenType:
+    NORMAL: int = 0
+    BYTE: int = 1
+    CONTROL: int = 2
+    UNKNOWN: int = 3
+    UNUSED: int = 4
+    BOS: int = 5
+    EOS: int = 6
+    PAD: int = 7
 ```
 
 ### **Example Binary Layout**
 
-Let’s demonstrate a sample Tokenizer Section layout with three tokens, including token type and score fields:
+Let's demonstrate a sample Tokenizer Section layout with three tokens, including token type and score fields:
 
 | Offset | Field            | Data         | Size (bytes) | Notes                          |
 |--------|------------------|--------------|--------------|--------------------------------|
@@ -360,8 +327,6 @@ Let’s demonstrate a sample Tokenizer Section layout with three tokens, includi
 | 0x4C   | `token_score`    | `-1.0`       | 4            | Token score                    |
 | 0x50   | `token_type`     | `0x00000003` | 4            | Token type `NORMAL`            |
 | 0x54   | Padding          | `0x00`       | 12           | Pad to next 32-byte boundary   |
-
----
 
 ### **5. Tensor Section**
 
