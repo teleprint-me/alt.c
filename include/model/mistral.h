@@ -92,10 +92,14 @@ typedef struct MistralModel {
 // ------------------------ Model file functions ------------------------
 
 MistralMagic* mistral_read_start_section(MagicFile* magic_file);
-void mistral_free_start_section(MistralMagic* mistral_magic);
+void mistral_free_start_section(MistralMagic* header);
 
 MistralGeneral* mistral_read_general_section(MagicFile* magic_file);
-void mistral_free_general_section(MistralGeneral* mistral_general);
-void mistral_log_general_section(MistralGeneral* mistral_general);
+void mistral_free_general_section(MistralGeneral* general);
+void mistral_log_general_section(MistralGeneral* general);
+
+MistralParameters* mistral_read_parameters_section(MagicFile* magic_file);
+void mistral_free_parameters_section(MistralParameters* parameters);
+void mistral_log_parameters_section(MistralParameters* parameters);
 
 #endif // ALT_MODEL_MISTRAL_H
