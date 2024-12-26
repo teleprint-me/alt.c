@@ -17,6 +17,8 @@
 
 #include "model/magic.h"
 
+// ------------------------ Model structures ------------------------
+
 typedef struct MistralMagic {
     int32_t version;
     int32_t alignment;
@@ -87,7 +89,12 @@ typedef struct MistralModel {
     // tensors will go here once implemented
 } MistralModel;
 
-// Model file functions
-MistralMagic* mistral_read_start_marker(MagicFile* magic_file);
+// ------------------------ Model file functions ------------------------
+
+MistralMagic* mistral_read_start_section(MagicFile* magic_file);
+void mistral_free_start_section(MistralMagic* mistral_magic);
+
+MistralGeneral* mistral_read_general_section(MagicFile* magic_file);
+void mistral_free_general_section(MistralGeneral* mistral_general);
 
 #endif // ALT_MODEL_MISTRAL_H

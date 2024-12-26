@@ -36,25 +36,20 @@ int main(int argc, char* argv[]) {
         return MAGIC_FILE_ERROR;
     }
 
-    // Read the models magic header
-    MistralMagic* mistral_magic = mistral_read_start_marker(magic_file);
+    // Read the models magic header (start section)
+    MistralMagic* mistral_magic = mistral_read_start_section(magic_file);
 
     // Read the models general section
-    MistralGeneral* mistral_general = (MistralGeneral*) malloc(sizeof(MistralGeneral));
-    if (!mistral_general) {
-        LOG_ERROR("%s: Failed to allocate memory to MistralGeneral.\n", __func__);
-        return MAGIC_ERROR;
-    }
-    int64_t general_marker = 0;
-    int64_t general_size = 0;
-    magic_file_read_section_marker(magic_file, &general_marker, &general_size);
-    // for each element in the general section, there is a string length follow by the string data.
-    
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->model_type)) {
-        LOG_ERROR("Failed to read model_type from general section.");
-        return MAGIC_FILE_ERROR;
-    }
-    LOG_INFO("%s: general->model_type=%s\n", __func__, mistral_general->model_type);
+    MistralGeneral* mistral_general = mistral_read_general_section(magic_file);
+    // Log and observe results
+    LOG_INFO("%s: Section: general, Field: model_type=%s\n", __func__, mistral_general->model_type);
+    LOG_INFO("%s: Section: general, Field: model_base=%s\n", __func__, mistral_general->model_base);
+    LOG_INFO("%s: Section: general, Field: author=%s\n", __func__, mistral_general->author);
+    LOG_INFO("%s: Section: general, Field: created_at=%s\n", __func__, mistral_general->created_at);
+    LOG_INFO("%s: Section: general, Field: last_modified=%s\n", __func__, mistral_general->last_modified);
+    LOG_INFO("%s: Section: general, Field: license=%s\n", __func__, mistral_general->license);
+    LOG_INFO("%s: Section: general, Field: uuid=%s\n", __func__, mistral_general->uuid);
+
     // MistralParameters parameters = {0};
 
     if (MAGIC_SUCCESS != magic_file_close(magic_file)) {
@@ -63,9 +58,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Cleanup
-    free(mistral_magic);
-    free(mistral_general->model_type);
-    free(mistral_general);
+    mistral_free_general_section(mistral_general);
+    mistral_free_start_section(mistral_magic);
 
     return MAGIC_SUCCESS;
 }
