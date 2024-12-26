@@ -87,4 +87,7 @@ typedef struct MistralModel {
     // tensors will go here once implemented
 } MistralModel;
 
+// Model file functions
+MistralMagic* mistral_read_start_marker(MagicFile* magic_file);
+
 #endif // ALT_MODEL_MISTRAL_H
