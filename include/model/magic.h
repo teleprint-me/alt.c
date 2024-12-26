@@ -87,21 +87,21 @@ MagicFile* magic_file_open(const char* filepath, const char* mode);
 /**
  * @brief Closes the model file.
  *
- * @param magic A pointer to the MagicFile instance to be closed.
+ * @param magic_file A pointer to the MagicFile instance to be closed.
  *
  * Closes the file associated with the MagicFile instance, freeing any allocated resources.
  * Returns MAGIC_SUCCESS if successful, or MAGIC_FILE_ERROR if the file cannot be closed.
  *
  * @return MAGIC_SUCCESS on success, or MAGIC_FILE_ERROR on failure.
  */
-MagicState magic_file_close(MagicFile* magic);
+MagicState magic_file_close(MagicFile* magic_file);
 
 // ----------------------------- Utilities -------------------------------------
 
 /**
  * @brief Validates the magic header of the file.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  *
  * Validates the magic header, ensuring the file adheres to the ALT
  * specification. This function checks the header fields and resets the file
@@ -109,30 +109,30 @@ MagicState magic_file_close(MagicFile* magic);
  *
  * @return MAGIC_SUCCESS if valid, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_validate(MagicFile* magic);
+MagicState magic_file_validate(MagicFile* magic_file);
 
 /**
  * @brief Guards file operations by checking the MagicFile structure and file pointer.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  *
  * Ensures the file pointer is valid before proceeding with any operation.
  *
  * @return MAGIC_SUCCESS if valid, MAGIC_ERROR otherwise.
  */
-MagicState magic_file_guard(MagicFile* magic);
+MagicState magic_file_guard(MagicFile* magic_file);
 
 /**
  * @brief Aligns the file pointer to the nearest MAGIC_ALIGNMENT boundary.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  *
  * Aligns the file pointer for reading or writing. In read mode, skips alignment
  * bytes. In write mode, adds zero-padding to ensure alignment.
  *
  * @return MAGIC_SUCCESS if successful, MAGIC_ALIGNMENT_ERROR otherwise.
  */
-MagicState magic_file_pad(MagicFile* magic);
+MagicState magic_file_pad(MagicFile* magic_file);
 
 // ------------------------- Start Marker Functions ----------------------------
 
@@ -142,13 +142,13 @@ MagicState magic_file_pad(MagicFile* magic);
  * Writes the magic header fields, including the marker, section size, version,
  * and alignment, ensuring the file adheres to the ALT specification.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  * @param version File format version.
  * @param alignment Alignment requirement for subsequent sections.
  *
  * @return MAGIC_SUCCESS on success, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_write_start_marker(MagicFile* magic, int32_t version, int32_t alignment);
+MagicState magic_file_write_start_marker(MagicFile* magic_file, int32_t version, int32_t alignment);
 
 /**
  * @brief Reads the Start Marker section of the file.
@@ -156,20 +156,20 @@ MagicState magic_file_write_start_marker(MagicFile* magic, int32_t version, int3
  * Reads the magic header fields, including the marker, section size, version,
  * and alignment, ensuring the file adheres to the ALT specification.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  * @param version Pointer to an int32_t to store the file format version.
  * @param alignment Pointer to an int32_t to store the alignment requirement for subsequent sections.
  *
  * @return MAGIC_SUCCESS on success, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_read_start_marker(MagicFile* magic, int32_t* version, int32_t* alignment);
+MagicState magic_file_read_start_marker(MagicFile* magic_file, int32_t* version, int32_t* alignment);
 
 // ----------------------- Section Marker Functions ----------------------------
 
 /**
  * @brief Writes a section marker and its size to the model file.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  * @param marker The section marker identifier.
  * @param size The size of the section in bytes.
  *
@@ -177,12 +177,12 @@ MagicState magic_file_read_start_marker(MagicFile* magic, int32_t* version, int3
  *
  * @return MAGIC_SUCCESS on success, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_write_section_marker(MagicFile* magic, int64_t marker, int64_t size);
+MagicState magic_file_write_section_marker(MagicFile* magic_file, int64_t marker, int64_t size);
 
 /**
  * @brief Reads a section marker and its size from the model file.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  * @param marker Pointer to store the section marker identifier.
  * @param size Pointer to store the section size in bytes.
  *
@@ -190,40 +190,40 @@ MagicState magic_file_write_section_marker(MagicFile* magic, int64_t marker, int
  *
  * @return MAGIC_SUCCESS on success, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_read_section_marker(MagicFile* magic, int64_t* marker, int64_t* size);
+MagicState magic_file_read_section_marker(MagicFile* magic_file, int64_t* marker, int64_t* size);
 
 // ------------------------ End Marker Functions -------------------------------
 
 /**
  * @brief Writes the end marker (MAGIC_END) to the model file.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  *
  * Writes the end marker as the absolute end of the file. No data or padding is
  * allowed after the end marker.
  *
  * @return MAGIC_SUCCESS on success, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_write_end_marker(MagicFile* magic);
+MagicState magic_file_write_end_marker(MagicFile* magic_file);
 
 /**
  * @brief Reads and validates the end marker (MAGIC_END) from the model file.
  *
- * @param magic Pointer to the MagicFile structure.
+ * @param magic_file Pointer to the MagicFile structure.
  *
  * Reads the end marker and ensures it matches the expected value, confirming
  * the file's structure is intact.
  *
  * @return MAGIC_SUCCESS if valid, MAGIC_FILE_ERROR otherwise.
  */
-MagicState magic_file_read_end_marker(MagicFile* magic);
+MagicState magic_file_read_end_marker(MagicFile* magic_file);
 
 // ------------------------ Magic Field Functions ------------------------
 
-MagicState magic_file_read_bool_field(MagicFile* file, bool* field);
-MagicState magic_file_read_int_field(MagicFile* file, int32_t* field);
-MagicState magic_file_read_float_field(MagicFile* file, float* field);
-MagicState magic_file_read_string_field(MagicFile* file, char** string);
+MagicState magic_file_read_bool_field(MagicFile* magic_file, bool* field);
+MagicState magic_file_read_int_field(MagicFile* magic_file, int32_t* field);
+MagicState magic_file_read_float_field(MagicFile* magic_file, float* field);
+MagicState magic_file_read_string_field(MagicFile* magic_file, char** string);
 
 // ------------------------ Magic Macro Functions ------------------------
 
