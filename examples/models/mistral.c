@@ -43,14 +43,17 @@ int main(int argc, char* argv[]) {
     MistralGeneral* mistral_general = mistral_read_general_section(magic_file);
     mistral_log_general_section(mistral_general);
 
-    // MistralParameters parameters = {0};
+    // Read the models parameters section
+    MistralParameters* parameters = mistral_read_parameters_section(magic_file);
 
+    // Close the model file
     if (MAGIC_SUCCESS != magic_file_close(magic_file)) {
         LOG_ERROR("%s: Failed to close model file: %s", __func__, magic_file->filepath);
         return MAGIC_FILE_ERROR;
     }
 
     // Cleanup
+    mistral_free_parameters_section(parameters);
     mistral_free_general_section(mistral_general);
     mistral_free_start_section(mistral_magic);
 
