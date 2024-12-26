@@ -39,6 +39,22 @@ void mistral_free_start_section(MistralMagic* mistral_magic) {
     }
 }
 
+/**
+ * This macro-driven approach is specific to the general section,
+ * which is uniform (all fields are char*). It simplifies the logic
+ * for reading, logging, and freeing fields. While it’s currently
+ * unique to this section, it may serve as a reference or template
+ * for similar patterns in future code.
+ */
+#define MISTRAL_FOREACH_GENERAL_FIELD \
+    FIELD(model_type) \
+    FIELD(model_base) \
+    FIELD(author) \
+    FIELD(created_at) \
+    FIELD(last_modified) \
+    FIELD(license) \
+    FIELD(uuid)
+
 MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     // Allocate memory for general section
     MistralGeneral* mistral_general = (MistralGeneral*) malloc(sizeof(MistralGeneral));
@@ -60,13 +76,9 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
         }
 
     // Read the general section fields
-    READ_FIELD(model_type);
-    READ_FIELD(model_base);
-    READ_FIELD(author);
-    READ_FIELD(created_at);
-    READ_FIELD(last_modified);
-    READ_FIELD(license);
-    READ_FIELD(uuid);
+    #define FIELD(field) READ_FIELD(field)
+    MISTRAL_FOREACH_GENERAL_FIELD
+    #undef FIELD
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -87,13 +99,9 @@ void mistral_free_general_section(MistralGeneral* mistral_general) {
                 free(mistral_general->field); \
             }
 
-        FREE_FIELD(model_type);
-        FREE_FIELD(model_base);
-        FREE_FIELD(author);
-        FREE_FIELD(created_at);
-        FREE_FIELD(last_modified);
-        FREE_FIELD(license);
-        FREE_FIELD(uuid);
+        #define FIELD(field) FREE_FIELD(field)
+        MISTRAL_FOREACH_GENERAL_FIELD
+        #undef FIELD
 
         // free the section structure
         free(mistral_general);
@@ -104,11 +112,7 @@ void mistral_log_general_section(MistralGeneral* mistral_general) {
     #define LOG_FIELD(field) \
         LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, mistral_general->field);
 
-    LOG_FIELD(model_type);
-    LOG_FIELD(model_base);
-    LOG_FIELD(author);
-    LOG_FIELD(created_at);
-    LOG_FIELD(last_modified);
-    LOG_FIELD(license);
-    LOG_FIELD(uuid);
+    #define FIELD(field) LOG_FIELD(field)
+    MISTRAL_FOREACH_GENERAL_FIELD
+    #undef FIELD
 }
