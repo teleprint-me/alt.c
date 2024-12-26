@@ -37,14 +37,15 @@ int main(int argc, char* argv[]) {
     }
 
     // Read the models magic header (start section)
-    MistralMagic* mistral_magic = mistral_read_start_section(magic_file);
+    MistralMagic* header = mistral_read_start_section(magic_file);
 
     // Read the models general section
-    MistralGeneral* mistral_general = mistral_read_general_section(magic_file);
-    mistral_log_general_section(mistral_general);
+    MistralGeneral* general = mistral_read_general_section(magic_file);
+    mistral_log_general_section(general);
 
     // Read the models parameters section
     MistralParameters* parameters = mistral_read_parameters_section(magic_file);
+    mistral_log_parameters_section(parameters);
 
     // Close the model file
     if (MAGIC_SUCCESS != magic_file_close(magic_file)) {
@@ -54,8 +55,8 @@ int main(int argc, char* argv[]) {
 
     // Cleanup
     mistral_free_parameters_section(parameters);
-    mistral_free_general_section(mistral_general);
-    mistral_free_start_section(mistral_magic);
+    mistral_free_general_section(general);
+    mistral_free_start_section(header);
 
     return MAGIC_SUCCESS;
 }
