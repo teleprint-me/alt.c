@@ -223,7 +223,7 @@ MagicState magic_file_read_end_marker(MagicFile* magic_file);
 MagicState magic_file_read_bool_field(MagicFile* magic_file, bool* field);
 MagicState magic_file_read_int_field(MagicFile* magic_file, int32_t* field);
 MagicState magic_file_read_float_field(MagicFile* magic_file, float* field);
-MagicState magic_file_read_string_field(MagicFile* magic_file, char** string);
+MagicState magic_file_read_string_field(MagicFile* magic_file, char** field);
 
 // ------------------------ Magic Macro Functions ------------------------
 

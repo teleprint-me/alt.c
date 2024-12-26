@@ -341,7 +341,7 @@ MagicState magic_file_read_float_field(MagicFile* file, float* field) {
     return MAGIC_SUCCESS;
 }
 
-MagicState magic_file_read_string_field(MagicFile* file, char** string) {
+MagicState magic_file_read_string_field(MagicFile* file, char** field) {
     int32_t length = 0;
 
     // Read the length of the string
@@ -351,22 +351,22 @@ MagicState magic_file_read_string_field(MagicFile* file, char** string) {
     }
 
     // Allocate memory for the string (length + 1 for null terminator)
-    *string = (char*) malloc((length + 1) * sizeof(char));
-    if (!*string) {
+    *field = (char*) malloc((length + 1) * sizeof(char));
+    if (!*field) {
         LOG_ERROR("%s: Memory allocation failed for string.", __func__);
         return MAGIC_ERROR;
     }
 
     // Read the string data
-    if ((size_t) length != fread(*string, sizeof(char), length, file->data)) {
+    if ((size_t) length != fread(*field, sizeof(char), length, file->data)) {
         LOG_ERROR("%s: Failed to read string data.", __func__);
-        free(*string);
-        *string = NULL;  // Prevent dangling pointers
+        free(*field);
+        *field = NULL;  // Prevent dangling pointers
         return MAGIC_FILE_ERROR;
     }
 
     // Null-terminate the string
-    (*string)[length] = '\0';
+    (*field)[length] = '\0';
 
     return MAGIC_SUCCESS;
 }
