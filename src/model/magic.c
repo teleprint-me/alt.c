@@ -317,11 +317,35 @@ MagicState magic_file_read_end_marker(MagicFile* magic) {
 
 // Handle magic fields
 
-MagicState magic_file_read_string_field(MagicFile* magic, char** string) {
+MagicState magic_file_read_bool_field(MagicFile* file, bool* field) {
+    if (fread(field, sizeof(bool), 1, file->data) != 1) {
+        LOG_ERROR("%s: Failed to read bool field.", __func__);
+        return MAGIC_FILE_ERROR;
+    }
+    return MAGIC_SUCCESS;
+}
+
+MagicState magic_file_read_int_field(MagicFile* file, int32_t* field) {
+    if (fread(field, sizeof(int32_t), 1, file->data) != 1) {
+        LOG_ERROR("%s: Failed to read int32_t field.", __func__);
+        return MAGIC_FILE_ERROR;
+    }
+    return MAGIC_SUCCESS;
+}
+
+MagicState magic_file_read_float_field(MagicFile* file, float* field) {
+    if (fread(field, sizeof(float), 1, file->data) != 1) {
+        LOG_ERROR("%s: Failed to read float field.", __func__);
+        return MAGIC_FILE_ERROR;
+    }
+    return MAGIC_SUCCESS;
+}
+
+MagicState magic_file_read_string_field(MagicFile* file, char** string) {
     int32_t length = 0;
 
     // Read the length of the string
-    if (fread(&length, sizeof(int32_t), 1, magic->data) != 1) {
+    if (fread(&length, sizeof(int32_t), 1, file->data) != 1) {
         LOG_ERROR("%s: Failed to read string length.", __func__);
         return MAGIC_FILE_ERROR;
     }
@@ -334,7 +358,7 @@ MagicState magic_file_read_string_field(MagicFile* magic, char** string) {
     }
 
     // Read the string data
-    if ((size_t) length != fread(*string, sizeof(char), length, magic->data)) {
+    if ((size_t) length != fread(*string, sizeof(char), length, file->data)) {
         LOG_ERROR("%s: Failed to read string data.", __func__);
         free(*string);
         *string = NULL;  // Prevent dangling pointers

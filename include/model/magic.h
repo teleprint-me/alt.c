@@ -12,8 +12,8 @@
  * the content of the file.
  */
 
-#ifndef ALT_MODEL_FILE_H
-#define ALT_MODEL_FILE_H
+#ifndef ALT_MODEL_MAGIC_H
+#define ALT_MODEL_MAGIC_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -219,6 +219,32 @@ MagicState magic_file_read_end_marker(MagicFile* magic);
 
 // ------------------------ Magic Field Functions ------------------------
 
-MagicState magic_file_read_string_field(MagicFile* magic, char** string);
+MagicState magic_file_read_bool_field(MagicFile* file, bool* field);
+MagicState magic_file_read_int_field(MagicFile* file, int32_t* field);
+MagicState magic_file_read_float_field(MagicFile* file, float* field);
+MagicState magic_file_read_string_field(MagicFile* file, char** string);
 
-#endif // ALT_MODEL_FILE_H
+// ------------------------ Magic Macro Functions ------------------------
+
+/// @note These macros must be used within a function call.
+
+#define MAGIC_READ_FIELD(magic_file, struct_ptr, field, read_func, field_type, label, free_callback) \
+    if (MAGIC_SUCCESS != read_func(magic_file, &struct_ptr->field)) { \
+        LOG_ERROR("%s: Failed to read field '%s' in section '%s'.\n", __func__, #field, label); \
+        free_callback(struct_ptr); \
+        return NULL; \
+    }
+
+#define MAGIC_READ_BOOL(magic_file, struct_ptr, bool_field, label, free_callback) \
+    MAGIC_READ_FIELD(magic_file, struct_ptr, bool_field, magic_file_read_bool_field, bool, label, free_callback)
+
+#define MAGIC_READ_INT32(magic_file, struct_ptr, int32_field, label, free_callback) \
+    MAGIC_READ_FIELD(magic_file, struct_ptr, int32_field, magic_file_read_int_field, int32_t, label, free_callback)
+
+#define MAGIC_READ_FLOAT(magic_file, struct_ptr, float_field, label, free_callback) \
+    MAGIC_READ_FIELD(magic_file, struct_ptr, float_field, magic_file_read_float_field, float, label, free_callback)
+
+#define MAGIC_READ_STRING(magic_file, struct_ptr, string_field, label, free_callback) \
+    MAGIC_READ_FIELD(magic_file, struct_ptr, string_field, magic_file_read_string_field, char*, label, free_callback)
+
+#endif // ALT_MODEL_MAGIC_H
