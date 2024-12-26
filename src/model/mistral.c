@@ -54,45 +54,45 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
 
     // Read the general section fields
     if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->model_type)) {
-        LOG_ERROR("Failed to read model_type from general section.");
+        LOG_ERROR("%s: Failed to read model_type from general section.\n", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
     if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->model_base)) {
-        LOG_ERROR("Failed to read model_base from general section.");
+        LOG_ERROR("%s: Failed to read model_base from general section.\n", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
     if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->author)) {
-        LOG_ERROR("Failed to read author from general section.");
+        LOG_ERROR("%s: Failed to read author from general section.", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
     if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->created_at)) {
-        LOG_ERROR("Failed to read created_at from general section.");
+        LOG_ERROR("%s: Failed to read created_at from general section.", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
     if (MAGIC_SUCCESS
         != magic_file_read_string_field(magic_file, &mistral_general->last_modified)) {
-        LOG_ERROR("Failed to read last_modified from general section.");
+        LOG_ERROR("%s: Failed to read last_modified from general section.", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
     if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->license)) {
-        LOG_ERROR("Failed to read license from general section.");
+        LOG_ERROR("%s: Failed to read license from general section.", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
     if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->uuid)) {
-        LOG_ERROR("Failed to read uuid from general section.");
+        LOG_ERROR("%s: Failed to read uuid from general section.", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
-        // magic_file_pad logs the issue for us
+        LOG_ERROR("%s: Failed to read alignment padding.\n", __func__);
         mistral_free_general_section(mistral_general);
         return NULL;
     }
