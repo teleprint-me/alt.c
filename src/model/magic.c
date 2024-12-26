@@ -317,35 +317,35 @@ MagicState magic_file_read_end_marker(MagicFile* magic_file) {
 
 // Handle magic fields
 
-MagicState magic_file_read_bool_field(MagicFile* file, bool* field) {
-    if (fread(field, sizeof(bool), 1, file->data) != 1) {
+MagicState magic_file_read_bool_field(MagicFile* magic_file, bool* field) {
+    if (fread(field, sizeof(bool), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to read bool field.", __func__);
         return MAGIC_FILE_ERROR;
     }
     return MAGIC_SUCCESS;
 }
 
-MagicState magic_file_read_int_field(MagicFile* file, int32_t* field) {
-    if (fread(field, sizeof(int32_t), 1, file->data) != 1) {
+MagicState magic_file_read_int_field(MagicFile* magic_file, int32_t* field) {
+    if (fread(field, sizeof(int32_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to read int32_t field.", __func__);
         return MAGIC_FILE_ERROR;
     }
     return MAGIC_SUCCESS;
 }
 
-MagicState magic_file_read_float_field(MagicFile* file, float* field) {
-    if (fread(field, sizeof(float), 1, file->data) != 1) {
+MagicState magic_file_read_float_field(MagicFile* magic_file, float* field) {
+    if (fread(field, sizeof(float), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to read float field.", __func__);
         return MAGIC_FILE_ERROR;
     }
     return MAGIC_SUCCESS;
 }
 
-MagicState magic_file_read_string_field(MagicFile* file, char** field) {
+MagicState magic_file_read_string_field(MagicFile* magic_file, char** field) {
     int32_t length = 0;
 
     // Read the length of the string
-    if (fread(&length, sizeof(int32_t), 1, file->data) != 1) {
+    if (fread(&length, sizeof(int32_t), 1, magic_file->data) != 1) {
         LOG_ERROR("%s: Failed to read string length.", __func__);
         return MAGIC_FILE_ERROR;
     }
@@ -358,7 +358,7 @@ MagicState magic_file_read_string_field(MagicFile* file, char** field) {
     }
 
     // Read the string data
-    if ((size_t) length != fread(*field, sizeof(char), length, file->data)) {
+    if ((size_t) length != fread(*field, sizeof(char), length, magic_file->data)) {
         LOG_ERROR("%s: Failed to read string data.", __func__);
         free(*field);
         *field = NULL;  // Prevent dangling pointers
