@@ -118,14 +118,36 @@ void mistral_log_general_section(MistralGeneral* general) {
 }
 
 MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
-    // Read the models parameters section
+    const char* label = "parameters"; // Section label for logging
+
     MistralParameters* parameters = (MistralParameters*) malloc(sizeof(MistralParameters));
     if (!parameters) {
         LOG_ERROR("%s: Failed to allocate memory for MistralParameters.\n", __func__);
-        return MAGIC_ERROR;
+        return NULL;
     }
 
-    // Read the string field since it's first
+    // Read fields using generalized macros
+    MAGIC_READ_STRING(magic_file, parameters, hidden_act, label, mistral_free_parameters_section);
+    MAGIC_READ_BOOL(magic_file, parameters, tie_word_embeddings, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, hidden_size, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, intermediate_size, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, max_position_embeddings, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, num_attention_heads, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, num_hidden_layers, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, num_key_value_heads, label, mistral_free_parameters_section);
+    MAGIC_READ_INT32(magic_file, parameters, sliding_window, label, mistral_free_parameters_section);
+    MAGIC_READ_FLOAT(magic_file, parameters, rope_theta, label, mistral_free_parameters_section);
+    MAGIC_READ_FLOAT(magic_file, parameters, rms_norm_eps, label, mistral_free_parameters_section);
+    MAGIC_READ_FLOAT(magic_file, parameters, initializer_range, label, mistral_free_parameters_section);
 
     return parameters;
+}
+
+void mistral_free_parameters_section(MistralParameters* parameters) {
+    if (parameters) {
+        if (parameters->hidden_act) {
+            free(parameters->hidden_act); // I think this would be the only allocated field here
+        }
+        free(parameters); // just free the struct since we only allocate mem to 1 field
+    }
 }
