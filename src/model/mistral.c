@@ -18,24 +18,24 @@
 
 MistralMagic* mistral_read_start_section(MagicFile* magic_file) {
     // Allocate memory for start section
-    MistralMagic* mistral_magic = (MistralMagic*) malloc(sizeof(MistralMagic));
-    if (!mistral_magic) {
+    MistralMagic* header = (MistralMagic*) malloc(sizeof(MistralMagic));
+    if (!header) {
         LOG_ERROR("%s: Failed to allocate memory to MistralMagic.\n", __func__);
         return NULL;
     }
 
     // Set default values
-    mistral_magic->version = MAGIC_VERSION;
-    mistral_magic->alignment = MAGIC_ALIGNMENT;
+    header->version = MAGIC_VERSION;
+    header->alignment = MAGIC_ALIGNMENT;
 
     // Read the start section (note that this aligns padding for us)
-    magic_file_read_start_marker(magic_file, &mistral_magic->version, &mistral_magic->alignment);
-    return mistral_magic;
+    magic_file_read_start_marker(magic_file, &header->version, &header->alignment);
+    return header;
 }
 
-void mistral_free_start_section(MistralMagic* mistral_magic) {
-    if (mistral_magic) {
-        free(mistral_magic);
+void mistral_free_start_section(MistralMagic* header) {
+    if (header) {
+        free(header);
     }
 }
 
@@ -57,21 +57,21 @@ void mistral_free_start_section(MistralMagic* mistral_magic) {
 
 MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     // Allocate memory for general section
-    MistralGeneral* mistral_general = (MistralGeneral*) malloc(sizeof(MistralGeneral));
-    if (!mistral_general) {
+    MistralGeneral* general = (MistralGeneral*) malloc(sizeof(MistralGeneral));
+    if (!general) {
         LOG_ERROR("%s: Failed to allocate memory to MistralGeneral.\n", __func__);
         return NULL;
     }
 
     // Read the general section header
-    int64_t general_marker = 0;
-    int64_t general_size = 0;
-    magic_file_read_section_marker(magic_file, &general_marker, &general_size);
+    int64_t marker = 0;
+    int64_t size = 0;
+    magic_file_read_section_marker(magic_file, &marker, &size);
 
     #define READ_FIELD(field) \
-        if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->field)) { \
+        if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &general->field)) { \
             LOG_ERROR("Failed to read " #field " from general section."); \
-            mistral_free_general_section(mistral_general); \
+            mistral_free_general_section(general); \
             return NULL; \
         }
 
@@ -83,20 +83,20 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
         LOG_ERROR("%s: Failed to read alignment padding.\n", __func__);
-        mistral_free_general_section(mistral_general);
+        mistral_free_general_section(general);
         return NULL;
     }
 
     // Return the models section
-    return mistral_general;
+    return general;
 }
 
-void mistral_free_general_section(MistralGeneral* mistral_general) {
-    if (mistral_general) {
+void mistral_free_general_section(MistralGeneral* general) {
+    if (general) {
         // free strings first
         #define FREE_FIELD(field) \
-            if (mistral_general->field) { \
-                free(mistral_general->field); \
+            if (general->field) { \
+                free(general->field); \
             }
 
         #define FIELD(field) FREE_FIELD(field)
@@ -104,15 +104,28 @@ void mistral_free_general_section(MistralGeneral* mistral_general) {
         #undef FIELD
 
         // free the section structure
-        free(mistral_general);
+        free(general);
     }
 }
 
-void mistral_log_general_section(MistralGeneral* mistral_general) {
+void mistral_log_general_section(MistralGeneral* general) {
     #define LOG_FIELD(field) \
-        LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, mistral_general->field);
+        LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, general->field);
 
     #define FIELD(field) LOG_FIELD(field)
     MISTRAL_FOREACH_GENERAL_FIELD
     #undef FIELD
+}
+
+MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
+    // Read the models parameters section
+    MistralParameters* parameters = (MistralParameters*) malloc(sizeof(MistralParameters));
+    if (!parameters) {
+        LOG_ERROR("%s: Failed to allocate memory for MistralParameters.\n", __func__);
+        return MAGIC_ERROR;
+    }
+
+    // Read the string field since it's first
+
+    return parameters;
 }
