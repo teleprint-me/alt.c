@@ -68,7 +68,7 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     int64_t size = 0;
     magic_file_read_section_marker(magic_file, &marker, &size);
 
-    #define READ_FIELD(field) \
+    #define READ_STRING(field) \
         if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &general->field)) { \
             LOG_ERROR("Failed to read " #field " from general section."); \
             mistral_free_general_section(general); \
@@ -76,7 +76,7 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
         }
 
     // Read the general section fields
-    #define FIELD(field) READ_FIELD(field)
+    #define FIELD(field) READ_STRING(field)
     MISTRAL_FOREACH_GENERAL_FIELD
     #undef FIELD
 
@@ -117,6 +117,20 @@ void mistral_log_general_section(MistralGeneral* general) {
     #undef FIELD
 }
 
+#define MISTRAL_FOREACH_PARAM_INT32_FIELD \
+    FIELD(hidden_size) \
+    FIELD(intermediate_size) \
+    FIELD(max_position_embeddings) \
+    FIELD(num_attention_heads) \
+    FIELD(num_hidden_layers) \
+    FIELD(num_key_value_heads) \
+    FIELD(sliding_window)
+
+#define MISTRAL_FOREACH_PARAM_FLOAT_FIELD \
+    FIELD(rms_norm_eps) \
+    FIELD(rope_theta) \
+    FIELD(initializer_range)
+
 MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
     const char* label = "parameters"; // Section label for logging
 
@@ -131,19 +145,23 @@ MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
     int64_t size = 0;
     magic_file_read_section_marker(magic_file, &marker, &size);
 
+    #define READ_INT32(field) \
+        MAGIC_READ_INT32(magic_file, parameters, field, label, mistral_free_parameters_section)
+
+    #define READ_FLOAT(field) \
+        MAGIC_READ_FLOAT(magic_file, parameters, field, label, mistral_free_parameters_section);
+
     // Read fields using generalized macros
     MAGIC_READ_STRING(magic_file, parameters, hidden_act, label, mistral_free_parameters_section);
     MAGIC_READ_BOOL(magic_file, parameters, tie_word_embeddings, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, hidden_size, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, intermediate_size, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, max_position_embeddings, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, num_attention_heads, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, num_hidden_layers, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, num_key_value_heads, label, mistral_free_parameters_section);
-    MAGIC_READ_INT32(magic_file, parameters, sliding_window, label, mistral_free_parameters_section);
-    MAGIC_READ_FLOAT(magic_file, parameters, rope_theta, label, mistral_free_parameters_section);
-    MAGIC_READ_FLOAT(magic_file, parameters, rms_norm_eps, label, mistral_free_parameters_section);
-    MAGIC_READ_FLOAT(magic_file, parameters, initializer_range, label, mistral_free_parameters_section);
+
+    #define FIELD(field) READ_INT32(field)
+    MISTRAL_FOREACH_PARAM_INT32_FIELD
+    #undef FIELD
+
+    #define FIELD(field) READ_FLOAT(field)
+    MISTRAL_FOREACH_PARAM_FLOAT_FIELD
+    #undef FIELD
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -162,4 +180,23 @@ void mistral_free_parameters_section(MistralParameters* parameters) {
         }
         free(parameters); // just free the struct since we only allocate mem to 1 field
     }
+}
+
+void mistral_log_parameters_section(MistralParameters* parameters) {
+    #define LOG_INT32(field) \
+        LOG_INFO("%s: Section: Parameters, Field: " #field "=%d\n", __func__, parameters->field);
+
+    #define LOG_FLOAT(field) \
+        LOG_INFO("%s: Section: Parameters, Field: " #field "=%.6f\n", __func__, (double) parameters->field);
+
+    LOG_INFO("%s: Section: Parameters, Field: hidden_act=%s\n", __func__, parameters->hidden_act);
+    LOG_INFO("%s: Section: Parameters, Field: tie_word_embeddings=%d\n", __func__, parameters->tie_word_embeddings);
+
+    #define FIELD(field) LOG_INT32(field)
+    MISTRAL_FOREACH_PARAM_INT32_FIELD
+    #undef FIELD
+
+    #define FIELD(field) LOG_FLOAT(field)
+    MISTRAL_FOREACH_PARAM_FLOAT_FIELD
+    #undef FIELD
 }
