@@ -52,43 +52,21 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     int64_t general_size = 0;
     magic_file_read_section_marker(magic_file, &general_marker, &general_size);
 
+    #define READ_FIELD(field) \
+        if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->field)) { \
+            LOG_ERROR("Failed to read " #field " from general section."); \
+            mistral_free_general_section(mistral_general); \
+            return NULL; \
+        }
+
     // Read the general section fields
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->model_type)) {
-        LOG_ERROR("%s: Failed to read model_type from general section.\n", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->model_base)) {
-        LOG_ERROR("%s: Failed to read model_base from general section.\n", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->author)) {
-        LOG_ERROR("%s: Failed to read author from general section.", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->created_at)) {
-        LOG_ERROR("%s: Failed to read created_at from general section.", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
-    if (MAGIC_SUCCESS
-        != magic_file_read_string_field(magic_file, &mistral_general->last_modified)) {
-        LOG_ERROR("%s: Failed to read last_modified from general section.", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->license)) {
-        LOG_ERROR("%s: Failed to read license from general section.", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
-    if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &mistral_general->uuid)) {
-        LOG_ERROR("%s: Failed to read uuid from general section.", __func__);
-        mistral_free_general_section(mistral_general);
-        return NULL;
-    }
+    READ_FIELD(model_type);
+    READ_FIELD(model_base);
+    READ_FIELD(author);
+    READ_FIELD(created_at);
+    READ_FIELD(last_modified);
+    READ_FIELD(license);
+    READ_FIELD(uuid);
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -104,28 +82,33 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
 void mistral_free_general_section(MistralGeneral* mistral_general) {
     if (mistral_general) {
         // free strings first
-        if (mistral_general->uuid) {
-            free(mistral_general->uuid);
-        }
-        if (mistral_general->license) {
-            free(mistral_general->license);
-        }
-        if (mistral_general->last_modified) {
-            free(mistral_general->last_modified);
-        }
-        if (mistral_general->created_at) {
-            free(mistral_general->created_at);
-        }
-        if (mistral_general->author) {
-            free(mistral_general->author);
-        }
-        if (mistral_general->model_base) {
-            free(mistral_general->model_base);
-        }
-        if (mistral_general->model_type) {
-            free(mistral_general->model_type);
-        }
+        #define FREE_FIELD(field) \
+            if (mistral_general->field) { \
+                free(mistral_general->field); \
+            }
+
+        FREE_FIELD(model_type);
+        FREE_FIELD(model_base);
+        FREE_FIELD(author);
+        FREE_FIELD(created_at);
+        FREE_FIELD(last_modified);
+        FREE_FIELD(license);
+        FREE_FIELD(uuid);
+
         // free the section structure
         free(mistral_general);
     }
+}
+
+void mistral_log_general_section(MistralGeneral* mistral_general) {
+    #define LOG_FIELD(field) \
+        LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, mistral_general->field);
+
+    LOG_FIELD(model_type);
+    LOG_FIELD(model_base);
+    LOG_FIELD(author);
+    LOG_FIELD(created_at);
+    LOG_FIELD(last_modified);
+    LOG_FIELD(license);
+    LOG_FIELD(uuid);
 }

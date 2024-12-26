@@ -41,14 +41,7 @@ int main(int argc, char* argv[]) {
 
     // Read the models general section
     MistralGeneral* mistral_general = mistral_read_general_section(magic_file);
-    // Log and observe results
-    LOG_INFO("%s: Section: general, Field: model_type=%s\n", __func__, mistral_general->model_type);
-    LOG_INFO("%s: Section: general, Field: model_base=%s\n", __func__, mistral_general->model_base);
-    LOG_INFO("%s: Section: general, Field: author=%s\n", __func__, mistral_general->author);
-    LOG_INFO("%s: Section: general, Field: created_at=%s\n", __func__, mistral_general->created_at);
-    LOG_INFO("%s: Section: general, Field: last_modified=%s\n", __func__, mistral_general->last_modified);
-    LOG_INFO("%s: Section: general, Field: license=%s\n", __func__, mistral_general->license);
-    LOG_INFO("%s: Section: general, Field: uuid=%s\n", __func__, mistral_general->uuid);
+    mistral_log_general_section(mistral_general);
 
     // MistralParameters parameters = {0};
 

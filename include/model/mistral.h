@@ -96,5 +96,6 @@ void mistral_free_start_section(MistralMagic* mistral_magic);
 
 MistralGeneral* mistral_read_general_section(MagicFile* magic_file);
 void mistral_free_general_section(MistralGeneral* mistral_general);
+void mistral_log_general_section(MistralGeneral* mistral_general);
 
 #endif // ALT_MODEL_MISTRAL_H
