@@ -56,6 +56,8 @@ void mistral_free_start_section(MistralMagic* header) {
     FIELD(uuid)
 
 MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
+    const char* label = "general"; // Section label for logging
+
     // Allocate memory for general section
     MistralGeneral* general = (MistralGeneral*) malloc(sizeof(MistralGeneral));
     if (!general) {
@@ -69,11 +71,7 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     magic_file_read_section_marker(magic_file, &marker, &size);
 
     #define READ_STRING(field) \
-        if (MAGIC_SUCCESS != magic_file_read_string_field(magic_file, &general->field)) { \
-            LOG_ERROR("Failed to read " #field " from general section."); \
-            mistral_free_general_section(general); \
-            return NULL; \
-        }
+        MAGIC_READ_STRING(magic_file, general, field, label, mistral_free_general_section)
 
     // Read the general section fields
     #define FIELD(field) READ_STRING(field)
