@@ -37,14 +37,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Read the models magic header
-    MistralMagic* mistral_magic = (MistralMagic*) malloc(sizeof(MistralMagic));
-    if (!mistral_magic) {
-        LOG_ERROR("%s: Failed to allocate memory to MistralMagic.\n", __func__);
-        return MAGIC_ERROR;
-    }
-    mistral_magic->version = MAGIC_VERSION;
-    mistral_magic->alignment = MAGIC_ALIGNMENT;
-    magic_file_read_start_marker(magic_file, &mistral_magic->version, &mistral_magic->alignment);
+    MistralMagic* mistral_magic = mistral_read_start_marker(magic_file);
 
     // Read the models general section
     MistralGeneral* mistral_general = (MistralGeneral*) malloc(sizeof(MistralGeneral));
