@@ -126,6 +126,11 @@ MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
         return NULL;
     }
 
+    // Read the parameters section header
+    int64_t marker = 0;
+    int64_t size = 0;
+    magic_file_read_section_marker(magic_file, &marker, &size);
+
     // Read fields using generalized macros
     MAGIC_READ_STRING(magic_file, parameters, hidden_act, label, mistral_free_parameters_section);
     MAGIC_READ_BOOL(magic_file, parameters, tie_word_embeddings, label, mistral_free_parameters_section);
@@ -139,6 +144,13 @@ MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
     MAGIC_READ_FLOAT(magic_file, parameters, rope_theta, label, mistral_free_parameters_section);
     MAGIC_READ_FLOAT(magic_file, parameters, rms_norm_eps, label, mistral_free_parameters_section);
     MAGIC_READ_FLOAT(magic_file, parameters, initializer_range, label, mistral_free_parameters_section);
+
+    // We must align the padding for the next section
+    if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
+        LOG_ERROR("%s: Failed to read alignment padding.\n", __func__);
+        mistral_free_parameters_section(parameters);
+        return NULL;
+    }
 
     return parameters;
 }
