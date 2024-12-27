@@ -39,13 +39,6 @@ void mistral_free_start_section(MistralMagic* header) {
     }
 }
 
-/**
- * This macro-driven approach is specific to the general section,
- * which is uniform (all fields are char*). It simplifies the logic
- * for reading, logging, and freeing fields. While it’s currently
- * unique to this section, it may serve as a reference or template
- * for similar patterns in future code.
- */
 #define MISTRAL_FOREACH_GENERAL_FIELD \
     FIELD(model_type) \
     FIELD(model_base) \
@@ -198,4 +191,65 @@ void mistral_log_parameters_section(MistralParameters* parameters) {
     #define FIELD(field) LOG_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
     #undef FIELD
+}
+
+#define MISTRAL_FOREACH_TOKEN_INT32_FIELD \
+    FIELD(vocab_size) \
+    FIELD(bos_id) \
+    FIELD(eos_id) \
+    FIELD(pad_id) \
+    FIELD(unk_id)
+
+Token* mistral_read_token(MagicFile* magic_file) {
+    Token* token = (Token*) malloc(sizeof(Token));
+    if (!token) {
+        return NULL;
+    }
+
+    return token;
+}
+
+TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
+    const char* label = "tokenizer"; // Section label for logging
+
+    TokenizerModel* tokenizer = (TokenizerModel*) malloc(sizeof(TokenizerModel));
+    if (!tokenizer) {
+        LOG_ERROR("%s: Failed to allocate memory for TokenizerModel.\n", __func__);
+        return NULL;
+    }
+
+    // Read the tokenizer section header
+    int64_t marker = 0;
+    int64_t size = 0;
+    magic_file_read_section_marker(magic_file, &marker, &size);
+
+    #define READ_INT32(field) \
+        MAGIC_READ_INT32(magic_file, tokenizer, field, label, mistral_free_tokenizer_section)
+
+    #define FIELD(field) READ_INT32(field)
+    MISTRAL_FOREACH_TOKEN_INT32_FIELD
+    #undef FIELD
+
+    for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
+        Token* token = mistral_read_token(magic_file);
+        if (!token) {
+            return NULL;
+        }
+        tokenizer->tokens[i] = token;
+    }
+
+    // We must align the padding for the next section
+    if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
+        LOG_ERROR("%s: Failed to read alignment padding.\n", __func__);
+        mistral_free_tokenizer_section(tokenizer);
+        return NULL;
+    }
+
+    return tokenizer;
+}
+
+void mistral_free_tokenizer_section(TokenizerModel* tokenizer) {
+    if (tokenizer) {
+        free(tokenizer);
+    }
 }

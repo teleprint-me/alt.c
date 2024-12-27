@@ -62,20 +62,19 @@ typedef enum TokenType {
 } TokenType;
 
 typedef struct Token {
-    float score;
-    int32_t length;
-    TokenType type;
-    char* piece;
+    int32_t length; // Length of the token string
+    char* data; // UTF-8 encoded string (dynamically allocated)
+    float score; // Score associated with the token
+    TokenType type; // Type of the token (e.g., NORMAL, BOS, EOS)
 } Token;
 
 typedef struct TokenizerModel {
-    int32_t vocab_size;
-    int32_t bos_id;
-    int32_t eos_id;
-    int32_t pad_id;
-    int32_t unk_id;
-    int32_t seq_len;
-    Token** tokens;
+    int32_t vocab_size; // Total number of tokens
+    int32_t bos_id; // Beginning-of-sequence token ID
+    int32_t eos_id; // End-of-sequence token ID
+    int32_t pad_id; // Padding token ID
+    int32_t unk_id; // Unknown token ID
+    Token** tokens; // Array of Token structs
 } TokenizerModel;
 
 /// @todo TensorsModel
