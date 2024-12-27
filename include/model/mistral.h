@@ -43,6 +43,7 @@ typedef struct MistralParameters {
     int32_t num_hidden_layers;
     int32_t num_key_value_heads;
     int32_t sliding_window;
+    int32_t head_size;
     float rope_theta;
     float rms_norm_eps;
     float initializer_range;

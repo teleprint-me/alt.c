@@ -122,7 +122,8 @@ void mistral_log_general_section(MistralGeneral* general) {
     FIELD(num_attention_heads) \
     FIELD(num_hidden_layers) \
     FIELD(num_key_value_heads) \
-    FIELD(sliding_window)
+    FIELD(sliding_window) \
+    FIELD(head_size)
 
 #define MISTRAL_FOREACH_PARAM_FLOAT_FIELD \
     FIELD(rms_norm_eps) \
