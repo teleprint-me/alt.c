@@ -6,7 +6,7 @@ A transformer model built completely from scratch in C.
 
 ## Dependencies
 
-### System Dependencies
+### Library Dependencies
 
 - `cmake`: Tool for managing source code building
 - `libc`: Standard C library
@@ -17,7 +17,7 @@ A transformer model built completely from scratch in C.
 - `uthash`: Hash tables for C structures
 - `stb`: Image loading/decoding library
 
-### System Requirements
+### Library Requirements
 
 - Any Linux distribution should work.
 - Officially supports Arch Linux.
