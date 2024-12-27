@@ -150,6 +150,7 @@ MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
     #define FIELD(field) READ_INT32(field)
     MISTRAL_FOREACH_PARAM_INT32_FIELD
     #undef FIELD
+    #undef READ_INT32
 
     #define FIELD(field) READ_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
@@ -187,10 +188,42 @@ void mistral_log_parameters_section(MistralParameters* parameters) {
     #define FIELD(field) LOG_INT32(field)
     MISTRAL_FOREACH_PARAM_INT32_FIELD
     #undef FIELD
+    #undef LOG_INT32
 
     #define FIELD(field) LOG_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
     #undef FIELD
+}
+
+Token* mistral_read_token(MagicFile* magic_file) {
+    const char* label = "token"; // Section label for logging
+
+    Token* token = (Token*) malloc(sizeof(Token));
+    if (!token) {
+        LOG_ERROR("%s: Failed to allocate memory for Token.\n", __func__);
+        return NULL;
+    }
+
+    // Read string data
+    MAGIC_READ_STRING(magic_file, token, data, label, mistral_free_token);
+    token->length = (int32_t) strlen(token->data); // this is blocked if read string fails
+
+    // Read token score
+    MAGIC_READ_FLOAT(magic_file, token, score, label, mistral_free_token);
+
+    // Read token type
+    MAGIC_READ_INT32(magic_file, token, type, label, mistral_free_token);
+
+    return token;
+}
+
+void mistral_free_token(Token* token) {
+    if (token) {
+        if (token->data) {
+            free(token->data);
+        }
+        free(token);
+    }
 }
 
 #define MISTRAL_FOREACH_TOKEN_INT32_FIELD \
@@ -199,15 +232,6 @@ void mistral_log_parameters_section(MistralParameters* parameters) {
     FIELD(eos_id) \
     FIELD(pad_id) \
     FIELD(unk_id)
-
-Token* mistral_read_token(MagicFile* magic_file) {
-    Token* token = (Token*) malloc(sizeof(Token));
-    if (!token) {
-        return NULL;
-    }
-
-    return token;
-}
 
 TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
     const char* label = "tokenizer"; // Section label for logging
@@ -229,10 +253,29 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
     #define FIELD(field) READ_INT32(field)
     MISTRAL_FOREACH_TOKEN_INT32_FIELD
     #undef FIELD
+    #undef READ_INT32
+
+    // Mistrals vocab size (32000) is already predetermined
+    if (tokenizer->vocab_size <= 0 || tokenizer->vocab_size > 32000) {
+        LOG_ERROR("%s: Invalid vocab_size %d.\n", __func__, tokenizer->vocab_size);
+        mistral_free_tokenizer_section(tokenizer);
+        return NULL;
+    }
+
+    // Allocate memory for tokens array
+    tokenizer->tokens = (Token**) malloc(tokenizer->vocab_size * sizeof(Token*));
+    if (!tokenizer->tokens) {
+        LOG_ERROR("%s: Failed to allocate memory for tokens array.\n", __func__);
+        free(tokenizer);
+        return NULL;
+    }
 
     for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
+        LOG_DEBUG("%s: Reading token %d/%d.\n", __func__, i + 1, tokenizer->vocab_size);
         Token* token = mistral_read_token(magic_file);
         if (!token) {
+            LOG_ERROR("%s: Failed to read token %d.\n", __func__, i + 1);
+            mistral_free_tokenizer_section(tokenizer);
             return NULL;
         }
         tokenizer->tokens[i] = token;
@@ -250,6 +293,30 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
 
 void mistral_free_tokenizer_section(TokenizerModel* tokenizer) {
     if (tokenizer) {
+        if (tokenizer->tokens) {
+            for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
+                mistral_free_token(tokenizer->tokens[i]);
+            }
+            free(tokenizer->tokens);
+        }
         free(tokenizer);
+    }
+}
+
+void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
+    #define LOG_INT32(field) \
+        LOG_INFO("%s: Section: Tokenizer, Field: " #field "=%d\n", __func__, tokenizer->field);
+
+    #define FIELD(field) LOG_INT32(field)
+    MISTRAL_FOREACH_TOKEN_INT32_FIELD
+    #undef FIELD
+    #undef LOG_INT32
+
+    for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
+        Token* token = tokenizer->tokens[i];
+        LOG_INFO(
+            "%s: Token: length=%d, data=%s, score=%.6f, type=%d\n",
+            token->length, token->data, (double) token->score, token->type
+        );
     }
 }

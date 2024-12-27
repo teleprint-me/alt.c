@@ -47,6 +47,9 @@ int main(int argc, char* argv[]) {
     MistralParameters* parameters = mistral_read_parameters_section(magic_file);
     mistral_log_parameters_section(parameters);
 
+    TokenizerModel* tokenizer = mistral_read_tokenizer_section(magic_file);
+    mistral_log_tokenizer_section(tokenizer);
+
     // Close the model file
     if (MAGIC_SUCCESS != magic_file_close(magic_file)) {
         LOG_ERROR("%s: Failed to close model file: %s", __func__, magic_file->filepath);
@@ -54,6 +57,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Cleanup
+    mistral_free_tokenizer_section(tokenizer);
     mistral_free_parameters_section(parameters);
     mistral_free_general_section(general);
     mistral_free_start_section(header);

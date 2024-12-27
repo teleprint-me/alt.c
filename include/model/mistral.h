@@ -65,7 +65,7 @@ typedef struct Token {
     int32_t length; // Length of the token string
     char* data; // UTF-8 encoded string (dynamically allocated)
     float score; // Score associated with the token
-    TokenType type; // Type of the token (e.g., NORMAL, BOS, EOS)
+    int32_t type; // Type of the token (e.g., NORMAL, BOS, EOS)
 } Token;
 
 typedef struct TokenizerModel {
@@ -101,5 +101,11 @@ void mistral_log_general_section(MistralGeneral* general);
 MistralParameters* mistral_read_parameters_section(MagicFile* magic_file);
 void mistral_free_parameters_section(MistralParameters* parameters);
 void mistral_log_parameters_section(MistralParameters* parameters);
+
+Token* mistral_read_token(MagicFile* magic_file);
+void mistral_free_token(Token* token);
+TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file);
+void mistral_free_tokenizer_section(TokenizerModel* tokenizer);
+void mistral_log_tokenizer_section(TokenizerModel* tokenizer);
 
 #endif // ALT_MODEL_MISTRAL_H
