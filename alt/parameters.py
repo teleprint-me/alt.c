@@ -34,8 +34,8 @@ The Parameters Section includes three main parts: **Header**, **Fields**, and **
 | `num_hidden_layers`       | Number of transformer layers      | `int32`     | 4            | E.g., `32`                        |
 | `num_key_value_heads`     | Key-value heads for GQA           | `int32`     | 4            | Defaults to `num_attention_heads` |
 | `sliding_window`          | Sliding window size               | `int32`     | 4            | E.g., `4096`                      |
-| `rope_theta`              | Rotary embedding theta            | `float32`   | 4            | Default `10000.0`                 |
 | `rms_norm_eps`            | Epsilon for RMS normalization     | `float32`   | 4            | Default `1e-5`                    |
+| `rope_theta`              | Rotary embedding theta            | `float32`   | 4            | Default `10000.0`                 |
 | `initializer_range`       | Weight initialization range       | `float32`   | 4            | Optional                          |
 
 ##### **Derived Parameters**
@@ -207,6 +207,12 @@ class ParametersModel(BaseModel):
                 value = struct.unpack("i", self.alt_file.read(4))[0]
             elif field in float_t:
                 value = struct.unpack("f", self.alt_file.read(4))[0]
+            else:
+                raise ValueError(
+                    "Unexpected value type. Supported types are str, bool, int, and float."
+                )
+            if value is None:
+                raise ValueError("Value is NoneType.")
             metadata[field] = value
 
         # Read alignment padding
@@ -254,6 +260,7 @@ if __name__ == "__main__":
         general = GeneralModel(cli_params=cli_params)
         general.write_model()
 
+        # Write Parameters Section
         hparams = ParametersModel(cli_params=cli_params)
         hparams.write_model()
 
@@ -273,6 +280,7 @@ if __name__ == "__main__":
         # Read and validate General Section
         general_data = general.read_model()
 
+        # Read and validate Parameters Section
         hparams_data = hparams.read_model()
 
         # Read and validate End Marker
