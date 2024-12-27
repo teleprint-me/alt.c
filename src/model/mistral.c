@@ -312,11 +312,12 @@ void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
     #undef FIELD
     #undef LOG_INT32
 
+    LOG_INFO("%s: Tokenizer: %p", __func__, tokenizer->tokens);
     for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
         Token* token = tokenizer->tokens[i];
         LOG_INFO(
-            "%s: Token: length=%d, data=%s, score=%.6f, type=%d\n",
-            token->length, token->data, (double) token->score, token->type
+            "%s: Token: token=%p, length=%d, data=%s, score=%.6f, type=%d\n",
+            __func__, token, token->length, token->data, (double) token->score, token->type
         );
     }
 }
