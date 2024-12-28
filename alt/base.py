@@ -189,7 +189,7 @@ class BaseType:
     def __init__(self, cli_params: Optional[CLIParams] = None):
         self.cli_params = cli_params if cli_params else CLIParams()
         if not self.cli_params.logger:
-            self.cli_params.logger = get_default_logger(self.__name__, logging.INFO)
+            self.cli_params.logger = get_default_logger(self.__class__.__name__, logging.INFO)
         if self.cli_params.verbose:
             self.cli_params.logger.setLevel(logging.DEBUG)
         self.magic_type = MagicType()
