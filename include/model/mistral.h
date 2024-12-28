@@ -91,17 +91,21 @@ typedef struct MistralModel {
 
 // ------------------------ Model file functions ------------------------
 
+// Read the magic header
 MistralMagic* mistral_read_start_section(MagicFile* magic_file);
 void mistral_free_start_section(MistralMagic* header);
 
+// Read the general section
 MistralGeneral* mistral_read_general_section(MagicFile* magic_file);
 void mistral_free_general_section(MistralGeneral* general);
 void mistral_log_general_section(MistralGeneral* general);
 
+// Read the parameters section
 MistralParameters* mistral_read_parameters_section(MagicFile* magic_file);
 void mistral_free_parameters_section(MistralParameters* parameters);
 void mistral_log_parameters_section(MistralParameters* parameters);
 
+// Read the tokenizer section
 Token* mistral_read_token(MagicFile* magic_file);
 void mistral_free_token(Token* token);
 TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file);
