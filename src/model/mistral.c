@@ -70,6 +70,7 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     #define FIELD(field) READ_STRING(field)
     MISTRAL_FOREACH_GENERAL_FIELD
     #undef FIELD
+    #undef READ_STRING
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -93,6 +94,7 @@ void mistral_free_general_section(MistralGeneral* general) {
         #define FIELD(field) FREE_FIELD(field)
         MISTRAL_FOREACH_GENERAL_FIELD
         #undef FIELD
+        #undef FREE_FIELD
 
         // free the section structure
         free(general);
@@ -155,6 +157,7 @@ MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
     #define FIELD(field) READ_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
     #undef FIELD
+    #undef READ_FLOAT
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -193,6 +196,7 @@ void mistral_log_parameters_section(MistralParameters* parameters) {
     #define FIELD(field) LOG_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
     #undef FIELD
+    #undef LOG_FLOAT
 }
 
 Token* mistral_read_token(MagicFile* magic_file) {
@@ -270,6 +274,7 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
         return NULL;
     }
 
+    // Read and allocate tokens
     for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
         LOG_DEBUG("%s: Reading token %d/%d.\n", __func__, i + 1, tokenizer->vocab_size);
         Token* token = mistral_read_token(magic_file);
@@ -312,7 +317,7 @@ void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
     #undef FIELD
     #undef LOG_INT32
 
-    LOG_INFO("%s: Tokenizer: %p", __func__, tokenizer->tokens);
+    LOG_INFO("%s: Tokenizer: %p\n", __func__, tokenizer->tokens);
     for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
         Token* token = tokenizer->tokens[i];
         LOG_INFO(
