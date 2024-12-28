@@ -6,6 +6,7 @@ set(EXAMPLES
     "char"
     "utf8"
     "u8proc"
+    "hmap"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/scratchpad)
