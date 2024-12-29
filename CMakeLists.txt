@@ -44,13 +44,13 @@ set(
     # sources are still in early development
     C_SOURCES
     # Core tool kit
-    "src/logger.c"
-    "src/path.c"
-    "src/data_types.c"
-    "src/random.c"
-    "src/activation.c"
-    "src/flex_array.c"
-    "src/tensors.c"
+    "src/interface/logger.c"
+    "src/interface/path.c"
+    "src/interface/data_types.c"
+    "src/interface/random.c"
+    "src/interface/activation.c"
+    "src/interface/flex_array.c"
+    "src/tensors.c" # work in progress
     # Vulkan backend
     "src/vk/instance.c"
     "src/vk/device.c"
