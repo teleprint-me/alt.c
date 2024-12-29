@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/logger.c
+ * @file src/interface/logger.c
  *
  * @brief A simple and lightweight logger written in pure C
  *

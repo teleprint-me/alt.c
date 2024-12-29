@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/path.h
+ * @file src/interface/path.c
  *
  * @brief
  */

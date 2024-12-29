@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file include/random.h
+ * @file include/interface/random.h
  *
  * @brief Functions for generating random numbers and initializing model weights.
  *

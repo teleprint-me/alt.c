@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file include/data_types.h
+ * @file include/interface/data_types.h
  *
  * @brief API for numeric data types and conversions.
  *

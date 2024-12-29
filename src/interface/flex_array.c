@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/flex_array.c
+ * @file src/interface/flex_array.c
  *
  * @brief Dynamic, type-safe array implementation with bulk operations.
  *

@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file include/path.h
+ * @file include/interface/path.h
  *
  * @brief Path manipulation interface for C.
  */

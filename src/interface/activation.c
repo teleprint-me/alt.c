@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/activation.c
+ * @file src/interface/activation.c
  *
  * @brief Activation functions for neural networks.
  *
