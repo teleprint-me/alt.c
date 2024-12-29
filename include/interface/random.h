@@ -15,7 +15,7 @@
 
 #include <stdlib.h> // For rand and RAND_MAX
 
-#include "data_types.h" // For assert.h, math.h, and M_PI
+#include "interface/data_types.h" // For assert.h, math.h, and M_PI
 
 /**
  * @brief Seeds the random number generator.

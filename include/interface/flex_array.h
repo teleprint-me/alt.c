@@ -19,7 +19,7 @@
 extern "C" {
 #endif // __cplusplus
 
-#include "data_types.h"
+#include "interface/data_types.h"
 
 /**
  * @enum FlexState

@@ -12,7 +12,7 @@
 #ifndef ALT_ACTIVATION_H
 #define ALT_ACTIVATION_H
 
-#include "data_types.h" // For math.h, M_PI, etc.
+#include "interface/data_types.h" // For math.h, M_PI, etc.
 
 /**
  * @brief Binary Step Activation Function.
