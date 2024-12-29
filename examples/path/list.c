@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 
-#include "logger.h"
-#include "path.h"
+#include "interface/logger.h"
+#include "interface/path.h"
 
 // Function to list contents of a directory with depth limit
 void list_directory(const char* path, int current_depth, int max_depth) {

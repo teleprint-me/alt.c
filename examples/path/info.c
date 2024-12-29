@@ -4,8 +4,8 @@
  * @brief Scratchpad for experimenting with path objects.
  */
 
-#include "logger.h"
-#include "path.h"
+#include "interface/logger.h"
+#include "interface/path.h"
 
 int main(int argc, char* argv[]) {
     if (argc != 2 || !argv[1]) {

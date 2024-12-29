@@ -10,7 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "logger.h"
+#include "interface/logger.h"
+
 #include "vk/instance.h"
 #include "vk/device.h"
 

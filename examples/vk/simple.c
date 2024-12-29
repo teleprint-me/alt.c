@@ -9,7 +9,7 @@
 #include <string.h>
 #include <vulkan/vulkan.h>
 
-#include "path.h"
+#include "interface/path.h"
 
 typedef struct ShaderCode {
     size_t size;       // File size in bytes

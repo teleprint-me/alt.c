@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "data_types.h"
+#include "interface/data_types.h"
 
 // override block size
 #undef BLOCK_SIZE

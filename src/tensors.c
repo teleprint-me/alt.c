@@ -14,7 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "logger.h"
+#include "interface/logger.h"
+
 #include "tensors.h"
 
 Tensor* tensor_create(DataTypeId id, uint32_t rank, uint32_t* dimensions) {

@@ -10,8 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "activation.h"
-#include "random.h"
+#include "interface/activation.h"
+#include "interface/random.h"
 
 // Define macros for input dimensions
 #define INPUTS 4 // 4x2 (n_samples, n_inputs)

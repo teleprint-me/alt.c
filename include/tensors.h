@@ -13,8 +13,8 @@
 extern "C" {
 #endif // __cplusplus
 
-#include "data_types.h"
-#include "flex_array.h"
+#include "interface/data_types.h"
+#include "interface/flex_array.h"
 
 /**
  * @enum TensorState

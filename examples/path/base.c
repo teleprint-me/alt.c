@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-#include "path.h"
+#include "interface/path.h"
 
 int main() {
     const char* test_path = "data/mnist/training/0/1.png";

@@ -2,10 +2,10 @@
  * @file examples/flex_array.c
  */
 
-#include "flex_array.h"
-#include "logger.h"
-
 #include <stdio.h>
+
+#include "interface/logger.h"
+#include "interface/flex_array.h"
 
 int main() {
     global_logger.log_level = LOG_LEVEL_DEBUG;

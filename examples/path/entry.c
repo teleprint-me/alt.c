@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 
-#include "logger.h"
-#include "path.h"
+#include "interface/logger.h"
+#include "interface/path.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {

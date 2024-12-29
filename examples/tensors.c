@@ -8,10 +8,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "data_types.h"
-#include "flex_array.h"
-#include "logger.h"
-#include "tensors.h"
+#include "interface/logger.h"
+#include "interface/data_types.h"
+#include "interface/flex_array.h"
+
+#include "tensors.h" // work in progress
 
 #define INPUT_RANK 2
 #define INPUT_ROWS 4

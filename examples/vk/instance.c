@@ -5,8 +5,9 @@
  */
 
 /// @todo Need to substitute logger or integrate into vk pipeline upon instance creation
+#include "interface/logger.h" /// @note Logger is thread safe and has a mutex lock
+
 #include "vk/instance.h"
-#include "logger.h" /// @note Logger is thread safe and has a mutex lock
 
 #include <stdio.h>
 #include <stdlib.h>

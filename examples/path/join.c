@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include "path.h"
+#include "interface/path.h"
 
 int main() {
     // Path existence

@@ -10,8 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "activation.h"
-#include "random.h"
+#include "interface/activation.h"
+#include "interface/random.h"
 
 // Define the structure of the network
 #define INPUT_SIZE 2 // Number of input features (e.g., XOR has 2 inputs)

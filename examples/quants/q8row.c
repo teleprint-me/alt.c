@@ -7,7 +7,8 @@
 #include <stdlib.h> // For rand() and srand()
 #include <stdio.h>  // For printf()
 #include <assert.h> // For assert()
-#include "data_types.h"
+
+#include "interface/data_types.h"
 
 #define MAX_SAMPLES 10
 

@@ -32,7 +32,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "logger.h"
+#include "interface/logger.h"
+
 #include "vk/instance.h"
 
 uint32_t vulkan_get_api_version(void) {

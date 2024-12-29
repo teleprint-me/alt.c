@@ -12,7 +12,8 @@
 
 #include <stdbool.h>
 
-#include "logger.h"
+#include "interface/logger.h"
+
 #include "model/magic.h"
 #include "model/mistral.h"
 
@@ -208,15 +209,24 @@ Token* mistral_read_token(MagicFile* magic_file) {
         return NULL;
     }
 
-    // Read string data
-    MAGIC_READ_STRING(magic_file, token, data, label, mistral_free_token);
-    token->length = (int32_t) strlen(token->data); // this is blocked if read string fails
-
-    // Read token score
+    // Read token fields
     MAGIC_READ_FLOAT(magic_file, token, score, label, mistral_free_token);
-
-    // Read token type
     MAGIC_READ_INT32(magic_file, token, type, label, mistral_free_token);
+    MAGIC_READ_INT32(magic_file, token, id, label, mistral_free_token);
+    MAGIC_READ_STRING(magic_file, token, data, label, mistral_free_token);
+
+    token->length = (int32_t) strlen(token->data);
+
+    LOG_DEBUG(
+        "%s: Token: %p, score=%.6f, type=%d, id=%d, length=%d, data=%s\n",
+        __func__,
+        token,
+        (double) token->score,
+        token->type,
+        token->id,
+        token->length,
+        token->data
+    );
 
     return token;
 }
@@ -228,6 +238,47 @@ void mistral_free_token(Token* token) {
         }
         free(token);
     }
+}
+
+int mistral_add_token_to_maps(TokenizerModel* tokenizer, Token* token) {
+    if (!token || !token->data || 0 >= token->length) return EXIT_FAILURE;
+
+    Token* existing = NULL;
+
+    // Add to string-based map
+    HASH_FIND(hh_token, tokenizer->token_map, token->data, token->length, existing);
+    if (existing) {
+        LOG_ERROR(
+            "%s: Duplicate token detected in token map. Existing data: '%s', New data: '%s'\n",
+            __func__, existing->data, token->data
+        );
+        // Log hex dump of the strings for hidden characters
+        LOG_ERROR("Existing token hex dump:\n");
+        for (int i = 0; i < existing->length; i++) {
+            printf("%02x ", (unsigned char)existing->data[i]);
+        }
+        printf("\nNew token hex dump:\n");
+        for (int i = 0; i < token->length; i++) {
+            printf("%02x ", (unsigned char)token->data[i]);
+        }
+        printf("\n");
+        return EXIT_FAILURE;
+    }
+
+    HASH_FIND(hh_id, tokenizer->id_map, &token->id, sizeof(int32_t), existing);
+    if (existing) {
+        LOG_ERROR(
+            "%s: Duplicate token detected in ID map. Existing ID: %d, New ID: %d\n",
+            __func__, existing->id, token->id
+        );
+    }
+
+    // Add to token map
+    HASH_ADD(hh_token, tokenizer->token_map, data, token->length, token);
+    // Add to id map
+    HASH_ADD(hh_id, tokenizer->id_map, id, sizeof(int32_t), token);
+
+    return EXIT_SUCCESS;
 }
 
 #define MISTRAL_FOREACH_TOKEN_INT32_FIELD \
@@ -245,6 +296,8 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
         LOG_ERROR("%s: Failed to allocate memory for TokenizerModel.\n", __func__);
         return NULL;
     }
+    tokenizer->token_map = NULL;
+    tokenizer->id_map = NULL;
 
     // Read the tokenizer section header
     int64_t marker = 0;
@@ -266,14 +319,6 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
         return NULL;
     }
 
-    // Allocate memory for tokens array
-    tokenizer->tokens = (Token**) malloc(tokenizer->vocab_size * sizeof(Token*));
-    if (!tokenizer->tokens) {
-        LOG_ERROR("%s: Failed to allocate memory for tokens array.\n", __func__);
-        free(tokenizer);
-        return NULL;
-    }
-
     // Read and allocate tokens
     for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
         LOG_DEBUG("%s: Reading token %d/%d.\n", __func__, i + 1, tokenizer->vocab_size);
@@ -283,7 +328,17 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
             mistral_free_tokenizer_section(tokenizer);
             return NULL;
         }
-        tokenizer->tokens[i] = token;
+
+        // Add to hash maps
+        if (EXIT_SUCCESS != mistral_add_token_to_maps(tokenizer, token)) {
+            LOG_ERROR(
+                "%s: Failed to add token to hash maps. Token data: '%s', ID: %d, Length: %d\n",
+                __func__, token->data, token->id, token->length
+            );
+            mistral_free_token(token);
+            mistral_free_tokenizer_section(tokenizer);
+            return NULL;
+        }
     }
 
     // We must align the padding for the next section
@@ -298,17 +353,21 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
 
 void mistral_free_tokenizer_section(TokenizerModel* tokenizer) {
     if (tokenizer) {
-        if (tokenizer->tokens) {
-            for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
-                mistral_free_token(tokenizer->tokens[i]);
-            }
-            free(tokenizer->tokens);
+        Token* token, *tmp;
+
+        // Free string-based hash map
+        HASH_ITER(hh_token, tokenizer->token_map, token, tmp) {
+            HASH_DELETE(hh_token, tokenizer->token_map, token); // Remove Token from map
+            HASH_DELETE(hh_id, tokenizer->id_map, token); // Remove ID from map
+            mistral_free_token(token);
         }
+
         free(tokenizer);
     }
 }
 
 void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
+    // Log integer fields of the tokenizer
     #define LOG_INT32(field) \
         LOG_INFO("%s: Section: Tokenizer, Field: " #field "=%d\n", __func__, tokenizer->field);
 
@@ -317,12 +376,33 @@ void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
     #undef FIELD
     #undef LOG_INT32
 
-    LOG_INFO("%s: Tokenizer: %p\n", __func__, tokenizer->tokens);
-    for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
-        Token* token = tokenizer->tokens[i];
+    // Log tokens from the hash map
+    LOG_INFO("%s: Tokenizer contains %d tokens.\n", __func__, tokenizer->vocab_size);
+
+    Token* token;
+    Token* tmp;
+    HASH_ITER(hh_token, tokenizer->token_map, token, tmp) {
         LOG_INFO(
-            "%s: Token: token=%p, length=%d, data=%s, score=%.6f, type=%d\n",
-            __func__, token, token->length, token->data, (double) token->score, token->type
+            "%s: Token: %p, score=%.6f, type=%d, id=%d, length=%d, data=%s\n",
+            __func__,
+            token,
+            (double) token->score,
+            token->type,
+            token->id,
+            token->length,
+            token->data
         );
     }
+}
+
+Token* mistral_get_token_by_data(TokenizerModel* tokenizer, const char* data) {
+    Token* token = NULL;
+    HASH_FIND(hh_token, tokenizer->token_map, data, strlen(data), token);
+    return token;
+}
+
+Token* mistral_get_token_by_id(TokenizerModel* tokenizer, int32_t id) {
+    Token* token = NULL;
+    HASH_FIND(hh_id, tokenizer->id_map, &id, sizeof(int32_t), token);
+    return token;
 }

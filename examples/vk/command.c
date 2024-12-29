@@ -9,8 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "logger.h"
-#include "random.h"
+#include "interface/logger.h"
+#include "interface/random.h"
+
 #include "vk/device.h"
 #include "vk/instance.h"
 
