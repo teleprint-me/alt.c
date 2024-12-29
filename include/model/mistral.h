@@ -14,6 +14,7 @@
 #define ALT_MODEL_MISTRAL_H
 
 #include <stdbool.h>
+#include <uthash.h>
 
 #include "model/magic.h"
 
@@ -61,20 +62,24 @@ typedef enum TokenType {
     PAD = 7,
 } TokenType;
 
-typedef struct Token {
+typedef struct __attribute__((aligned(8))) Token {
+    float score; // Log-probability of the token data. Use exp(score) to get actual frequency.
+    int32_t type; // Type of the token (e.g., NORMAL, BOS, EOS)
+    int32_t id; // Encoded ID representing the position (e.g. 0, 1, 2)
     int32_t length; // Length of the token string
     char* data; // UTF-8 encoded string (dynamically allocated)
-    float score; // Score associated with the token
-    int32_t type; // Type of the token (e.g., NORMAL, BOS, EOS)
+    UT_hash_handle hh_token; // Handle for string-based hash map
+    UT_hash_handle hh_id; // Handle for ID-based hash map
 } Token;
 
-typedef struct TokenizerModel {
+typedef struct __attribute__((aligned(8))) TokenizerModel {
     int32_t vocab_size; // Total number of tokens
     int32_t bos_id; // Beginning-of-sequence token ID
     int32_t eos_id; // End-of-sequence token ID
     int32_t pad_id; // Padding token ID
     int32_t unk_id; // Unknown token ID
-    Token** tokens; // Array of Token structs
+    Token* token_map; // Hash map for string-based lookups
+    Token* id_map; // Hash map for ID-based lookups
 } TokenizerModel;
 
 /// @todo TensorsModel
@@ -111,5 +116,9 @@ void mistral_free_token(Token* token);
 TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file);
 void mistral_free_tokenizer_section(TokenizerModel* tokenizer);
 void mistral_log_tokenizer_section(TokenizerModel* tokenizer);
+
+// Token lookup
+Token* mistral_get_token_by_data(TokenizerModel* tokenizer, const char* data);
+Token* mistral_get_token_by_id(TokenizerModel* tokenizer, int32_t id);
 
 #endif // ALT_MODEL_MISTRAL_H
