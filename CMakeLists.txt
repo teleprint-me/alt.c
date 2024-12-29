@@ -43,9 +43,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(
     # sources are still in early development
     C_SOURCES
-    # Core tool kit
+    # Algorithms
+    "src/algorithm/hash.c"
+    # Interfaces
     "src/interface/logger.c"
-    "src/interface/hash.c"
     "src/interface/path.c"
     "src/interface/data_types.c"
     "src/interface/random.c"
@@ -56,10 +57,9 @@ set(
     "src/vk/instance.c"
     "src/vk/device.c"
     # "src/vk/shader.c"
-    # model format
+    # Models
     "src/model/magic.c"
     "src/model/mistral.c"
-
 )
 add_library("alt" ${C_SOURCES})
 
@@ -69,9 +69,11 @@ target_include_directories("alt" PUBLIC include)
 # Add examples
 add_subdirectory(examples)
 add_subdirectory(examples/scratchpad)
-add_subdirectory(examples/path)
+add_subdirectory(examples/interface)
+add_subdirectory(examples/interface/path)
+add_subdirectory(examples/interface/data_types)
+add_subdirectory(examples/algorithm)
 add_subdirectory(examples/vk)
-add_subdirectory(examples/quants)
 add_subdirectory(examples/models)
 
 # Link necessary libraries (e.g., math, real-time library, Vulkan if Linux)

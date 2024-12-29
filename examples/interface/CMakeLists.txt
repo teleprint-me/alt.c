@@ -1,11 +1,10 @@
 # Add ALT related examples
 set(EXAMPLES
-    "tensors"
-    # "perceptron"
+    "flex_array"
 )
 
-set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples)
-set(OUTPUT_DIR ${PROJECT_SOURCE_DIR}/build/examples)
+set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/interface)
+set(OUTPUT_DIR ${PROJECT_SOURCE_DIR}/build/examples/interface)
 
 foreach(example IN LISTS EXAMPLES)
     add_executable(${example} ${INPUT_DIR}/${example}.c)

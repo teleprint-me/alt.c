@@ -7,8 +7,8 @@ set(EXAMPLES
     "entry"
 )
 
-set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/path)
-set(OUTPUT_DIR ${PROJECT_SOURCE_DIR}/build/examples/path)
+set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/interface/path)
+set(OUTPUT_DIR ${PROJECT_SOURCE_DIR}/build/examples/interface/path)
 
 foreach(example IN LISTS EXAMPLES)
     add_executable(${example} ${INPUT_DIR}/${example}.c)
