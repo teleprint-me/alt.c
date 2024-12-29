@@ -214,6 +214,29 @@ HashState hash_delete(HashTable* table, const void* key) {
     return HASH_KEY_NOT_FOUND; // Key not found after full probing
 }
 
+HashState hash_clear(HashTable* table) {
+    if (!table) {
+        LOG_ERROR("%s: Table is NULL.\n", __func__);
+        return HASH_ERROR;
+    }
+    if (!table->entries) {
+        LOG_ERROR("%s: Table entries are NULL.\n", __func__);
+        return HASH_ERROR;
+    }
+
+    for (uint64_t i = 0; i < table->size; i++) {
+        HashEntry* entry = &table->entries[i];
+        if (entry->key) {
+            // Clear the entry
+            entry->key = NULL;
+            entry->value = NULL;
+        }
+    }
+
+    table->count = 0; // Reset the count
+    return HASH_SUCCESS;
+}
+
 void* hash_search(HashTable* table, const void* key) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
