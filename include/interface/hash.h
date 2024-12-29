@@ -3,6 +3,10 @@
  *
  * @file include/interface/hash.h
  *
+ * @brief The Hash Interface is designed to provide a minimal mapping between integers and strings
+ * much like a dictionary might behave in Python. This interface should allow users to map strings
+ * to integers and integers to strings.
+ * 
  * We assume that a key or value can be either a byte or numerical representation where a byte maybe
  * be literal or symbolic. In the symbolic case, a byte would be char*. This means that int8_t and
  * uint8_t are equivalent to char and unsigned char. This allows us to leverage the builtin types

@@ -2,6 +2,10 @@
  * Copyright © 2024 Austin Berrio
  *
  * @file src/interface/hash.c
+ *
+ * @brief The Hash Interface is designed to provide a minimal mapping between integers and strings
+ * much like a dictionary might behave in Python. This interface should allow users to map strings
+ * to integers and integers to strings.
  */
 
 #include "interface/hash.h"
@@ -50,6 +54,7 @@ void hash_free_table(HashTable* table) {
             free(table->entries);
         }
         free(table);
+        table = NULL;
     }
 }
 
@@ -174,6 +179,8 @@ void* hash_search(HashTable* table, const void* key) {
             return entry->value; // Found
         }
     }
+
+    LOG_DEBUG("%s: Key not found: %s.\n", __func__, (char*) key);
     return NULL; // Not found
 }
 
