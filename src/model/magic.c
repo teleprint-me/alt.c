@@ -13,7 +13,8 @@
  * the content of the file.
  */
 
-#include "logger.h"
+#include "interface/logger.h"
+
 #include "model/magic.h"
 
 /**
@@ -349,6 +350,10 @@ MagicState magic_file_read_string_field(MagicFile* magic_file, char** field) {
         LOG_ERROR("%s: Failed to read string length.", __func__);
         return MAGIC_FILE_ERROR;
     }
+    if (length <= 0) {
+        LOG_ERROR("%s: Invalid string length: %d.", __func__, length);
+        return MAGIC_FILE_ERROR;
+    }
 
     // Allocate memory for the string (length + 1 for null terminator)
     *field = (char*) malloc((length + 1) * sizeof(char));
@@ -361,7 +366,7 @@ MagicState magic_file_read_string_field(MagicFile* magic_file, char** field) {
     if ((size_t) length != fread(*field, sizeof(char), length, magic_file->data)) {
         LOG_ERROR("%s: Failed to read string data.", __func__);
         free(*field);
-        *field = NULL;  // Prevent dangling pointers
+        *field = NULL; // Prevent dangling pointers
         return MAGIC_FILE_ERROR;
     }
 
