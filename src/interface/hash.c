@@ -6,6 +6,10 @@
  * @brief The Hash Interface is designed to provide a minimal mapping between integers and strings
  * much like a dictionary might behave in Python. This interface should allow users to map strings
  * to integers and integers to strings.
+ *
+ * @note We should expect the user to take responsibility of the memory allocation. The table is
+ * simply used as a reference for lookups. This means the basic operations, insert, search, and
+ * delete. For convenience, we can enable clearing the table as well.
  */
 
 #include "interface/hash.h"
@@ -155,6 +159,59 @@ HashState hash_resize(HashTable* table, uint64_t new_size) {
     free(old_entries);
 
     return HASH_SUCCESS;
+}
+
+HashState hash_delete(HashTable* table, const void* key) {
+    if (!table) {
+        LOG_ERROR("%s: Table is NULL.\n", __func__);
+        return HASH_ERROR;
+    }
+    if (!key) {
+        LOG_ERROR("%s: Key is NULL.\n", __func__);
+        return HASH_ERROR;
+    }
+
+    for (uint64_t i = 0; i < table->size; i++) {
+        uint64_t index = table->hash(key, table->size, i);
+        HashEntry* entry = &table->entries[index];
+
+        if (!entry->key) {
+            // Key not found, stop probing
+            return HASH_KEY_NOT_FOUND;
+        }
+
+        if (table->compare(entry->key, key) == 0) {
+            // Key found, mark as deleted
+            entry->key = NULL;
+            entry->value = NULL;
+            table->count--;
+
+            // Rehash subsequent entries in the probe sequence
+            for (uint64_t j = i + 1; j < table->size; j++) {
+                uint64_t rehash_index = table->hash(key, table->size, j);
+                HashEntry* rehash_entry = &table->entries[rehash_index];
+
+                if (!rehash_entry->key) {
+                    // Stop rehashing when an empty slot is reached
+                    break;
+                }
+
+                void* rehash_key = rehash_entry->key;
+                void* rehash_value = rehash_entry->value;
+                rehash_entry->key = NULL;
+                rehash_entry->value = NULL;
+                table->count--;
+
+                // Reinsert the entry to its correct position in the table
+                hash_insert(table, rehash_key, rehash_value);
+            }
+
+            return HASH_SUCCESS;
+        }
+    }
+
+    LOG_DEBUG("%s: Key not found: %s.\n", __func__, (char*) key);
+    return HASH_KEY_NOT_FOUND; // Key not found after full probing
 }
 
 void* hash_search(HashTable* table, const void* key) {
