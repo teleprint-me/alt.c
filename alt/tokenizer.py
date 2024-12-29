@@ -159,23 +159,22 @@ class TokenizerModel(BaseModel):
         self.alt_file.write(struct.pack("i", self.processor.unk_id()))
 
         # For each token in the vocabulary:
-        for index in range(self.vocab_size):
+        for token_id in range(self.vocab_size):
             # Extract token related metadata
-            token = self.processor.id_to_piece(index)
+            token = self.processor.id_to_piece(token_id)
+            token_score = self.processor.get_score(token_id)
+            token_type = self.token_type.get_type(token_id, token)
             token_bytes = token.encode("utf-8")
             token_len = len(token_bytes)
-            token_score = self.processor.get_score(index)
-            token_type = self.token_type.get_type(index, token)
-
+            # Write token_score
+            self.alt_file.write(struct.pack("f", token_score))
+            # Write token_type
+            self.alt_file.write(struct.pack("i", token_type))
+            # Write token_id
+            self.alt_file.write(struct.pack("i", token_id))
             # Write token_len and token_data
             self.alt_file.write(struct.pack("i", token_len))
             self.alt_file.write(token_bytes)
-
-            # Write token_score
-            self.alt_file.write(struct.pack("f", token_score))
-
-            # Write token_type
-            self.alt_file.write(struct.pack("i", token_type))
 
         # Add alignment padding
         self.magic_writer.write_alignment()
@@ -201,18 +200,25 @@ class TokenizerModel(BaseModel):
         # Read tokens
         vocab = []
         for _ in range(vocab_size):
-            # Read token_len
-            token_len = struct.unpack("i", self.alt_file.read(4))[0]
-            # Read token_data
-            token = self.alt_file.read(token_len).decode("utf-8")
             # Read token_score
             token_score = struct.unpack("f", self.alt_file.read(4))[0]
             # Read token_type
             token_type = struct.unpack("i", self.alt_file.read(4))[0]
+            # Read token_id
+            token_id = struct.unpack("i", self.alt_file.read(4))[0]
+            # Read token_len
+            token_len = struct.unpack("i", self.alt_file.read(4))[0]
+            # Read token_data
+            token_data = self.alt_file.read(token_len).decode("utf-8")
             # Store token information
-            token_info = OrderedDict(len=token_len, token=token, score=token_score, type=token_type)
-            vocab.append(token_info)
-            # Log for debugging
+            token = OrderedDict(
+                score=token_score,
+                type=token_type,
+                id=token_id,
+                length=token_len,
+                data=token_data,
+            )
+            vocab.append(token)
 
         # Construct the result
         tokenizer_data = OrderedDict(
