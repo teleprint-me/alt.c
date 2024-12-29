@@ -14,7 +14,6 @@ A transformer model built completely from scratch in C.
 - `vulkan`: Portable multi-threading library for GPUs 
 - `libuuid`: DCE compatible Universally Unique Identifier library
 - `libutf8proc`: C library for Unicode handling
-- `uthash`: Hash tables for C structures
 - `stb`: Image loading/decoding library
 
 ### Library Requirements
@@ -29,7 +28,7 @@ A transformer model built completely from scratch in C.
 #### Install System Dependencies (Arch Linux)
 
 ```sh
-sudo pacman -S gcc gdb cmake util-linux-libs libutf8proc uthash stb vulkan-headers vulkan-tools
+sudo pacman -S gcc gdb cmake util-linux-libs libutf8proc stb vulkan-headers vulkan-tools
 ```
 
 ### Python Dependencies
