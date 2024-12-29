@@ -21,31 +21,54 @@
 
 #include <stdint.h>
 
+// ---------------------- Constants and Types ----------------------
+
 typedef enum HashState {
     HASH_SUCCESS,
-    HASH_ERROR
+    HASH_ERROR,
+    HASH_KEY_EXISTS,
+    HASH_KEY_NOT_FOUND,
+    HASH_TABLE_FULL
 } HashState;
 
 typedef struct HashEntry {
-    void* key; // Key can be any type
-    void* value; // Value can be any type
+    void* key; // Pointer to the key
+    void* value; // Pointer to the value
 } HashEntry;
 
 typedef struct HashTable {
-    HashEntry* table; // Array of hash entries
-    uint64_t size; // Size of the table
+    HashEntry* entries; // Array of hash entries
+    uint64_t size; // Current size of the table
     uint64_t count; // Number of elements currently in the table
+    uint64_t (*hash)(const void* key, uint64_t size, uint64_t i); // Custom hash function
+    int (*compare)(const void* key1, const void* key2); // Custom key comparison function
 } HashTable;
 
-uint64_t djb2(uint8_t* string);
-uint64_t hash(const void* key, uint64_t size, uint64_t i);
+// -------------------- Hash Table Functions --------------------
 
+// Hash table life-cycle
+HashTable* hash_create_table(
+    uint64_t initial_size,
+    uint64_t (*hash)(const void* key, uint64_t size, uint64_t i),
+    int (*compare)(const void* key1, const void* key2)
+);
+void hash_free_table(HashTable* table);
+
+// Hash entry life-cycle
+HashEntry* hash_create_entry(void* key, void* value);
+void hash_free_entry(HashEntry* entry);
+
+// Hash table operations
 HashState hash_insert(HashTable* table, const void* key, void* value);
 void* hash_search(HashTable* table, const void* key);
-HashState hash_delete(HashTable* table, void* key);
-HashState hash_delete_all(HashTable* table);
+HashState hash_delete(HashTable* table, const void* key);
+HashState hash_clear(HashTable* table);
+HashState hash_resize(HashTable* table, uint64_t new_size);
 
-HashTable* hash_create_table();
-void hash_free_table();
+// ------------------- Utility Hash Functions -------------------
+
+uint64_t hash_djb2(const uint8_t* string);
+uint64_t hash_default(const void* key, uint64_t size, uint64_t i);
+int hash_compare(const void* key1, const void* key2);
 
 #endif // ALT_HASH_H
