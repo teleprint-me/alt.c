@@ -128,8 +128,9 @@ HashState hash_resize(HashTable* table, uint64_t new_size) {
     table->size = new_size;
 
     // Rehash old entries into the new table
-    for (table->count = 0; table->count < old_size; table->count++) {
-        HashEntry* entry = &old_entries[table->count];
+    uint64_t rehashed_count = 0;
+    for (uint64_t i = 0; i < old_size; i++) {
+        HashEntry* entry = &old_entries[i];
         if (entry->key) {
             HashState state = hash_insert(table, entry->key, entry->value);
             if (state != HASH_SUCCESS) {
@@ -137,11 +138,14 @@ HashState hash_resize(HashTable* table, uint64_t new_size) {
                 free(new_entries);
                 table->entries = old_entries;
                 table->size = old_size;
-                return state; // propagate state
+                return state;
             }
+            rehashed_count++;
         }
     }
 
+    // Update table count
+    table->count = rehashed_count;
     // Free old table entries
     free(old_entries);
 
