@@ -26,10 +26,12 @@
  * Oh, and have fun!
  */
 
-#include "logger.h"
-#include "random.h"
-
+#include <pthread.h>
 #include <stdio.h>
+#include <unistd.h>
+
+#include "interface/logger.h"
+#include "interface/random.h"
 
 // Data structures
 
@@ -54,7 +56,7 @@ typedef struct Parameters {
     uint32_t n_threads; /**< Number of CPU threads to use. */
     uint32_t n_epochs; /**< Number of training epochs. */
     uint32_t n_layers; /**< Number of layers (connections). */
-    Vector* layer_sizes; /**< Sizes of each layer (input, hidden, output). */
+    uint32_t* layer_sizes; /**< Sizes of each layer (input, hidden, output). */
 } Parameters;
 
 // Model layers
@@ -100,18 +102,29 @@ typedef struct MLPBackwardArgs {
     Matrix* weights; /**< Flattened weight matrix. */
 } MLPBackwardArgs;
 
+// Utility structures
+
 typedef struct Dataset {
     uint32_t start;
     uint32_t end;
     uint32_t length;
-    char* samples;
+    uint8_t* samples;
 } Dataset;
+
+typedef struct IntegerList {
+    char* input_list; /**< Original input string */
+    uint32_t* output_list; /**< Parsed list of integers */
+    uint32_t count; /**< Number of elements in the list */
+} IntegerList;
 
 // Prototypes
 
 // Utilities
 
 void print_progress(char* title, float percentage, uint32_t width, char ch);
+
+IntegerList* list_create_integers(const char* input_list);
+void list_free_integers(IntegerList* list);
 
 // Vector operations
 
@@ -157,6 +170,64 @@ void print_progress(char* title, float percentage, uint32_t width, char ch) {
 
     printf("\r%s: %3u%% [%.*s%*s]", title, progress, left, bar, right, "");
     fflush(stdout);
+}
+
+IntegerList* list_create_integers(const char* input_list) {
+    if (!input_list) {
+        LOG_ERROR("%s: Input list is NULL.\n", __func__);
+        return NULL;
+    }
+
+    // Allocate memory for the IntegerList structure
+    IntegerList* list = (IntegerList*) malloc(sizeof(IntegerList));
+    if (!list) {
+        LOG_ERROR("%s: Failed to allocate memory for IntegerList.\n", __func__);
+        return NULL;
+    }
+
+    list->input_list = strdup(input_list); // Store the original input string
+    list->count = 0;
+    list->output_list = NULL;
+
+    // Count the number of elements (commas + 1)
+    for (const char* p = input_list; *p; p++) {
+        if (*p == ',') {
+            list->count++;
+        }
+    }
+    list->count++; // Include the last element
+
+    // Allocate memory for the parsed list
+    list->output_list = (uint32_t*) malloc(sizeof(uint32_t) * list->count);
+    if (!list->output_list) {
+        LOG_ERROR("%s: Failed to allocate memory for output list.\n", __func__);
+        free(list->input_list);
+        free(list);
+        return NULL;
+    }
+
+    // Parse the input string into integers
+    const char* start = input_list;
+    for (uint32_t i = 0; i < list->count; i++) {
+        list->output_list[i] = (uint32_t) strtoul((char*) start, (char**) &start, 10);
+        if (*start == ',') {
+            start++;
+        }
+    }
+
+    return list;
+}
+
+void list_free_integers(IntegerList* list) {
+    if (list) {
+        if (list->input_list) {
+            free(list->input_list);
+        }
+        if (list->output_list) {
+            free(list->output_list);
+        }
+        free(list);
+    }
 }
 
 // Vector operations
@@ -293,7 +364,7 @@ Dataset* dataset_create(uint32_t start, uint32_t end) {
     dataset->start = start;
     dataset->end = end;
     dataset->length = end - start;
-    dataset->samples = (char*) malloc(sizeof(char) * dataset->length);
+    dataset->samples = (uint8_t*) malloc(sizeof(uint8_t) * dataset->length);
     if (!dataset->samples) {
         free(dataset);
         return NULL;
@@ -301,7 +372,7 @@ Dataset* dataset_create(uint32_t start, uint32_t end) {
 
     // Populate samples
     for (uint32_t i = 0, s = start; i < dataset->length; i++, s++) {
-        dataset->samples[i] = (char) s;
+        dataset->samples[i] = (uint8_t) s;
     }
 
     return dataset;
@@ -330,7 +401,7 @@ uint32_t dataset_shuffle(Dataset* dataset) {
         uint32_t j = rand() % (dataset->length - i); // Pick a random index
 
         // Swap samples[i] and samples[j]
-        char sample = dataset->samples[i];
+        uint8_t sample = dataset->samples[i];
         dataset->samples[i] = dataset->samples[j];
         dataset->samples[j] = sample;
     }
@@ -341,13 +412,14 @@ uint32_t dataset_shuffle(Dataset* dataset) {
 
 void dataset_print(Dataset* dataset) {
     for (uint32_t i = 0; i < dataset->length; i++) {
-        char code = dataset->samples[i];
+        uint8_t code = dataset->samples[i];
         printf("index=%d, code=%d, char=%c\n", i, code, code);
     }
 }
 
-Vector* one_hot_encode(char input, Dataset* dataset) {
+Vector* one_hot_encode(uint8_t input, Dataset* dataset) {
     if ((uint32_t) input < dataset->start || (uint32_t) input >= dataset->end) {
+        LOG_ERROR("%s: Input is out of bounds.\n", __func__);
         return NULL; // Out of range
     }
 
@@ -364,17 +436,162 @@ Vector* one_hot_encode(char input, Dataset* dataset) {
     return vector;
 }
 
-int main(void) {
-    random_seed((uint32_t) time(NULL)); // Fix seed for reproducibility
+// MLP model implementation
 
-    Dataset* dataset = dataset_create(32, 127);
+Parameters* mlp_create_params(
+    float error_threshold,
+    float learning_rate,
+    uint32_t n_threads,
+    uint32_t n_epochs,
+    uint32_t n_layers,
+    uint32_t* layer_sizes
+) {
+    // Allocate memory for hyperparameters
+    Parameters* params = (Parameters*) malloc(sizeof(Parameters));
+    if (!params) {
+        LOG_ERROR("%s: Failed to allocate memory for Parameters.\n", __func__);
+        return NULL;
+    }
+
+    // Allocate memory for the layer sizes
+    params->layer_sizes = (uint32_t*) malloc(sizeof(uint32_t) * n_layers);
+    if (!params->layer_sizes) {
+        LOG_ERROR("%s: Failed to allocate memory for layer sizes.\n", __func__);
+        free(params);
+        return NULL;
+    }
+
+    // Copy the layer sizes to parameters
+    for (uint32_t i = 0; i < n_layers; i++) {
+        params->layer_sizes[i] = layer_sizes[i];
+    }
+
+    // Set hyperparameter values
+    params->error_threshold = error_threshold;
+    params->learning_rate = learning_rate;
+    params->n_threads = n_threads;
+    params->n_epochs = n_epochs;
+    params->n_layers = n_layers;
+
+    return params;
+}
+
+void mlp_free_params(Parameters* params) {
+    if (params) {
+        if (params->layer_sizes) {
+            free(params->layer_sizes);
+        }
+        free(params);
+    }
+}
+
+/// @note Handle model saving loading last because the implementation is complicated and verbose.
+void print_usage(const char* program_name) {
+    fprintf(stderr, "Usage: %s <char> [options]\n", program_name);
+    fprintf(stderr, "Options:\n");
+    fprintf(stderr, "\t--range <list> Range of learned characters (default: 32,127)\n");
+    fprintf(stderr, "\t--layer-sizes <list> Number of neurons in each layer (default: 1,42,95)\n");
+    fprintf(stderr, "\t--threads <int> Number of CPU threads (default: auto)\n");
+    fprintf(stderr, "\t--seed <int> Early stopping threshold (default: current time)\n");
+    fprintf(stderr, "\t--epochs <int> Number of epochs to train (default: 1)\n");
+    fprintf(stderr, "\t--learning-rate <float> Learning rate (default: 0.1)\n");
+    fprintf(stderr, "\t--error-threshold <float> Early stopping threshold (default: 0.01)\n");
+    fprintf(
+        stderr, "\t--model <path> Path to save/load the model (default: models/char/model.alt)\n"
+    );
+}
+
+int main(int argc, char* argv[]) {
+    global_logger.log_level = LOG_LEVEL_DEBUG;
+
+    if (argc < 2 || !argv[1]) {
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    // Default seed for rng
+    uint32_t seed = (uint32_t) time(NULL);
+
+    // Default range for learned characters
+    uint32_t char_start = 32;
+    uint32_t char_end = 127;
+
+    /// @todo Default model file path
+    char* model_file_path = "models/char/model.alt";
+
+    // Create default hyperparameters instance for mlp configuration
+    Parameters* params = mlp_create_params(
+        /* error_threshold */ 0.05f,
+        /* learning_rate */ 0.01f,
+        /* n_threads */ sysconf(_SC_NPROCESSORS_ONLN), // Default available CPU thread count
+        /* n_epochs */ 1, // Number of training cycles
+        /* n_layers */ 3, // Number of connected layers
+        /* layer_sizes */ (uint32_t[]){1, 45, 95} // input, hidden, output
+    );
+
+    // Parse CLI arguments
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--range") == 0 && i + 1 < argc) {
+            IntegerList* range = list_create_integers(argv[++i]);
+            if (!range || range->count != 2) {
+                LOG_ERROR(
+                    "%s: Invalid range. Expected two values separated by a comma.\n", __func__
+                );
+                mlp_free_params(params);
+                return EXIT_FAILURE;
+            }
+            char_start = range->output_list[0];
+            char_end = range->output_list[1];
+            list_free_integers(range);
+        } else if (strcmp(argv[i], "--layer-sizes") == 0 && i + 1 < argc) {
+            free(params->layer_sizes); /// @warning Free pre-allocated memory
+            IntegerList* list = list_create_integers(argv[++i]);
+            if (!list) {
+                LOG_ERROR("%s: Invalid layer sizes format.\n", __func__);
+                mlp_free_params(params);
+                return EXIT_FAILURE;
+            }
+            params->n_layers = list->count;
+            params->layer_sizes = (uint32_t*) malloc(sizeof(uint32_t) * params->n_layers);
+            memcpy(params->layer_sizes, list->output_list, sizeof(uint32_t) * params->n_layers);
+            list_free_integers(list);
+        } else if (strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
+            params->n_threads = (uint32_t) atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--epochs") == 0 && i + 1 < argc) {
+            params->n_epochs = (uint32_t) atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--learning-rate") == 0 && i + 1 < argc) {
+            params->learning_rate = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--error-threshold") == 0 && i + 1 < argc) {
+            params->error_threshold = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+            seed = (uint32_t) atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
+            model_file_path = argv[++i];
+        } else {
+            mlp_free_params(params);
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
+        }
+    }
+
+    LOG_DEBUG("%s: path=%s\n", __func__, model_file_path);
+    LOG_DEBUG("%s: seed=%d\n", __func__, seed);
+    random_seed(seed); // Seed the rng
+
+    Dataset* dataset = dataset_create(char_start, char_end);
+    dataset_print(dataset);
     dataset_shuffle(dataset);
 
-    char input = (char)((rand() % dataset->length) + dataset->start); // randomly pick a char
+    uint8_t input = (uint8_t) argv[1][0] % dataset->length;
+    if (input < dataset->start) {
+        input += dataset->start;
+    }
+
     Vector* one_hot = one_hot_encode(input, dataset);
     if (!one_hot) {
-        printf("Encoding failed for '%c'\n", input);
         dataset_free(dataset);
+        mlp_free_params(params);
+        printf("Encoding failed for '%c'\n", input);
         return EXIT_FAILURE;
     }
     printf("One-hot encoding for '%c':\n", input);
@@ -383,9 +600,12 @@ int main(void) {
     }
     printf("\n");
 
-    // Cleanup
+    /// @todo training code goes here
+
+    // cleanup
     vector_free(one_hot);
     dataset_free(dataset);
+    mlp_free_params(params);
 
     return EXIT_SUCCESS;
 }
