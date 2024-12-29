@@ -10,7 +10,7 @@
  * true for the 32-bit implementation.
  */
 
-#include "float_is_close.h"
+#include "interface/float_is_close.h"
 
 #include <math.h>
 #include <stdlib.h>

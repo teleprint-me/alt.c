@@ -12,8 +12,8 @@
  * @warning Do not underestimate the difficulty in properly managing memory reallocation.
  */
 
-#include "flex_array.h"
-#include "logger.h"
+#include "interface/logger.h"
+#include "interface/flex_array.h"
 
 #include <stdlib.h>
 

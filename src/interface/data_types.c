@@ -11,7 +11,7 @@
  * - Minimal dependencies and consistent design.
  */
 
-#include "data_types.h"
+#include "interface/data_types.h"
 
 // Data type management
 

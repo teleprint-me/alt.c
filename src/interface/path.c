@@ -6,8 +6,8 @@
  * @brief
  */
 
-#include "path.h"
-#include "logger.h"
+#include "interface/logger.h"
+#include "interface/path.h"
 
 // PathInfo lifecycle
 

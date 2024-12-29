@@ -6,7 +6,7 @@
  * @brief Functions for initializing model weights.
  */
 
-#include "random.h"
+#include "interface/random.h"
 
 void random_seed(uint32_t seed) {
     srand(seed);

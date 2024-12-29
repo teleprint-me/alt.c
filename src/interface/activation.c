@@ -9,7 +9,7 @@
  * Covers basic functions (e.g., Sigmoid, ReLU) and advanced ones (e.g., GELU, SiLU).
  */
 
-#include "activation.h"
+#include "interface/activation.h"
 
 // Binary Step Activation Function
 float activate_binary_step(float x) {

@@ -11,7 +11,7 @@
  * easily integrated into existing C projects.
  */
 
-#include "logger.h"
+#include "interface/logger.h"
 
 const char* LOG_TYPE_NAME[] = {"unknown", "stream", "file"};
 
