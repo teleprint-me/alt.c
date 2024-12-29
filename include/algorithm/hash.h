@@ -80,6 +80,6 @@ int32_t* hash_integer_search(HashTable* table, const void* key);
 uint64_t hash_djb2(const uint8_t* string);
 uint64_t hash_string(const void* key, uint64_t size, uint64_t i);
 int hash_string_compare(const void* key1, const void* key2);
-int8_t* hash_string_search(HashTable* table, const void* key);
+char* hash_string_search(HashTable* table, const void* key);
 
 #endif // ALT_HASH_H

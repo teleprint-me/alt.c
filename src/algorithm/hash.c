@@ -303,6 +303,6 @@ int hash_string_compare(const void* key1, const void* key2) {
     return strcmp((const char*) key1, (const char*) key2);
 }
 
-int8_t* hash_string_search(HashTable* table, const void* key) {
-    return (int8_t*) hash_search(table, key);
+char* hash_string_search(HashTable* table, const void* key) {
+    return (char*) hash_search(table, key);
 }
