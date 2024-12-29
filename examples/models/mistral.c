@@ -8,14 +8,35 @@
  * @todo Add implementation for handling weights and biases.
  */
 
+#include <locale.h>
 #include <stdio.h>
 
-#include "logger.h"
-#include "path.h" // similar to how python os, os.path, and pathlib operate
+// interfaces
+#include "interface/logger.h"
+#include "interface/path.h" // similar to how python os, os.path, and pathlib operate
+
+// models
 #include "model/magic.h"
 #include "model/mistral.h"
 
+/// @note Not sure how to handle this yet. Still figuring it out.
+/// Mistral uses BPE, but we can start off with a naive representation.
+void tokenize_utf8(const char* text) {
+    const char* delimiters = " .,!?;:\"()";
+    char* text_copy = strdup(text); // Make a mutable copy
+    char* token = strtok(text_copy, delimiters);
+
+    while (token) {
+        printf("Token: %s\n", token);
+        token = strtok(NULL, delimiters);
+    }
+
+    free(text_copy);
+}
+
 int main(int argc, char* argv[]) {
+    setlocale(LC_ALL, "en_US.UTF-8");
+
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <model_file>\n", argv[0]);
         return 1;
@@ -38,16 +59,38 @@ int main(int argc, char* argv[]) {
 
     // Read the models magic header (start section)
     MistralMagic* header = mistral_read_start_section(magic_file);
+    if (!header) {
+        magic_file_close(magic_file);
+        return MAGIC_ERROR;
+    }
 
     // Read the models general section
     MistralGeneral* general = mistral_read_general_section(magic_file);
+    if (!general) {
+        mistral_free_start_section(header);
+        magic_file_close(magic_file);
+        return MAGIC_ERROR;
+    }
     mistral_log_general_section(general);
 
     // Read the models parameters section
     MistralParameters* parameters = mistral_read_parameters_section(magic_file);
+    if (!parameters) {
+        mistral_free_general_section(general);
+        mistral_free_start_section(header);
+        magic_file_close(magic_file);
+        return MAGIC_ERROR;
+    }
     mistral_log_parameters_section(parameters);
 
     TokenizerModel* tokenizer = mistral_read_tokenizer_section(magic_file);
+    if (!tokenizer) {
+        mistral_free_parameters_section(parameters);
+        mistral_free_general_section(general);
+        mistral_free_start_section(header);
+        magic_file_close(magic_file);
+        return MAGIC_ERROR;
+    }
     mistral_log_tokenizer_section(tokenizer);
 
     // Close the model file
@@ -61,6 +104,7 @@ int main(int argc, char* argv[]) {
     mistral_free_parameters_section(parameters);
     mistral_free_general_section(general);
     mistral_free_start_section(header);
+    magic_file_close(magic_file);
 
     return MAGIC_SUCCESS;
 }
