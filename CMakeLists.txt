@@ -45,6 +45,7 @@ set(
     C_SOURCES
     # Core tool kit
     "src/interface/logger.c"
+    "src/interface/hash.c"
     "src/interface/path.c"
     "src/interface/data_types.c"
     "src/interface/random.c"
