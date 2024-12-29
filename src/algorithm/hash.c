@@ -12,7 +12,8 @@
  * delete. For convenience, we can enable clearing the table as well.
  */
 
-#include "interface/hash.h"
+#include "algorithm/hash.h"
+
 #include "interface/logger.h"
 
 // -------------------- Hash Life-cycle --------------------
