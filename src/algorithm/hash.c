@@ -284,7 +284,7 @@ int32_t* hash_integer_search(HashTable* table, const void* key) {
 
 // ------------------- Hash Strings -------------------
 
-uint64_t hash_djb2(const uint8_t* string) {
+uint64_t hash_djb2(const char* string) {
     uint64_t hash = 5381;
     int c;
 
@@ -296,7 +296,7 @@ uint64_t hash_djb2(const uint8_t* string) {
 }
 
 uint64_t hash_string(const void* key, uint64_t size, uint64_t i) {
-    const uint8_t* string = (const uint8_t*) key;
+    const char* string = (const char*) key;
     return (hash_djb2(string) + i) % size;
 }
 

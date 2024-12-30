@@ -168,7 +168,7 @@ int32_t* hash_integer_search(HashTable* table, const void* key);
  * @param string Pointer to the null-terminated string key.
  * @return Hash value for the given string.
  */
-uint64_t hash_djb2(const uint8_t* string);
+uint64_t hash_djb2(const char* string);
 
 /**
  * @brief Hash function for string keys.
