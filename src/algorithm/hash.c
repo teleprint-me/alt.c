@@ -95,7 +95,7 @@ HashState hash_insert(HashTable* table, const void* key, void* value) {
             table->count++;
             return HASH_SUCCESS;
         } else if (table->compare(table->entries[index].key, key) == 0) { // Duplicate key
-            LOG_ERROR("%s: Duplicate key detected.\n", __func__);
+            LOG_DEBUG("%s: Found duplicate key during comparison.\n", __func__);
             return HASH_KEY_EXISTS;
         }
     }
@@ -274,7 +274,7 @@ uint64_t hash_integer(const void* key, uint64_t size, uint64_t i) {
 }
 
 int hash_integer_compare(const void* key1, const void* key2) {
-    return *(const int32_t*) key1 == *(const int32_t*) key2;
+    return *(const int32_t*) key1 - *(const int32_t*) key2;
 }
 
 int32_t* hash_integer_search(HashTable* table, const void* key) {
