@@ -14,7 +14,8 @@
 #define ALT_MODEL_MISTRAL_H
 
 #include <stdbool.h>
-#include <uthash.h>
+
+#include "algorithm/hash.h"
 
 #include "model/magic.h"
 
@@ -68,8 +69,6 @@ typedef struct __attribute__((aligned(8))) Token {
     int32_t id; // Encoded ID representing the position (e.g. 0, 1, 2)
     int32_t length; // Length of the token string
     char* data; // UTF-8 encoded string (dynamically allocated)
-    UT_hash_handle hh_token; // Handle for string-based hash map
-    UT_hash_handle hh_id; // Handle for ID-based hash map
 } Token;
 
 typedef struct __attribute__((aligned(8))) TokenizerModel {
@@ -78,8 +77,8 @@ typedef struct __attribute__((aligned(8))) TokenizerModel {
     int32_t eos_id; // End-of-sequence token ID
     int32_t pad_id; // Padding token ID
     int32_t unk_id; // Unknown token ID
-    Token* token_map; // Hash map for string-based lookups
-    Token* id_map; // Hash map for ID-based lookups
+    Token** tokens; // Array of tokens, indexed by ID
+    HashTable* table; // Hash map for string-based lookups
 } TokenizerModel;
 
 /// @todo TensorsModel
@@ -118,7 +117,7 @@ void mistral_free_tokenizer_section(TokenizerModel* tokenizer);
 void mistral_log_tokenizer_section(TokenizerModel* tokenizer);
 
 // Token lookup
-Token* mistral_get_token_by_data(TokenizerModel* tokenizer, const char* data);
-Token* mistral_get_token_by_id(TokenizerModel* tokenizer, int32_t id);
+int32_t mistral_get_id_by_token(TokenizerModel* tokenizer, const char* data);
+char* mistral_get_token_by_id(TokenizerModel* tokenizer, int32_t id);
 
 #endif // ALT_MODEL_MISTRAL_H
