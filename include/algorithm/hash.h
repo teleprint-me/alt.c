@@ -1,4 +1,6 @@
 /**
+ * Copyright © 2024 Austin Berrio
+ *
  * @file include/interface/hash.h
  * @brief Minimalistic hash table implementation providing mapping between integers and strings.
  *
@@ -23,11 +25,11 @@
  * @brief Enumerates possible outcomes of hash operations.
  */
 typedef enum HashState {
-    HASH_SUCCESS,       /**< Operation completed successfully. */
-    HASH_ERROR,         /**< General error during the operation. */
-    HASH_KEY_EXISTS,    /**< Attempted to insert a duplicate key. */
+    HASH_SUCCESS, /**< Operation completed successfully. */
+    HASH_ERROR, /**< General error during the operation. */
+    HASH_KEY_EXISTS, /**< Attempted to insert a duplicate key. */
     HASH_KEY_NOT_FOUND, /**< Key not found in the hash table. */
-    HASH_TABLE_FULL     /**< Hash table is full and cannot insert. */
+    HASH_TABLE_FULL /**< Hash table is full and cannot insert. */
 } HashState;
 
 /**
@@ -36,7 +38,7 @@ typedef enum HashState {
  */
 typedef enum {
     HASH_TYPE_INTEGER, /**< Keys are integers. */
-    HASH_TYPE_STRING   /**< Keys are strings. */
+    HASH_TYPE_STRING /**< Keys are strings. */
 } HashType;
 
 // ---------------------- Structures ----------------------
@@ -46,7 +48,7 @@ typedef enum {
  * @brief Represents a single key-value pair in the hash table.
  */
 typedef struct HashEntry {
-    void* key;   /**< Pointer to the key. */
+    void* key; /**< Pointer to the key. */
     void* value; /**< Pointer to the value. */
 } HashEntry;
 
@@ -55,12 +57,12 @@ typedef struct HashEntry {
  * @brief Represents the hash table.
  */
 typedef struct HashTable {
-    uint64_t count;     /**< Number of entries in the table. */
-    uint64_t size;      /**< Total capacity of the table. */
-    HashType type;      /**< Key type (integer or string). */
+    uint64_t count; /**< Number of entries in the table. */
+    uint64_t size; /**< Total capacity of the table. */
+    HashType type; /**< Key type (integer or string). */
     HashEntry* entries; /**< Array of hash entries. */
     uint64_t (*hash)(const void* key, uint64_t size, uint64_t i); /**< Hash function. */
-    int (*compare)(const void* key1, const void* key2);           /**< Comparison function. */
+    int (*compare)(const void* key1, const void* key2); /**< Comparison function. */
 } HashTable;
 
 // -------------------- Hash Life-cycle --------------------

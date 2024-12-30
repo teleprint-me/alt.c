@@ -1,15 +1,16 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file src/interface/hash.c
+ * @file include/interface/hash.h
+ * @brief Minimalistic hash table implementation providing mapping between integers and strings.
  *
- * @brief The Hash Interface is designed to provide a minimal mapping between integers and strings
- * much like a dictionary might behave in Python. This interface should allow users to map strings
- * to integers and integers to strings.
+ * The Hash Interface is designed to provide a minimal mapping between integers and strings,
+ * much like a dictionary in Python. Users can map strings to integers and integers to strings,
+ * supporting insertion, search, deletion, and table clearing.
  *
- * @note We should expect the user to take responsibility of the memory allocation. The table is
- * simply used as a reference for lookups. This means the basic operations, insert, search, and
- * delete. For convenience, we can enable clearing the table as well.
+ * @note Comparison functions used with the HashTable must:
+ * - Return 0 for equality.
+ * - Return a non-zero value for inequality.
  */
 
 #include "algorithm/hash.h"
