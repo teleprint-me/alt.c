@@ -104,7 +104,6 @@ int main(int argc, char* argv[]) {
     mistral_free_parameters_section(parameters);
     mistral_free_general_section(general);
     mistral_free_start_section(header);
-    magic_file_close(magic_file);
 
     return MAGIC_SUCCESS;
 }
