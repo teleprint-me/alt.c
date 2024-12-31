@@ -64,14 +64,14 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
     int64_t size = 0;
     magic_file_read_section_marker(magic_file, &marker, &size);
 
-    #define READ_STRING(field) \
-        MAGIC_READ_STRING(magic_file, general, field, label, mistral_free_general_section)
+#define READ_STRING(field) \
+    MAGIC_READ_STRING(magic_file, general, field, label, mistral_free_general_section)
 
-    // Read the general section fields
-    #define FIELD(field) READ_STRING(field)
+// Read the general section fields
+#define FIELD(field) READ_STRING(field)
     MISTRAL_FOREACH_GENERAL_FIELD
-    #undef FIELD
-    #undef READ_STRING
+#undef FIELD
+#undef READ_STRING
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -86,29 +86,29 @@ MistralGeneral* mistral_read_general_section(MagicFile* magic_file) {
 
 void mistral_free_general_section(MistralGeneral* general) {
     if (general) {
-        // free strings first
-        #define FREE_FIELD(field) \
-            if (general->field) { \
-                free(general->field); \
-            }
+// free strings first
+#define FREE_FIELD(field) \
+    if (general->field) { \
+        free(general->field); \
+    }
 
-        #define FIELD(field) FREE_FIELD(field)
+#define FIELD(field) FREE_FIELD(field)
         MISTRAL_FOREACH_GENERAL_FIELD
-        #undef FIELD
-        #undef FREE_FIELD
+#undef FIELD
+#undef FREE_FIELD
 
         // free the section structure
         free(general);
     }
 }
 
-void mistral_log_general_section(MistralGeneral* general) {
-    #define LOG_FIELD(field) \
-        LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, general->field);
+void mistral_log_general_section(MistralGeneral* general){
+#define LOG_FIELD(field) \
+    LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, general->field);
 
-    #define FIELD(field) LOG_FIELD(field)
+#define FIELD(field) LOG_FIELD(field)
     MISTRAL_FOREACH_GENERAL_FIELD
-    #undef FIELD
+#undef FIELD
 }
 
 #define MISTRAL_FOREACH_PARAM_INT32_FIELD \
@@ -140,25 +140,27 @@ MistralParameters* mistral_read_parameters_section(MagicFile* magic_file) {
     int64_t size = 0;
     magic_file_read_section_marker(magic_file, &marker, &size);
 
-    #define READ_INT32(field) \
-        MAGIC_READ_INT32(magic_file, parameters, field, label, mistral_free_parameters_section)
+#define READ_INT32(field) \
+    MAGIC_READ_INT32(magic_file, parameters, field, label, mistral_free_parameters_section)
 
-    #define READ_FLOAT(field) \
-        MAGIC_READ_FLOAT(magic_file, parameters, field, label, mistral_free_parameters_section);
+#define READ_FLOAT(field) \
+    MAGIC_READ_FLOAT(magic_file, parameters, field, label, mistral_free_parameters_section);
 
     // Read fields using generalized macros
     MAGIC_READ_STRING(magic_file, parameters, hidden_act, label, mistral_free_parameters_section);
-    MAGIC_READ_BOOL(magic_file, parameters, tie_word_embeddings, label, mistral_free_parameters_section);
+    MAGIC_READ_BOOL(
+        magic_file, parameters, tie_word_embeddings, label, mistral_free_parameters_section
+    );
 
-    #define FIELD(field) READ_INT32(field)
+#define FIELD(field) READ_INT32(field)
     MISTRAL_FOREACH_PARAM_INT32_FIELD
-    #undef FIELD
-    #undef READ_INT32
+#undef FIELD
+#undef READ_INT32
 
-    #define FIELD(field) READ_FLOAT(field)
+#define FIELD(field) READ_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
-    #undef FIELD
-    #undef READ_FLOAT
+#undef FIELD
+#undef READ_FLOAT
 
     // We must align the padding for the next section
     if (MAGIC_SUCCESS != magic_file_pad(magic_file)) {
@@ -180,24 +182,30 @@ void mistral_free_parameters_section(MistralParameters* parameters) {
 }
 
 void mistral_log_parameters_section(MistralParameters* parameters) {
-    #define LOG_INT32(field) \
-        LOG_INFO("%s: Section: Parameters, Field: " #field "=%d\n", __func__, parameters->field);
+#define LOG_INT32(field) \
+    LOG_INFO("%s: Section: Parameters, Field: " #field "=%d\n", __func__, parameters->field);
 
-    #define LOG_FLOAT(field) \
-        LOG_INFO("%s: Section: Parameters, Field: " #field "=%.6f\n", __func__, (double) parameters->field);
+#define LOG_FLOAT(field) \
+    LOG_INFO( \
+        "%s: Section: Parameters, Field: " #field "=%.6f\n", __func__, (double) parameters->field \
+    );
 
     LOG_INFO("%s: Section: Parameters, Field: hidden_act=%s\n", __func__, parameters->hidden_act);
-    LOG_INFO("%s: Section: Parameters, Field: tie_word_embeddings=%d\n", __func__, parameters->tie_word_embeddings);
+    LOG_INFO(
+        "%s: Section: Parameters, Field: tie_word_embeddings=%d\n",
+        __func__,
+        parameters->tie_word_embeddings
+    );
 
-    #define FIELD(field) LOG_INT32(field)
+#define FIELD(field) LOG_INT32(field)
     MISTRAL_FOREACH_PARAM_INT32_FIELD
-    #undef FIELD
-    #undef LOG_INT32
+#undef FIELD
+#undef LOG_INT32
 
-    #define FIELD(field) LOG_FLOAT(field)
+#define FIELD(field) LOG_FLOAT(field)
     MISTRAL_FOREACH_PARAM_FLOAT_FIELD
-    #undef FIELD
-    #undef LOG_FLOAT
+#undef FIELD
+#undef LOG_FLOAT
 }
 
 Token* mistral_read_token(MagicFile* magic_file) {
@@ -251,7 +259,9 @@ HashState mistral_add_token_to_table(TokenizerModel* model, Token* token) {
     if (existing_id) {
         LOG_ERROR(
             "%s: Duplicate token detected in HashTable. Existing data: '%s', New data: '%s'\n",
-            __func__, model->tokens[*existing_id]->data, token->data
+            __func__,
+            model->tokens[*existing_id]->data,
+            token->data
         );
         return HASH_KEY_EXISTS;
     }
@@ -291,13 +301,13 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
         return NULL;
     }
 
-    #define READ_INT32(field) \
-        MAGIC_READ_INT32(magic_file, tokenizer, field, label, mistral_free_tokenizer_section)
+#define READ_INT32(field) \
+    MAGIC_READ_INT32(magic_file, tokenizer, field, label, mistral_free_tokenizer_section)
 
-    #define FIELD(field) READ_INT32(field)
+#define FIELD(field) READ_INT32(field)
     MISTRAL_FOREACH_TOKEN_INT32_FIELD
-    #undef FIELD
-    #undef READ_INT32
+#undef FIELD
+#undef READ_INT32
 
     // Mistrals vocab size is 32000
     if (tokenizer->vocab_size <= 0 || tokenizer->vocab_size > 32000) {
@@ -333,7 +343,12 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
 
         // Add token to the table
         if (mistral_add_token_to_table(tokenizer, token) != HASH_SUCCESS) {
-            LOG_ERROR("%s: Failed to add token to table. Token: '%s', ID: %d\n", __func__, token->data, token->id);
+            LOG_ERROR(
+                "%s: Failed to add token to table. Token: '%s', ID: %d\n",
+                __func__,
+                token->data,
+                token->id
+            );
             mistral_free_token(token);
             mistral_free_tokenizer_section(tokenizer);
             return NULL;
@@ -374,14 +389,14 @@ void mistral_free_tokenizer_section(TokenizerModel* tokenizer) {
 }
 
 void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
-    // Log integer fields of the tokenizer
-    #define LOG_INT32(field) \
-        LOG_INFO("%s: Section: Tokenizer, Field: " #field "=%d\n", __func__, tokenizer->field);
+// Log integer fields of the tokenizer
+#define LOG_INT32(field) \
+    LOG_INFO("%s: Section: Tokenizer, Field: " #field "=%d\n", __func__, tokenizer->field);
 
-    #define FIELD(field) LOG_INT32(field)
+#define FIELD(field) LOG_INT32(field)
     MISTRAL_FOREACH_TOKEN_INT32_FIELD
-    #undef FIELD
-    #undef LOG_INT32
+#undef FIELD
+#undef LOG_INT32
 
     // Log tokens from the hash map
     LOG_INFO("%s: Tokenizer contains %d tokens.\n", __func__, tokenizer->vocab_size);
