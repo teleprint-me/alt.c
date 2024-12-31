@@ -447,3 +447,75 @@ char* mistral_get_token_by_id(TokenizerModel* tokenizer, int32_t id) {
 
     return token->data;
 }
+
+MistralModel* mistral_read_model(char* model_path) {
+    MistralModel* mistral_model = (MistralModel*) malloc(sizeof(MistralModel));
+    if (!mistral_model) {
+        return NULL;
+    }
+
+    // Open the model file
+    MagicFile* magic_file = magic_file_open(model_path, "rb");
+    if (!magic_file) {
+        LOG_ERROR("Failed to open model file: %s", model_path);
+        return NULL;
+    }
+    // Validate the model file
+    if (MAGIC_SUCCESS != magic_file_validate(magic_file)) {
+        LOG_ERROR("Invalid model file: %s", model_path);
+        magic_file_close(magic_file);
+        return NULL;
+    }
+
+    // Read the models magic header (start section)
+    mistral_model->magic = mistral_read_start_section(magic_file);
+    if (!mistral_model->magic) {
+        magic_file_close(magic_file);
+        return NULL;
+    }
+
+    // Read the models general section
+    mistral_model->general = mistral_read_general_section(magic_file);
+    if (!mistral_model->general) {
+        mistral_free_model(mistral_model);
+        magic_file_close(magic_file);
+        return NULL;
+    }
+    mistral_log_general_section(mistral_model->general);
+
+    // Read the models parameters section
+    mistral_model->parameters = mistral_read_parameters_section(magic_file);
+    if (!mistral_model->parameters) {
+        mistral_free_model(mistral_model);
+        magic_file_close(magic_file);
+        return NULL;
+    }
+    mistral_log_parameters_section(mistral_model->parameters);
+
+    mistral_model->tokenizer = mistral_read_tokenizer_section(magic_file);
+    if (!mistral_model->tokenizer) {
+        mistral_free_model(mistral_model);
+        magic_file_close(magic_file);
+        return NULL;
+    }
+    mistral_log_tokenizer_section(mistral_model->tokenizer);
+
+    // Close the model file
+    if (MAGIC_SUCCESS != magic_file_close(magic_file)) {
+        LOG_ERROR("%s: Failed to close model file: %s", __func__, magic_file->filepath);
+        mistral_free_model(mistral_model);
+        return NULL;
+    }
+
+    return mistral_model;
+}
+
+void mistral_free_model(MistralModel* mistral_model) {
+    if (mistral_model) {
+        mistral_free_tokenizer_section(mistral_model->tokenizer);
+        mistral_free_parameters_section(mistral_model->parameters);
+        mistral_free_general_section(mistral_model->general);
+        mistral_free_start_section(mistral_model->magic);
+        free(mistral_model);
+    }
+}

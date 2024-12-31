@@ -120,4 +120,7 @@ void mistral_log_tokenizer_section(TokenizerModel* tokenizer);
 int32_t mistral_get_id_by_token(TokenizerModel* tokenizer, const char* data);
 char* mistral_get_token_by_id(TokenizerModel* tokenizer, int32_t id);
 
+MistralModel* mistral_read_model(char* model_path);
+void mistral_free_model(MistralModel* mistral_model);
+
 #endif // ALT_MODEL_MISTRAL_H
