@@ -23,9 +23,9 @@
 /// Mistral uses BPE, but we can start off with a naive representation.
 void mistral_tokenize(TokenizerModel* tokenizer, const char* input) {
     const char* ptr = input; // Pointer to traverse the input string
-    char buffer[256];       // Temporary buffer for tokens
+    char buffer[256]; // Temporary buffer for tokens
     size_t buffer_index = 0;
-    int is_new_word = 1;    // Flag to check if a new word starts (after a space)
+    int is_new_word = 1; // Flag to check if a new word starts (after a space)
 
     while (*ptr) {
         // Handle spaces (convert to special marker)
@@ -117,7 +117,9 @@ int main(int argc, char* argv[]) {
     printf("User Input: %s\n", user_input);
 
     MistralModel* mistral_model = mistral_read_model(model_path);
-    if (!mistral_model) { return EXIT_FAILURE; }
+    if (!mistral_model) {
+        return EXIT_FAILURE;
+    }
 
     mistral_tokenize(mistral_model->tokenizer, user_input);
 
