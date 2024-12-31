@@ -104,7 +104,7 @@ void mistral_free_general_section(MistralGeneral* general) {
 
 void mistral_log_general_section(MistralGeneral* general){
 #define LOG_FIELD(field) \
-    LOG_INFO("%s: Section: General, Field: " #field "=%s\n", __func__, general->field);
+    LOG_DEBUG("%s: Section: General, Field: " #field "=%s\n", __func__, general->field);
 
 #define FIELD(field) LOG_FIELD(field)
     MISTRAL_FOREACH_GENERAL_FIELD
@@ -183,15 +183,15 @@ void mistral_free_parameters_section(MistralParameters* parameters) {
 
 void mistral_log_parameters_section(MistralParameters* parameters) {
 #define LOG_INT32(field) \
-    LOG_INFO("%s: Section: Parameters, Field: " #field "=%d\n", __func__, parameters->field);
+    LOG_DEBUG("%s: Section: Parameters, Field: " #field "=%d\n", __func__, parameters->field);
 
 #define LOG_FLOAT(field) \
-    LOG_INFO( \
+    LOG_DEBUG( \
         "%s: Section: Parameters, Field: " #field "=%.6f\n", __func__, (double) parameters->field \
     );
 
-    LOG_INFO("%s: Section: Parameters, Field: hidden_act=%s\n", __func__, parameters->hidden_act);
-    LOG_INFO(
+    LOG_DEBUG("%s: Section: Parameters, Field: hidden_act=%s\n", __func__, parameters->hidden_act);
+    LOG_DEBUG(
         "%s: Section: Parameters, Field: tie_word_embeddings=%d\n",
         __func__,
         parameters->tie_word_embeddings
@@ -391,7 +391,7 @@ void mistral_free_tokenizer_section(TokenizerModel* tokenizer) {
 void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
 // Log integer fields of the tokenizer
 #define LOG_INT32(field) \
-    LOG_INFO("%s: Section: Tokenizer, Field: " #field "=%d\n", __func__, tokenizer->field);
+    LOG_DEBUG("%s: Section: Tokenizer, Field: " #field "=%d\n", __func__, tokenizer->field);
 
 #define FIELD(field) LOG_INT32(field)
     MISTRAL_FOREACH_TOKEN_INT32_FIELD
@@ -399,7 +399,7 @@ void mistral_log_tokenizer_section(TokenizerModel* tokenizer) {
 #undef LOG_INT32
 
     // Log tokens from the hash map
-    LOG_INFO("%s: Tokenizer contains %d tokens.\n", __func__, tokenizer->vocab_size);
+    LOG_DEBUG("%s: Tokenizer contains %d tokens.\n", __func__, tokenizer->vocab_size);
 
     for (int32_t i = 0; i < tokenizer->vocab_size; i++) {
         Token* token = tokenizer->tokens[i];
