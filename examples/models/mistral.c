@@ -22,14 +22,55 @@
 /// @note Not sure how to handle this yet. Still figuring it out.
 /// Mistral uses BPE, but we can start off with a naive representation.
 void mistral_tokenize(TokenizerModel* tokenizer, const char* input) {
-    char* token = strtok(strdup(input), " .,!?;:\"()");
-    while (token) {
-        int32_t id = mistral_get_id_by_token(tokenizer, token);
-        if (id == -1) {
-            id = tokenizer->unk_id; // Handle unknown token
+    const char* ptr = input; // Pointer to traverse the input string
+    char buffer[256];       // Temporary buffer for tokens
+    size_t buffer_index = 0;
+    int is_new_word = 1;    // Flag to check if a new word starts (after a space)
+
+    while (*ptr) {
+        // Handle spaces (convert to special marker)
+        if (*ptr == ' ') {
+            if (buffer_index > 0) { // If buffer has a token, process it first
+                buffer[buffer_index] = '\0';
+                printf("Token: %s, ID: %d\n", buffer, mistral_get_id_by_token(tokenizer, buffer));
+                buffer_index = 0;
+            }
+            is_new_word = 1; // Indicate a new word starts after this space
+            ptr++;
+            continue;
         }
-        printf("Token: %s, ID: %d\n", token, id);
-        token = strtok(NULL, " .,!?;:\"()");
+
+        // Handle punctuation
+        if (strchr(".,!?;:\"()", *ptr)) {
+            if (buffer_index > 0) { // If buffer has a token, process it first
+                buffer[buffer_index] = '\0';
+                printf("Token: '%s', ID: %d\n", buffer, mistral_get_id_by_token(tokenizer, buffer));
+                buffer_index = 0;
+            }
+            char punct[2] = {*ptr, '\0'};
+            printf("Token: '%s', ID: %d\n", punct, mistral_get_id_by_token(tokenizer, punct));
+            ptr++;
+            continue;
+        }
+
+        // Handle regular characters
+        if (is_new_word) { // Add special marker for new words
+            const char* marker = "\xe2\x96\x81"; // UTF-8 encoding for '▁'
+            size_t marker_len = strlen(marker);
+            if (buffer_index + marker_len < sizeof(buffer)) {
+                memcpy(buffer + buffer_index, marker, marker_len);
+                buffer_index += marker_len;
+            }
+            is_new_word = 0;
+        }
+
+        buffer[buffer_index++] = *ptr++;
+    }
+
+    // Process the last token in the buffer
+    if (buffer_index > 0) {
+        buffer[buffer_index] = '\0';
+        printf("Token: %s, ID: %d\n", buffer, mistral_get_id_by_token(tokenizer, buffer));
     }
 }
 
