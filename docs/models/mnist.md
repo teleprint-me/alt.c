@@ -1,3 +1,12 @@
+---
+title: "MNIST MLP"
+type: "technical"
+version: 1
+date: "2024-12-11"
+modified: "2024-12-30"
+license: "cc-by-nc-sa-4.0"
+---
+
 ## MNIST MLP
 
 ### 1. Network Structure

@@ -1,3 +1,12 @@
+---
+title: "Quantization Modeling: Q8"
+type: "technical"
+version: 1
+date: "2024-11-21"
+modified: "2024-12-30"
+license: "cc-by-nc-sa-4.0"
+---
+
 # **Quantization Modeling: Q8**
 
 Quantization reduces memory and computational overhead by representing floating-point values using smaller, integer-based formats (e.g., 4-bit or 8-bit integers). For Q8 quantization, the range $[-128, 127]$ is mapped to 8-bit signed integers, with a fixed scaling factor ensuring consistent precision.

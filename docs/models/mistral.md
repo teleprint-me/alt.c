@@ -1,3 +1,12 @@
+---
+title: "Mistral Model Architecture"
+type: "technical"
+version: 1
+date: "2024-12-15"
+modified: "2024-12-30"
+license: "cc-by-nc-sa-4.0"
+---
+
 # **Mistral Model Architecture**
 
 This document provides an in-depth technical breakdown of the Mistral 7B language model architecture, highlighting its core components, design decisions, and engineering optimizations.

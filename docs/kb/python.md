@@ -1,3 +1,12 @@
+---
+title: "Python Versioning and Compatibility Challenges"
+type: "technical"
+version: 1
+date: "2024-12-24"
+modified: "2024-12-30"
+license: "cc-by-nc-sa-4.0"
+---
+
 # Python Versioning and Compatibility Challenges
 
 Arch Linux has recently updated Python from version **3.12.x** to **3.13.x**, removing support for **3.12.x** packages. This change can cause significant issues for projects or environments that depend on the older version, as Python 3.12.x packages are no longer available in the system's repositories.
