@@ -51,9 +51,11 @@ MagicState magic_file_close(MagicFile* magic_file) {
         return state;
     }
 
-    if (0 != fclose(magic_file->data)) {
-        LOG_ERROR("%s: Failed to close file stream.\n", __func__);
-        return MAGIC_FILE_ERROR;
+    if (magic_file->data) {
+        if (0 != fclose(magic_file->data)) {
+            LOG_ERROR("%s: Failed to close file stream.\n", __func__);
+            return MAGIC_FILE_ERROR;
+        }
     }
 
     free(magic_file);
