@@ -21,89 +21,68 @@
 
 /// @note Not sure how to handle this yet. Still figuring it out.
 /// Mistral uses BPE, but we can start off with a naive representation.
-void tokenize_utf8(const char* text) {
-    const char* delimiters = " .,!?;:\"()";
-    char* text_copy = strdup(text); // Make a mutable copy
-    char* token = strtok(text_copy, delimiters);
-
+void mistral_tokenize(TokenizerModel* tokenizer, const char* input) {
+    char* token = strtok(strdup(input), " .,!?;:\"()");
     while (token) {
-        printf("Token: %s\n", token);
-        token = strtok(NULL, delimiters);
+        int32_t id = mistral_get_id_by_token(tokenizer, token);
+        if (id == -1) {
+            id = tokenizer->unk_id; // Handle unknown token
+        }
+        printf("Token: %s, ID: %d\n", token, id);
+        token = strtok(NULL, " .,!?;:\"()");
     }
-
-    free(text_copy);
 }
 
 int main(int argc, char* argv[]) {
+    global_logger.log_level = LOG_LEVEL_INFO;
     setlocale(LC_ALL, "en_US.UTF-8");
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <model_file>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <model_file> <input>\n", argv[0]);
         return 1;
     }
+
     char* model_path = argv[1];
+    char* user_input = NULL;
+    size_t input_size = 0;
 
-    // Open the model file
-    MagicFile* magic_file = magic_file_open(model_path, "rb");
-    if (!magic_file) {
-        LOG_ERROR("Failed to open model file: %s", model_path);
-        return MAGIC_FILE_ERROR;
+    // Concatenate all input arguments into a single string
+    for (int i = 2; i < argc; i++) {
+        size_t arg_len = strlen(argv[i]);
+        size_t new_size = input_size + arg_len + 2; // +1 for space or null-terminator
+
+        // Allocate (or reallocate) memory for the concatenated string
+        char* temp = realloc(user_input, new_size);
+        if (!temp) {
+            fprintf(stderr, "Memory allocation failed.\n");
+            free(user_input);
+            return 1;
+        }
+
+        user_input = temp;
+
+        // Append the argument and a space (or null-terminate at the end)
+        strcpy(user_input + input_size, argv[i]);
+        input_size += arg_len;
+
+        if (i < argc - 1) {
+            user_input[input_size++] = ' ';
+        } else {
+            user_input[input_size] = '\0';
+        }
     }
 
-    // Validate the model file
-    if (MAGIC_SUCCESS != magic_file_validate(magic_file)) {
-        LOG_ERROR("Invalid model file: %s", model_path);
-        magic_file_close(magic_file);
-        return MAGIC_FILE_ERROR;
-    }
+    printf("Model Path: %s\n", model_path);
+    printf("User Input: %s\n", user_input);
 
-    // Read the models magic header (start section)
-    MistralMagic* header = mistral_read_start_section(magic_file);
-    if (!header) {
-        magic_file_close(magic_file);
-        return MAGIC_ERROR;
-    }
+    MistralModel* mistral_model = mistral_read_model(model_path);
+    if (!mistral_model) { return EXIT_FAILURE; }
 
-    // Read the models general section
-    MistralGeneral* general = mistral_read_general_section(magic_file);
-    if (!general) {
-        mistral_free_start_section(header);
-        magic_file_close(magic_file);
-        return MAGIC_ERROR;
-    }
-    mistral_log_general_section(general);
-
-    // Read the models parameters section
-    MistralParameters* parameters = mistral_read_parameters_section(magic_file);
-    if (!parameters) {
-        mistral_free_general_section(general);
-        mistral_free_start_section(header);
-        magic_file_close(magic_file);
-        return MAGIC_ERROR;
-    }
-    mistral_log_parameters_section(parameters);
-
-    TokenizerModel* tokenizer = mistral_read_tokenizer_section(magic_file);
-    if (!tokenizer) {
-        mistral_free_parameters_section(parameters);
-        mistral_free_general_section(general);
-        mistral_free_start_section(header);
-        magic_file_close(magic_file);
-        return MAGIC_ERROR;
-    }
-    mistral_log_tokenizer_section(tokenizer);
-
-    // Close the model file
-    if (MAGIC_SUCCESS != magic_file_close(magic_file)) {
-        LOG_ERROR("%s: Failed to close model file: %s", __func__, magic_file->filepath);
-        return MAGIC_FILE_ERROR;
-    }
+    mistral_tokenize(mistral_model->tokenizer, user_input);
 
     // Cleanup
-    mistral_free_tokenizer_section(tokenizer);
-    mistral_free_parameters_section(parameters);
-    mistral_free_general_section(general);
-    mistral_free_start_section(header);
+    free(user_input);
+    mistral_free_model(mistral_model);
 
-    return MAGIC_SUCCESS;
+    return EXIT_SUCCESS;
 }
