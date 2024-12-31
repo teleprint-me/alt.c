@@ -6,7 +6,7 @@ set(EXAMPLES
     "char"
     "utf8"
     "u8proc"
-    "token"
+    "pre_tokenize"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/scratchpad)

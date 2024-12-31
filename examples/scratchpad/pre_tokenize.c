@@ -63,6 +63,6 @@ void mistral_pre_tokenize(const char* input) {
 
 int main() {
     const char* test_string = "Once upon a time, a wizard lived in the forest...";
-    mistral_regex_tokenize(test_string);
+    mistral_pre_tokenize(test_string);
     return 0;
 }
