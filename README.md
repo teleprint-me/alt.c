@@ -12,6 +12,7 @@ A transformer model built completely from scratch in C.
 - `libc`: Standard C library
 - `pthread`: POSIX multi-threading library for portable CPUs
 - `vulkan`: Portable multi-threading library for GPUs 
+- `libpcre2`: Implements Perl 5-style regular expressions
 - `libuuid`: DCE compatible Universally Unique Identifier library
 - `libutf8proc`: C library for Unicode handling
 - `stb`: Image loading/decoding library
@@ -28,7 +29,7 @@ A transformer model built completely from scratch in C.
 #### Install System Dependencies (Arch Linux)
 
 ```sh
-sudo pacman -S gcc gdb cmake util-linux-libs libutf8proc stb vulkan-headers vulkan-tools
+sudo pacman -S gcc gdb cmake util-linux-libs pcre2 libutf8proc stb vulkan-headers vulkan-tools
 ```
 
 ### Python Dependencies
