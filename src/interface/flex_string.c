@@ -91,6 +91,12 @@ FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
     const char* cursor = input;
     size_t subject_length = strlen(input);
     FlexString* token = flex_string_create();
+    if (!token) {
+        pcre2_match_data_free(match_data);
+        pcre2_code_free(re);
+        return NULL;
+    }
+
     while (subject_length > 0) {
         int rc = pcre2_match(re, (PCRE2_SPTR) cursor, subject_length, 0, 0, match_data, NULL);
         if (rc <= 0) {
@@ -105,7 +111,7 @@ FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
             break;
         }
 
-        char** temp = realloc(token->parts, sizeof(char*) * (token->length + 2));
+        char** temp = realloc(token->parts, sizeof(char*) * (token->length + 1));
         if (!temp) {
             free(part);
             break;
@@ -116,7 +122,6 @@ FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
         cursor += ovector[1];
         subject_length -= ovector[1];
     }
-    token->parts[token->length] = NULL;
 
     pcre2_match_data_free(match_data);
     pcre2_code_free(re);
