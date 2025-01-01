@@ -47,7 +47,6 @@ int main(void) {
 
     // Tokenize input text using the provided pattern
     FlexString* tokenizer = flex_string_create_tokens(text, token_pattern);
-
     if (!tokenizer) {
         LOG_ERROR("%s: Tokenization failed.\n", __func__);
         return 1;
