@@ -8,21 +8,37 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "interface/logger.h"
-
 #include "interface/flex_string.h"
 
-FlexString* flex_string_create_split(const char* input, const char* delimiter) {
-    if (!input || !delimiter || *input == '\0') {
+// Create a default object for populating
+FlexString* flex_string_create(void) {
+    FlexString* flex_string = (FlexString*) malloc(sizeof(FlexString));
+    if (!flex_string) {
         return NULL;
     }
+    flex_string->length = 0;
+    flex_string->parts = NULL;
+    return flex_string;
+}
 
-    FlexString* split = (FlexString*) malloc(sizeof(FlexString));
-    if (!split) {
-        return NULL;
+void flex_string_free(FlexString* flex_string) {
+    if (flex_string) {
+        for (uint32_t i = 0; i < flex_string->length; ++i) {
+            if (flex_string->parts[i]) {
+                free(flex_string->parts[i]);
+            }
+        }
+        if (flex_string->parts) {
+            free(flex_string->parts);
+        }
+        free(flex_string);
     }
-    split->length = 0;
-    split->parts = NULL;
+}
+
+FlexString* flex_string_create_split(const char* input, const char* delimiter) {
+    FLEX_STRING_GUARD(input, delimiter);
+
+    FlexString* split = flex_string_create();
 
     char* temp = strdup(input);
     char* token = strtok(temp, delimiter);
@@ -42,25 +58,8 @@ FlexString* flex_string_create_split(const char* input, const char* delimiter) {
     return split;
 }
 
-void flex_string_free_split(FlexString* split) {
-    if (split) {
-        for (uint32_t i = 0; i < split->length; ++i) {
-            if (split->parts[i]) {
-                free(split->parts[i]);
-            }
-        }
-        if (split->parts) {
-            free(split->parts);
-        }
-        free(split);
-    }
-}
-
-FlexString* flex_string_tokenize(const char* input, const char* pattern) {
-    if (!input || !pattern) {
-        LOG_ERROR("%s: Invalid input: input, pattern, or token_count is NULL\n", __func__);
-        return NULL;
-    }
+FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
+    FLEX_STRING_GUARD(input, pattern);
 
     pcre2_code* re;
     PCRE2_SIZE erroffset;
@@ -89,12 +88,9 @@ FlexString* flex_string_tokenize(const char* input, const char* pattern) {
         return NULL;
     }
 
-    char** tokens = NULL;
-    *token_count = 0;
-
     const char* cursor = input;
     size_t subject_length = strlen(input);
-
+    FlexString* token = flex_string_create();
     while (subject_length > 0) {
         int rc = pcre2_match(re, (PCRE2_SPTR) cursor, subject_length, 0, 0, match_data, NULL);
         if (rc <= 0) {
@@ -104,28 +100,28 @@ FlexString* flex_string_tokenize(const char* input, const char* pattern) {
         PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(match_data);
         size_t match_length = ovector[1] - ovector[0];
 
-        char* token = strndup(cursor + ovector[0], match_length);
-        if (!token) {
+        char* part = strndup(cursor + ovector[0], match_length);
+        if (!part) {
             break;
         }
 
-        char** temp = realloc(tokens, sizeof(char*) * (*token_count + 2));
+        char** temp = realloc(token->parts, sizeof(char*) * (token->length + 2));
         if (!temp) {
-            free(token);
+            free(part);
             break;
         }
-        tokens = temp;
-        tokens[(*token_count)++] = token;
-        tokens[*token_count] = NULL;
+        token->parts = temp;
+        token->parts[token->length++] = part;
 
         cursor += ovector[1];
         subject_length -= ovector[1];
     }
+    token->parts[token->length] = NULL;
 
     pcre2_match_data_free(match_data);
     pcre2_code_free(re);
 
-    return tokens;
+    return token;
 }
 
 char* flex_string_substitute(
