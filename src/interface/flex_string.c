@@ -165,3 +165,32 @@ char* flex_string_substitute(const char* input, const char* replacement, char ta
 
     return result;
 }
+
+// Function to prepend a character
+char* flex_string_prepend_char(const char* input, char prepend) {
+    size_t input_len = strlen(input);
+    char* result = (char*) malloc(input_len + 2); // +2 for the prepend char and null terminator
+    if (!result) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+
+    result[0] = prepend;
+    strcpy(result + 1, input);
+    return result;
+}
+
+// Function to append a character
+char* flex_string_append_char(const char* input, char append) {
+    size_t input_len = strlen(input);
+    char* result = (char*) malloc(input_len + 2); // +2 for the append char and null terminator
+    if (!result) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(result, input);
+    result[input_len] = append;
+    result[input_len + 1] = '\0';
+    return result;
+}
