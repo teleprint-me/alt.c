@@ -122,4 +122,14 @@ char* flex_string_prepend_char(const char* input, char prepend);
  */
 char* flex_string_append_char(const char* input, char append);
 
+/**
+ * @brief Joins two strings into a new string.
+ * 
+ * @param a The first string.
+ * @param b The second string.
+ * 
+ * @return A new string that contains the concatenation of `a` and `b`.
+ */
+char* flex_string_join(const char* a, const char* b);
+
 #endif // ALT_FLEX_STRING_H

@@ -190,3 +190,23 @@ char* flex_string_append_char(const char* input, char append) {
     result[input_len + 1] = '\0';
     return result;
 }
+
+char* flex_string_join(const char* a, const char* b) {
+    // Ensure input strings are not NULL
+    FLEX_STRING_GUARD(a, b);
+
+    // Allocate memory for the new string (+1 for the null terminator)
+    size_t len = strlen(a) + strlen(b) + 1;
+    char* result = (char*)malloc(len);
+
+    if (!result) {
+        LOG_ERROR("%s: Memory allocation failed\n", __func__);
+        return NULL;
+    }
+
+    // Concatenate the strings
+    strcpy(result, a);
+    strcat(result, b);
+
+    return result;
+}
