@@ -129,46 +129,39 @@ FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
     return token;
 }
 
-char* flex_string_substitute(
-    const char* source_string, const char* replacement_string, char target_char
-) {
-    if (!source_string || !replacement_string) {
-        LOG_ERROR("%s: source_string or replacement_string is NULL\n", __func__);
-        return NULL;
+char* flex_string_substitute(const char* input, const char* replacement, char target) {
+    FLEX_STRING_GUARD(input, replacement);
+
+    size_t source_length = strlen(input);
+    size_t replacement_length = strlen(replacement);
+
+    // Calculate new string length and build result in one pass
+    size_t result_length = 0;
+    const char* src = input;
+    while (*src) {
+        result_length += (*src == target) ? replacement_length : 1;
+        src++;
     }
 
-    size_t source_length = strlen(source_string);
-    size_t replacement_length = strlen(replacement_string);
-    size_t target_count = 0;
-
-    // Count occurrences of target_char in source_string
-    for (size_t i = 0; i < source_length; i++) {
-        if (source_string[i] == target_char) {
-            target_count++;
-        }
-    }
-
-    // Calculate the new string's length (+1 for null terminator)
-    size_t result_length = source_length + target_count * (replacement_length - 1) + 1;
-    char* result = (char*) malloc(result_length);
+    char* result = (char*) malloc(result_length + 1);
     if (!result) {
         LOG_ERROR("%s: Failed to allocate memory\n", __func__);
         return NULL;
     }
 
     // Build the resulting string
-    const char* src = source_string;
-    char* dest = result;
-    while (*src) {
-        if (*src == target_char) {
-            strcpy(dest, replacement_string);
-            dest += replacement_length;
+    const char* source_cursor = input;
+    char* result_cursor = result;
+    while (*source_cursor) {
+        if (*source_cursor == target) {
+            strcpy(result_cursor, replacement);
+            result_cursor += replacement_length;
         } else {
-            *dest++ = *src;
+            *result_cursor++ = *source_cursor;
         }
-        src++;
+        source_cursor++;
     }
-    *dest = '\0';
+    *result_cursor = '\0';
 
     return result;
 }
