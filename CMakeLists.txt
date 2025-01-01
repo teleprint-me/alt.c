@@ -60,6 +60,7 @@ set(
     # "src/vk/shader.c"
     # Models
     "src/model/magic.c"
+    "src/model/tokenizer.c"
     "src/model/mistral.c"
 )
 add_library("alt" ${C_SOURCES})
