@@ -5,9 +5,6 @@
  * @brief Interface for flexible string manipulation supporting common ASCII and UTF-8 operations.
  */
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "interface/flex_string.h"
 
 // Create a default object for populating
@@ -129,7 +126,7 @@ FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
     return token;
 }
 
-char* flex_string_substitute(const char* input, const char* replacement, char target) {
+char* flex_string_substitute_char(const char* input, const char* replacement, char target) {
     FLEX_STRING_GUARD(input, replacement);
 
     size_t source_length = strlen(input);
