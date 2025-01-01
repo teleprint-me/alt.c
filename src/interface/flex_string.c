@@ -5,55 +5,59 @@
  * @brief Interface for flexible string manipulation supporting common ASCII and UTF-8 operations.
  */
 
-#include "interface/flex_string.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "interface/logger.h"
 
-char* flex_string_substitute(
-    const char* source_string, const char* replacement_string, char target_char
-) {
-    if (!source_string || !replacement_string) {
-        LOG_ERROR("%s: source_string or replacement_string is NULL\n", __func__);
+#include "interface/flex_string.h"
+
+FlexString* flex_string_create_split(const char* input, const char* delimiter) {
+    if (!input || !delimiter || *input == '\0') {
         return NULL;
     }
 
-    size_t source_length = strlen(source_string);
-    size_t replacement_length = strlen(replacement_string);
-    size_t target_count = 0;
-
-    // Count occurrences of target_char in source_string
-    for (size_t i = 0; i < source_length; i++) {
-        if (source_string[i] == target_char) {
-            target_count++;
-        }
-    }
-
-    // Calculate the new string's length (+1 for null terminator)
-    size_t result_length = source_length + target_count * (replacement_length - 1) + 1;
-    char* result = (char*) malloc(result_length);
-    if (!result) {
-        LOG_ERROR("%s: Failed to allocate memory\n", __func__);
+    FlexString* split = (FlexString*) malloc(sizeof(FlexString));
+    if (!split) {
         return NULL;
     }
+    split->length = 0;
+    split->parts = NULL;
 
-    // Build the resulting string
-    const char* src = source_string;
-    char* dest = result;
-    while (*src) {
-        if (*src == target_char) {
-            strcpy(dest, replacement_string);
-            dest += replacement_length;
-        } else {
-            *dest++ = *src;
+    char* temp = strdup(input);
+    char* token = strtok(temp, delimiter);
+    while (token) {
+        split->parts = realloc(split->parts, (split->length + 1) * sizeof(char*));
+        if (!split->parts) {
+            free(temp);
+            free(split);
+            return NULL;
         }
-        src++;
+        split->parts[split->length] = strdup(token);
+        split->length += 1;
+        token = strtok(NULL, delimiter);
     }
-    *dest = '\0';
 
-    return result;
+    free(temp);
+    return split;
 }
 
-char** flex_string_tokenize(const char* input, const char* pattern, size_t* token_count) {
-    if (!input || !pattern || !token_count) {
+void flex_string_free_split(FlexString* split) {
+    if (split) {
+        for (uint32_t i = 0; i < split->length; ++i) {
+            if (split->parts[i]) {
+                free(split->parts[i]);
+            }
+        }
+        if (split->parts) {
+            free(split->parts);
+        }
+        free(split);
+    }
+}
+
+FlexString* flex_string_tokenize(const char* input, const char* pattern) {
+    if (!input || !pattern) {
         LOG_ERROR("%s: Invalid input: input, pattern, or token_count is NULL\n", __func__);
         return NULL;
     }
@@ -122,4 +126,48 @@ char** flex_string_tokenize(const char* input, const char* pattern, size_t* toke
     pcre2_code_free(re);
 
     return tokens;
+}
+
+char* flex_string_substitute(
+    const char* source_string, const char* replacement_string, char target_char
+) {
+    if (!source_string || !replacement_string) {
+        LOG_ERROR("%s: source_string or replacement_string is NULL\n", __func__);
+        return NULL;
+    }
+
+    size_t source_length = strlen(source_string);
+    size_t replacement_length = strlen(replacement_string);
+    size_t target_count = 0;
+
+    // Count occurrences of target_char in source_string
+    for (size_t i = 0; i < source_length; i++) {
+        if (source_string[i] == target_char) {
+            target_count++;
+        }
+    }
+
+    // Calculate the new string's length (+1 for null terminator)
+    size_t result_length = source_length + target_count * (replacement_length - 1) + 1;
+    char* result = (char*) malloc(result_length);
+    if (!result) {
+        LOG_ERROR("%s: Failed to allocate memory\n", __func__);
+        return NULL;
+    }
+
+    // Build the resulting string
+    const char* src = source_string;
+    char* dest = result;
+    while (*src) {
+        if (*src == target_char) {
+            strcpy(dest, replacement_string);
+            dest += replacement_length;
+        } else {
+            *dest++ = *src;
+        }
+        src++;
+    }
+    *dest = '\0';
+
+    return result;
 }
