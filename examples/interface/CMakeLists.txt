@@ -1,6 +1,7 @@
 # Add ALT related examples
 set(EXAMPLES
     "flex_array"
+    "flex_string"
 )
 
 set(INPUT_DIR ${PROJECT_SOURCE_DIR}/examples/interface)
