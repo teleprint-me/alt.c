@@ -7,29 +7,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Googles meta marker representing a space
+// Google's meta marker representing a space (UTF-8)
 #define MARKER "\u2581" // UTF-8 marker '▁'
 
 int main() {
     const char* text = "The quick brown fox jumps over the lazy dog.";
-    // const char* regex = "\\w+";
-    // GPT-2 Pre-tokenizer
-    const char* regex
+
+    // GPT-2 Pre-tokenizer regex pattern
+    const char* token_pattern
         = "('s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+)";
 
-    size_t token_count = 0;
-    char** tokens = flex_string_tokenize(text, regex, &token_count);
+    FlexString* tokenizer = flex_string_create_tokens(text, token_pattern);
 
-    if (tokens) {
-        printf("Found %zu tokens:\n", token_count);
-        for (size_t i = 0; i < token_count; i++) {
-            char* token = flex_string_substitute(tokens[i], MARKER, ' ');
-            printf("Token %zu: %s\n", i + 1, token);
-            free(token);
-            free(tokens[i]);
-        }
-        free(tokens);
+    if (!tokenizer) {
+        LOG_ERROR("%s: Tokenization failed.\n", __func__);
+        return 1;
     }
+
+    // Output the tokens
+    printf("Found %zu tokens:\n", tokenizer->length);
+    for (size_t i = 0; i < tokenizer->length; i++) {
+        if (!tokenizer->parts[i]) {
+            LOG_ERROR("%s: Token %zu is NULL.\n", __func__, i);
+            continue;
+        }
+
+        // Substitute spaces with the 'marker'
+        char* token_with_marker = flex_string_substitute_char(tokenizer->parts[i], MARKER, ' ');
+        if (token_with_marker == NULL) {
+            LOG_ERROR("%s: Failed to substitute marker in token %zu.\n", __func__, i);
+            free(tokenizer->parts[i]);
+            continue;
+        }
+
+        printf("Token %zu: %s\n", i + 1, token_with_marker);
+        free(token_with_marker); // Free the substituted token
+    }
+
+    // Free the tokens array
+    flex_string_free(tokenizer);
 
     return 0;
 }
