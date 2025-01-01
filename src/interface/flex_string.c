@@ -129,7 +129,6 @@ FlexString* flex_string_create_tokens(const char* input, const char* pattern) {
 char* flex_string_substitute_char(const char* input, const char* replacement, char target) {
     FLEX_STRING_GUARD(input, replacement);
 
-    size_t source_length = strlen(input);
     size_t replacement_length = strlen(replacement);
 
     // Calculate new string length and build result in one pass
