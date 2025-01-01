@@ -12,10 +12,50 @@
 
 #include "algorithm/hash.h"
 
+typedef struct StringSplit {
+    char** parts;     // Array of split symbols
+    uint32_t length;  // Number of symbols
+} StringSplit;
+
 typedef struct VocabularyEntry {
     char* word;       // Space-separated symbols
     int* frequency;   // Pointer to frequency count
 } VocabularyEntry;
+
+StringSplit* string_split(const char* str, const char* delim) {
+    if (!str || !delim || *str == '\0') {
+        return NULL;
+    }
+
+    StringSplit* split = (StringSplit*) malloc(sizeof(StringSplit));
+    if (!split) {
+        return NULL;
+    }
+    split->length = 0;
+    split->parts = NULL;
+
+    char* temp = strdup(str);
+    char* token = strtok(temp, delim);
+    while (token) {
+        split->parts = realloc(split->parts, (split->length + 1) * sizeof(char*));
+        split->parts[split->length] = strdup(token);
+        split->length += 1;
+        token = strtok(NULL, delim);
+    }
+
+    free(temp);
+    return split;
+}
+
+void free_string_split(StringSplit* split) {
+    if (split) {
+        for (uint32_t i = 0; i < split->length; ++i) {
+            free(split->parts[i]);
+        }
+        free(split->parts);
+        free(split);
+    }
+}
 
 VocabularyEntry* create_vocab_entry(const char* word, int frequency) {
     VocabularyEntry* entry = (VocabularyEntry*) malloc(sizeof(VocabularyEntry));
@@ -115,27 +155,29 @@ HashTable* get_stats(HashTable* vocab) {
             VocabularyEntry* vocab_entry = (VocabularyEntry*) entry->value;
 
             // Split the word into symbols
-            char* word = strdup(vocab_entry->word);
-            char* token = strtok(word, " ");
-            char* prev = token;
-            while ((token = strtok(NULL, " ")) != NULL) {
-                // Create the symbol pair
+            StringSplit* split = string_split(vocab_entry->word, " ");
+            if (!split || split->length < 2) {
+                free_string_split(split); // No pairs possible, free and continue
+                continue;
+            }
+
+            // Create pairs of adjacent symbols
+            for (uint32_t j = 0; j < split->length - 1; ++j) {
                 char pair[64];
-                snprintf(pair, sizeof(pair), "%s %s", prev, token);
+                snprintf(pair, sizeof(pair), "%s %s", split->parts[j], split->parts[j + 1]);
 
                 // Update frequency in stats
                 int* frequency = (int*) hash_search(stats, pair);
-                if (frequency) { // each frequency has its own memory now
-                    (*frequency) += *vocab_entry->frequency; // points to unique frequency
+                if (frequency) {
+                    (*frequency) += *(vocab_entry->frequency);
                 } else {
                     int* freq_ptr = malloc(sizeof(int));
-                    *freq_ptr = *vocab_entry->frequency;
-                    hash_insert(stats, strdup(pair), frequency); // pass freq by ref
+                    *freq_ptr = *(vocab_entry->frequency);
+                    hash_insert(stats, strdup(pair), freq_ptr);
                 }
-
-                prev = token;
             }
-            free(word); // free the word so we don't have dangling pointers
+
+            free_string_split(split);
         }
     }
 
@@ -239,7 +281,7 @@ int main() {
         HashEntry* entry = &vocab->entries[i];
         if (entry->key) {
             VocabularyEntry* vocab_entry = (VocabularyEntry*) entry->value;
-            printf("%s: %d\n", vocab_entry->word, vocab_entry->frequency);
+            printf("%s: %d\n", vocab_entry->word, *vocab_entry->frequency);
         }
     }
 
