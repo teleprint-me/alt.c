@@ -28,8 +28,8 @@ typedef struct FlexString {
  * @note The key maybe a delimeter, pattern, etc.
  */
 #define FLEX_STRING_GUARD(input, key) \
-    if (!(input) || !(key) || *(input) == '\0') { \
-        LOG_ERROR("%s: Invalid input: input, pattern, or token_count is NULL\n", __func__); \
+    if (!(input) || *(input) == '\0' || !(key)) { \
+        LOG_ERROR("%s: Invalid input: input or key is NULL\n", __func__); \
         return NULL; \
     }
 
