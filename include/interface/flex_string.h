@@ -15,12 +15,20 @@
 // Include clib string as defacto
 #include <string.h>
 
-// Substitute occurrences of target_char in source_string with replacement_string
-char* flex_string_substitute(
-    const char* source_string, const char* replacement_string, char target_char
-);
+typedef struct FlexString {
+    char** parts;
+    uint32_t length;
+} FlexString;
+
+// Behaves somewhat like Pythons str.split()
+FlexString* flex_string_create_split(const char* input, const char* delimeter);
+void flex_string_free_split(FlexString* string_split);
 
 // Tokenize a given source string using a PCRE2 compatible expression.
-char** flex_string_tokenize(const char* input, const char* pattern, size_t* token_count) ;
+FlexString* flex_string_create_tokens(const char* input, const char* pattern);
+void flex_string_free_tokens(FlexString* string_tokens);
+
+// Substitute occurrences of target in input with replacement
+char* flex_string_substitute(const char* input, const char* replacement, char target);
 
 #endif // ALT_FLEX_STRING_H
