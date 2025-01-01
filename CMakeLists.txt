@@ -52,6 +52,7 @@ set(
     "src/interface/random.c"
     "src/interface/activation.c"
     "src/interface/flex_array.c"
+    "src/interface/flex_string.c"
     "src/tensors.c" # work in progress
     # Vulkan backend
     "src/vk/instance.c"

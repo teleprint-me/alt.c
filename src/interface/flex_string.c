@@ -5,11 +5,12 @@
  * @brief Interface for flexible string manipulation supporting common ASCII and UTF-8 operations.
  */
 
-#include "interface/logger.h"
 #include "interface/flex_string.h"
+#include "interface/logger.h"
 
-// Substitute occurrences of target_char in source_string with replacement_string
-char* string_replace_char_with_uft8(const char* source_string, const char* replacement_string, char target_char) {
+char* flex_string_substitute(
+    const char* source_string, const char* replacement_string, char target_char
+) {
     if (!source_string || !replacement_string) {
         LOG_ERROR("%s: source_string or replacement_string is NULL\n", __func__);
         return NULL;
@@ -49,4 +50,76 @@ char* string_replace_char_with_uft8(const char* source_string, const char* repla
     *dest = '\0';
 
     return result;
+}
+
+char** flex_string_tokenize(const char* input, const char* pattern, size_t* token_count) {
+    if (!input || !pattern || !token_count) {
+        LOG_ERROR("%s: Invalid input: input, pattern, or token_count is NULL\n", __func__);
+        return NULL;
+    }
+
+    pcre2_code* re;
+    PCRE2_SIZE erroffset;
+    int errorcode;
+    PCRE2_UCHAR8 buffer[256];
+
+    re = pcre2_compile(
+        (PCRE2_SPTR) pattern,
+        PCRE2_ZERO_TERMINATED,
+        PCRE2_UTF | PCRE2_UCP,
+        &errorcode,
+        &erroffset,
+        NULL
+    );
+
+    if (!re) {
+        pcre2_get_error_message(errorcode, buffer, sizeof(buffer));
+        LOG_ERROR("%s: PCRE2 compilation failed at offset %zu: %s\n", __func__, erroffset, buffer);
+        return NULL;
+    }
+
+    pcre2_match_data* match_data = pcre2_match_data_create_from_pattern(re, NULL);
+    if (!match_data) {
+        LOG_ERROR("%s: Failed to create match data\n", __func__);
+        pcre2_code_free(re);
+        return NULL;
+    }
+
+    char** tokens = NULL;
+    *token_count = 0;
+
+    const char* cursor = input;
+    size_t subject_length = strlen(input);
+
+    while (subject_length > 0) {
+        int rc = pcre2_match(re, (PCRE2_SPTR) cursor, subject_length, 0, 0, match_data, NULL);
+        if (rc <= 0) {
+            break;
+        }
+
+        PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(match_data);
+        size_t match_length = ovector[1] - ovector[0];
+
+        char* token = strndup(cursor + ovector[0], match_length);
+        if (!token) {
+            break;
+        }
+
+        char** temp = realloc(tokens, sizeof(char*) * (*token_count + 2));
+        if (!temp) {
+            free(token);
+            break;
+        }
+        tokens = temp;
+        tokens[(*token_count)++] = token;
+        tokens[*token_count] = NULL;
+
+        cursor += ovector[1];
+        subject_length -= ovector[1];
+    }
+
+    pcre2_match_data_free(match_data);
+    pcre2_code_free(re);
+
+    return tokens;
 }

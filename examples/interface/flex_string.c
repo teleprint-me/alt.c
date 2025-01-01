@@ -7,13 +7,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MARKER "\xe2\x96\x81" // UTF-8 marker '▁'
+// Googles meta marker representing a space
+#define MARKER "\u2581" // UTF-8 marker '▁'
 
-int main(void) {
-    char* source_string = "The quick brown fox jumped over the lazy dog.";
-    char* target_string = flex_string_sub_char_with_uft8(source_string, MARKER, ' ');
-    printf("Source String: %s\n", source_string);
-    printf("Target String: %s\n", target_string);
-    free(target_string);
-    return EXIT_FAILURE;
+int main() {
+    const char* text = "The quick brown fox jumps over the lazy dog.";
+    // const char* regex = "\\w+";
+    // GPT-2 Pre-tokenizer
+    const char* regex
+        = "('s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+)";
+
+    size_t token_count = 0;
+    char** tokens = flex_string_tokenize(text, regex, &token_count);
+
+    if (tokens) {
+        printf("Found %zu tokens:\n", token_count);
+        for (size_t i = 0; i < token_count; i++) {
+            char* token = flex_string_substitute(tokens[i], MARKER, ' ');
+            printf("Token %zu: %s\n", i + 1, token);
+            free(token);
+            free(tokens[i]);
+        }
+        free(tokens);
+    }
+
+    return 0;
 }
