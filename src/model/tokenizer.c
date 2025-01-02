@@ -17,6 +17,9 @@
  * - Substitutions
  * - Post-processing
  * - Training
+ * - Calculating frequency and score probabilities
+ * - Token to id conversion
+ * - Id to token conversion
  */
 
 #include "interface/logger.h"

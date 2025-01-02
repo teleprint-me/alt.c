@@ -17,6 +17,9 @@
  * - Substitutions
  * - Post-processing
  * - Training
+ * - Calculating frequency and score probabilities
+ * - Token to id conversion
+ * - Id to token conversion
  */
 
 #ifndef ALT_TOKENIZER_H
@@ -35,6 +38,8 @@
 // Interfaces
 #include "interface/flex_string.h"
 
+// ---------------------- Macros ----------------------
+
 // Googles meta marker representing a space
 #define TOKEN_META_MARKER "\u2581" // UTF-8 marker '▁'
 
@@ -44,10 +49,11 @@
 
 // Add more pre tokenization patterns as needed.
 
-// MagicFile file structures
+// ---------------------- MagicFile structures ----------------------
+
 /// @note These are model independent, but are designed to mirror the SentencePiece Processor to
 /// enable compatibility with state-of-the-art methods. For these reasons, the implementations are
-/// left up to the end user.
+/// left up to the end user. See MagicFile API for more information.
 
 typedef enum TokenType {
     TOKEN_NORMAL = 0,
@@ -78,12 +84,14 @@ typedef struct __attribute__((aligned(8))) TokenizerModel {
     HashTable* table; // Hash map for string-based lookups
 } TokenizerModel;
 
-// Byte-pair Encoding
+// ---------------------- Byte-pair structures ----------------------
 
 typedef struct VocabularyEntry {
     char* word; // Space-separated symbols
     int* frequency; // Pointer to frequency count
 } VocabularyEntry;
+
+// ---------------------- Byte-pair operations ----------------------
 
 VocabularyEntry* create_vocab_entry(const char* word, int frequency);
 void free_vocab_entry(VocabularyEntry* entry);
@@ -96,7 +104,7 @@ void merge_vocab(HashTable* vocab, const char* pair);
 // The TOKEN_BYTE flag can be used to determine if the token is a byte representation or not
 TokenType get_token_type(Token* token);
 
-// Map byte token to integers
+// ---------------------- Byte-pair mappings ----------------------
 
 /**
  * @brief Initializes a hash table for token-to-byte mapping.
