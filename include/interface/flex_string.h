@@ -17,7 +17,7 @@
 
 #include "interface/logger.h"
 
-// Macros
+// ---------------------- Macros ----------------------
 
 /**
  * @brief Validates the input string and key for null or empty values.
@@ -33,7 +33,7 @@
         return NULL; \
     }
 
-// Structures
+// ---------------------- Structures ----------------------
 
 /**
  * @brief Structure representing a flexible string with multiple parts.
@@ -43,7 +43,7 @@ typedef struct FlexString {
     uint32_t length; ///< Number of parts (strings) in the array
 } FlexString;
 
-// Flex Life-cycle
+// ---------------------- Flex life-cycle ----------------------
 
 /**
  * @brief Creates and initializes a default FlexString object.
@@ -61,7 +61,7 @@ FlexString* flex_string_create(void);
  */
 void flex_string_free(FlexString* flex_string);
 
-// Flex Operations
+// ---------------------- Flex operations ----------------------
 
 /**
  * @brief Splits a string into parts based on a delimiter, similar to Python's str.split().
@@ -83,7 +83,7 @@ FlexString* flex_string_create_split(const char* input, const char* delimiter);
  */
 FlexString* flex_string_create_tokens(const char* input, const char* pattern);
 
-// String Operations
+// ---------------------- String operations ----------------------
 
 /// @note These should be multi-byte (UTF-8) compatible. They just need some minor adjustments.
 /// instead of using char, we should pass char* to account for the possibility of more than one
