@@ -56,14 +56,15 @@
 /// left up to the end user. See MagicFile API for more information.
 
 typedef enum TokenType {
-    TOKEN_NORMAL = 0,
-    TOKEN_BYTE = 1,
-    TOKEN_CONTROL = 2,
-    TOKEN_UNKNOWN = 3,
-    TOKEN_UNUSED = 4,
-    TOKEN_BOS = 5,
-    TOKEN_EOS = 6,
-    TOKEN_PAD = 7,
+    TOKEN_NORMAL,
+    TOKEN_UNKNOWN,
+    TOKEN_CONTROL,
+    TOKEN_USER_DEFINED,
+    TOKEN_BYTE,
+    TOKEN_UNUSED,
+    TOKEN_BOS,
+    TOKEN_EOS,
+    TOKEN_PAD,
 } TokenType;
 
 typedef struct __attribute__((aligned(8))) Token {

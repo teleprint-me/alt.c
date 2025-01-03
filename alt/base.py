@@ -87,24 +87,27 @@ class DataType:
 # Token handling with SentencePiece
 class TokenType:
     NORMAL: int = 0
-    BYTE: int = 1
+    UNKNOWN: int = 1
     CONTROL: int = 2
-    UNKNOWN: int = 3
-    UNUSED: int = 4
-    BOS: int = 5
-    EOS: int = 6
-    PAD: int = 7
+    USER_DEFINED: int = 3  # There's no way to test for this.
+    BYTE: int = 4
+    UNUSED: int = 5
+    BOS: int = 6
+    EOS: int = 7
+    PAD: int = 8
 
     def __init__(self, processor: SentencePieceProcessor):
+        if not isinstance(processor, SentencePieceProcessor):
+            raise ValueError("Model must be of type SentencePieceProcessor.")
         self.processor = processor
 
     def get_type(self, index: int, token: str) -> int:
-        if self.processor.is_byte(index):
-            return TokenType.BYTE
+        if self.processor.is_unknown(index):
+            return TokenType.UNKNOWN
         elif self.processor.is_control(index):
             return TokenType.CONTROL
-        elif self.processor.is_unknown(index):
-            return TokenType.UNKNOWN
+        elif self.processor.is_byte(index):
+            return TokenType.BYTE
         elif self.processor.is_unused(index):
             return TokenType.UNUSED
         elif token == "<s>":
