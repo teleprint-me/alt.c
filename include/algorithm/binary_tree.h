@@ -1,7 +1,7 @@
 /**
  * Copyright © 2024 Austin Berrio
  *
- * @file include/binary_tree.h
+ * @file include/algorithm/binary_tree.h
  * @brief Binary tree data structure.
  *
  * A binary search tree implementation with typical traversal methods and
