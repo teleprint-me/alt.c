@@ -60,8 +60,13 @@ BinaryTreeNode* binary_tree_node_create(BinaryTreePair* pair);
 void binary_tree_node_free(BinaryTreeNode* node);
 
 // Create a new tree
-BinaryTree* binary_tree_create(void);
+BinaryTree* binary_tree_create(BinaryTreePairCompare compare);
 void binary_tree_free(BinaryTree* tree);
+
+// ---------------------- Default comparison functions ----------------------
+
+int binary_tree_pair_int32_compare(const void* key_a, const void* key_b);
+int binary_tree_pair_string_compare(const void* key_a, const void* key_b);
 
 // ---------------------- Insertion and Deletion Functions ----------------------
 
