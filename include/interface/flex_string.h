@@ -35,6 +35,20 @@
 
 // ---------------------- Structures ----------------------
 
+/// @brief Structure representing a mutable string.
+typedef struct {
+    char* data; // Mutable string data
+    uint32_t length; // Use UINT_MAX to enforce an upper bound
+} String;
+
+/// @note no need for start and end like in C++
+/// @note Enforcing immutability does not prevent or protect against copying or memory allocations. While conceptually sound, this is probably easier to enforce by simply using `const char*`.
+/// @brief Structure representing a immutable string.
+typedef struct {
+    const char* data; // Immutable string data
+    uint32_t length;
+} StringView;
+
 /**
  * @brief Structure representing a flexible string with multiple parts.
  */
@@ -124,10 +138,10 @@ char* flex_string_append_char(const char* input, char append);
 
 /**
  * @brief Joins two strings into a new string.
- * 
+ *
  * @param a The first string.
  * @param b The second string.
- * 
+ *
  * @return A new string that contains the concatenation of `a` and `b`.
  */
 char* flex_string_join(const char* a, const char* b);
