@@ -3,12 +3,12 @@
  * @brief Interface of the Byte Pair Encoding (BPE) model.
  */
 
-#ifndef MODEL_BPE_H
-#define MODEL_BPE_H
+#ifndef ALT_MODEL_BPE_H
+#define ALT_MODEL_BPE_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
-#endif // MODEL_BPE_H
+#endif // ALT_MODEL_BPE_H
