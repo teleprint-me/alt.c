@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "algorithm/hash.h"
+#include "algorithm/hash_table.h"
 
 #include "interface/flex_string.h"
 

@@ -33,7 +33,7 @@
 #include <string.h>
 
 // Algorithms
-#include "algorithm/hash.h"
+#include "algorithm/hash_table.h"
 
 // Interfaces
 #include "interface/flex_string.h"
