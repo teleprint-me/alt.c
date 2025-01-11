@@ -167,7 +167,7 @@ HashTable* create_byte_map(void) {
     }
 
     // Populate the hash table with the tokens corresponding to each byte value
-    for (unsigned char i = 0; i < 256; ++i) {
+    for (unsigned int i = 0; i < 256; ++i) {
         char* token = byte_to_token(i);
         if (hash_insert(map, token, (void*) (uintptr_t) i) != HASH_SUCCESS) {
             free(token); // Handle insertion failure
@@ -181,9 +181,9 @@ HashTable* create_byte_map(void) {
 
 char* byte_to_token(unsigned char byte) {
     // Max value is 0xFF (255 = 2^(n-1))
-    if (byte > 0xFF) {
-        return NULL;
-    }
+    // if (byte > 0xFF) { // comparison is always true due to limited range of data type.
+    //     return NULL;
+    // }
 
     // Get the width of a byte token
     size_t length = strlen("<0xXX>") + 1;
