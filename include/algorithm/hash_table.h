@@ -13,8 +13,8 @@
  * - Return a non-zero value for inequality.
  */
 
-#ifndef ALT_HASH_H
-#define ALT_HASH_H
+#ifndef ALT_HASH_TABLE_H
+#define ALT_HASH_TABLE_H
 
 #include <stdint.h>
 
@@ -198,4 +198,4 @@ int hash_string_compare(const void* key1, const void* key2);
  */
 char* hash_string_search(HashTable* table, const void* key);
 
-#endif // ALT_HASH_H
+#endif // ALT_HASH_TABLE_H

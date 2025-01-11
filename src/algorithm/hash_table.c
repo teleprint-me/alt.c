@@ -13,7 +13,7 @@
  * - Return a non-zero value for inequality.
  */
 
-#include "algorithm/hash.h"
+#include "algorithm/hash_table.h"
 
 #include "interface/logger.h"
 
