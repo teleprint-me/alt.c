@@ -44,7 +44,7 @@ set(
     # sources are still in early development
     C_SOURCES
     # Algorithms
-    "src/algorithm/hash.c"
+    "src/algorithm/hash_table.c"
     # Interfaces
     "src/interface/logger.c"
     "src/interface/path.c"
