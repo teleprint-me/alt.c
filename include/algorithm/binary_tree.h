@@ -90,8 +90,6 @@ BinaryTreeNode* binary_tree_node_create(BinaryTreePair* pair);
 /// @note This function does not allocate the key or value. The caller must manage the memory
 /// separately.
 BinaryTreeNode* binary_tree_node_create_from_pair(void* key, void* value);
-// Copy a node
-BinaryTreeNode* binary_tree_node_copy(BinaryTreeNode* node);
 // Free a node
 void binary_tree_node_free(BinaryTreeNode* node);
 
