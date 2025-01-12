@@ -14,12 +14,11 @@
  */
 
 #include "algorithm/hash_table.h"
-
 #include "interface/logger.h"
 
 // -------------------- Hash Life-cycle --------------------
 
-HashTable* hash_create_table(uint64_t initial_size, HashType key_type) {
+HashTable* hash_create_table(uint64_t initial_size, HashTableType key_type) {
     HashTable* table = (HashTable*) malloc(sizeof(HashTable));
     if (!table) {
         LOG_ERROR("%s: Failed to allocate memory for HashTable.\n", __func__);
@@ -39,12 +38,12 @@ HashTable* hash_create_table(uint64_t initial_size, HashType key_type) {
             table->compare = hash_integer_compare;
             break;
         default:
-            LOG_ERROR("%s: Invalid HashType given.\n", __func__);
+            LOG_ERROR("%s: Invalid HashTableType given.\n", __func__);
             free(table);
             return NULL;
     }
 
-    table->entries = (HashEntry*) calloc(initial_size, sizeof(HashEntry));
+    table->entries = (HashTableEntry*) calloc(initial_size, sizeof(HashTableEntry));
     if (!table->entries) {
         LOG_ERROR("%s: Failed to allocate memory for HashTable entries.\n", __func__);
         free(table);
@@ -66,7 +65,7 @@ void hash_free_table(HashTable* table) {
 
 // -------------------- Hash Functions --------------------
 
-HashState hash_insert(HashTable* table, const void* key, void* value) {
+HashTableState hash_insert(HashTable* table, const void* key, void* value) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -105,7 +104,7 @@ HashState hash_insert(HashTable* table, const void* key, void* value) {
     return HASH_TABLE_FULL;
 }
 
-HashState hash_resize(HashTable* table, uint64_t new_size) {
+HashTableState hash_resize(HashTable* table, uint64_t new_size) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -124,14 +123,14 @@ HashState hash_resize(HashTable* table, uint64_t new_size) {
     }
 
     // Allocate new table entries
-    HashEntry* new_entries = (HashEntry*) calloc(new_size, sizeof(HashEntry));
+    HashTableEntry* new_entries = (HashTableEntry*) calloc(new_size, sizeof(HashTableEntry));
     if (!new_entries) {
         LOG_ERROR("%s: Failed to allocate memory for resized table.\n", __func__);
         return HASH_ERROR;
     }
 
     // Save the old table
-    HashEntry* old_entries = table->entries;
+    HashTableEntry* old_entries = table->entries;
     uint64_t old_size = table->size;
 
     // Update table properties
@@ -141,9 +140,9 @@ HashState hash_resize(HashTable* table, uint64_t new_size) {
     // Rehash old entries into the new table
     uint64_t rehashed_count = 0;
     for (uint64_t i = 0; i < old_size; i++) {
-        HashEntry* entry = &old_entries[i];
+        HashTableEntry* entry = &old_entries[i];
         if (entry->key) {
-            HashState state = hash_insert(table, entry->key, entry->value);
+            HashTableState state = hash_insert(table, entry->key, entry->value);
             if (state != HASH_SUCCESS) {
                 LOG_ERROR("%s: Failed to rehash key during resize.\n", __func__);
                 free(new_entries);
@@ -163,7 +162,7 @@ HashState hash_resize(HashTable* table, uint64_t new_size) {
     return HASH_SUCCESS;
 }
 
-HashState hash_delete(HashTable* table, const void* key) {
+HashTableState hash_delete(HashTable* table, const void* key) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -175,7 +174,7 @@ HashState hash_delete(HashTable* table, const void* key) {
 
     for (uint64_t i = 0; i < table->size; i++) {
         uint64_t index = table->hash(key, table->size, i);
-        HashEntry* entry = &table->entries[index];
+        HashTableEntry* entry = &table->entries[index];
 
         if (!entry->key) {
             // Key not found, stop probing
@@ -191,7 +190,7 @@ HashState hash_delete(HashTable* table, const void* key) {
             // Rehash subsequent entries in the probe sequence
             for (uint64_t j = i + 1; j < table->size; j++) {
                 uint64_t rehash_index = table->hash(key, table->size, j);
-                HashEntry* rehash_entry = &table->entries[rehash_index];
+                HashTableEntry* rehash_entry = &table->entries[rehash_index];
 
                 if (!rehash_entry->key) {
                     // Stop rehashing when an empty slot is reached
@@ -216,7 +215,7 @@ HashState hash_delete(HashTable* table, const void* key) {
     return HASH_KEY_NOT_FOUND; // Key not found after full probing
 }
 
-HashState hash_clear(HashTable* table) {
+HashTableState hash_clear(HashTable* table) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -227,7 +226,7 @@ HashState hash_clear(HashTable* table) {
     }
 
     for (uint64_t i = 0; i < table->size; i++) {
-        HashEntry* entry = &table->entries[i];
+        HashTableEntry* entry = &table->entries[i];
         if (entry->key) {
             // Clear the entry
             entry->key = NULL;
@@ -252,7 +251,7 @@ void* hash_search(HashTable* table, const void* key) {
     for (uint64_t i = 0; i < table->size; i++) {
         uint64_t index = table->hash(key, table->size, i);
 
-        HashEntry* entry = &table->entries[index];
+        HashTableEntry* entry = &table->entries[index];
         if (entry->key == NULL) {
             return NULL; // Not found
         }

@@ -21,36 +21,36 @@
 // ---------------------- Enumerations ----------------------
 
 /**
- * @enum HashState
+ * @enum HashTableState
  * @brief Enumerates possible outcomes of hash operations.
  */
-typedef enum HashState {
+typedef enum HashTableState {
     HASH_SUCCESS, /**< Operation completed successfully. */
     HASH_ERROR, /**< General error during the operation. */
     HASH_KEY_EXISTS, /**< Attempted to insert a duplicate key. */
     HASH_KEY_NOT_FOUND, /**< Key not found in the hash table. */
     HASH_TABLE_FULL /**< Hash table is full and cannot insert. */
-} HashState;
+} HashTableState;
 
 /**
- * @enum HashType
+ * @enum HashTableType
  * @brief Represents the key type for the hash table.
  */
-typedef enum {
+typedef enum HashTableType {
     HASH_TYPE_INTEGER, /**< Keys are integers. */
     HASH_TYPE_STRING /**< Keys are strings. */
-} HashType;
+} HashTableType;
 
 // ---------------------- Structures ----------------------
 
 /**
- * @struct HashEntry
+ * @struct HashTableEntry
  * @brief Represents a single key-value pair in the hash table.
  */
-typedef struct HashEntry {
+typedef struct HashTableEntry {
     void* key; /**< Pointer to the key. */
     void* value; /**< Pointer to the value. */
-} HashEntry;
+} HashTableEntry;
 
 /**
  * @struct HashTable
@@ -59,8 +59,8 @@ typedef struct HashEntry {
 typedef struct HashTable {
     uint64_t count; /**< Number of entries in the table. */
     uint64_t size; /**< Total capacity of the table. */
-    HashType type; /**< Key type (integer or string). */
-    HashEntry* entries; /**< Array of hash entries. */
+    HashTableType type; /**< Key type (integer or string). */
+    HashTableEntry* entries; /**< Array of hash entries. */
     uint64_t (*hash)(const void* key, uint64_t size, uint64_t i); /**< Hash function. */
     int (*compare)(const void* key1, const void* key2); /**< Comparison function. */
 } HashTable;
@@ -74,7 +74,7 @@ typedef struct HashTable {
  * @param key_type Type of keys the table will store (integer or string).
  * @return Pointer to the newly created hash table, or NULL on failure.
  */
-HashTable* hash_create_table(uint64_t initial_size, HashType key_type);
+HashTable* hash_create_table(uint64_t initial_size, HashTableType key_type);
 
 /**
  * @brief Frees the memory associated with the hash table.
@@ -93,7 +93,7 @@ void hash_free_table(HashTable* table);
  * @param value Pointer to the value.
  * @return HASH_SUCCESS on success, or an appropriate error code.
  */
-HashState hash_insert(HashTable* table, const void* key, void* value);
+HashTableState hash_insert(HashTable* table, const void* key, void* value);
 
 /**
  * @brief Resizes the hash table to a new size.
@@ -102,7 +102,7 @@ HashState hash_insert(HashTable* table, const void* key, void* value);
  * @param new_size The new size of the hash table.
  * @return HASH_SUCCESS on success, or HASH_ERROR on failure.
  */
-HashState hash_resize(HashTable* table, uint64_t new_size);
+HashTableState hash_resize(HashTable* table, uint64_t new_size);
 
 /**
  * @brief Deletes a key-value pair from the hash table.
@@ -111,7 +111,7 @@ HashState hash_resize(HashTable* table, uint64_t new_size);
  * @param key Pointer to the key to delete.
  * @return HASH_SUCCESS on success, or HASH_KEY_NOT_FOUND if the key is not found.
  */
-HashState hash_delete(HashTable* table, const void* key);
+HashTableState hash_delete(HashTable* table, const void* key);
 
 /**
  * @brief Clears all entries in the hash table.
@@ -119,7 +119,7 @@ HashState hash_delete(HashTable* table, const void* key);
  * @param table Pointer to the hash table.
  * @return HASH_SUCCESS on success, or HASH_ERROR on failure.
  */
-HashState hash_clear(HashTable* table);
+HashTableState hash_clear(HashTable* table);
 
 /**
  * @brief Searches for a key in the hash table.

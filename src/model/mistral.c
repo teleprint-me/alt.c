@@ -248,7 +248,7 @@ void mistral_free_token(Token* token) {
     }
 }
 
-HashState mistral_add_token_to_table(TokenizerModel* model, Token* token) {
+HashTableState mistral_add_token_to_table(TokenizerModel* model, Token* token) {
     if (!model || !token || !token->data || token->length <= 0) {
         LOG_ERROR("%s: Invalid arguments.\n", __func__);
         return HASH_ERROR;

@@ -50,7 +50,7 @@ HashTable* create_vocab(void) {
 void free_vocab(HashTable* vocab) {
     if (vocab) {
         for (uint64_t i = 0; i < vocab->size; i++) {
-            HashEntry* entry = &vocab->entries[i];
+            HashTableEntry* entry = &vocab->entries[i];
             if (entry->key) {
                 free(entry->key); // Free the key
                 entry->key = NULL;
@@ -78,7 +78,7 @@ int main() {
         int max_freq = 0;
 
         for (uint64_t j = 0; j < stats->size; ++j) {
-            HashEntry* entry = &stats->entries[j];
+            HashTableEntry* entry = &stats->entries[j];
             if (entry->key) {
                 int* freq = (int*) entry->value;
                 if (*freq > max_freq) {
@@ -104,7 +104,7 @@ int main() {
     // Print final vocabulary
     printf("Final Vocabulary:\n");
     for (uint64_t i = 0; i < vocab->size; ++i) {
-        HashEntry* entry = &vocab->entries[i];
+        HashTableEntry* entry = &vocab->entries[i];
         if (entry->key) {
             VocabularyEntry* vocab_entry = (VocabularyEntry*) entry->value;
             printf("%s: %d\n", vocab_entry->word, *vocab_entry->frequency);

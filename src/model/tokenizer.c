@@ -70,7 +70,7 @@ HashTable* get_stats(HashTable* vocab) {
     HashTable* stats = hash_create_table(64, HASH_TYPE_STRING);
 
     for (uint64_t i = 0; i < vocab->size; ++i) {
-        HashEntry* entry = &vocab->entries[i];
+        HashTableEntry* entry = &vocab->entries[i];
         if (entry->key) {
             VocabularyEntry* vocab_entry = (VocabularyEntry*) entry->value;
 
@@ -109,7 +109,7 @@ void free_stats(HashTable* stats) {
     if (stats) {
         // Iterate over the entire hash table size
         for (uint64_t i = 0; i < stats->size; i++) {
-            HashEntry* entry = &stats->entries[i];
+            HashTableEntry* entry = &stats->entries[i];
             if (entry->key) {
                 // Free the key (owned by the caller)
                 free(entry->key);
@@ -131,7 +131,7 @@ void merge_vocab(HashTable* vocab, const char* pair) {
     snprintf(pattern, sizeof(pattern), "(?<!\\S)%s(?!\\S)", pair);
 
     for (uint64_t i = 0; i < vocab->size; ++i) {
-        HashEntry* entry = &vocab->entries[i];
+        HashTableEntry* entry = &vocab->entries[i];
         if (entry->key) {
             VocabularyEntry* vocab_entry = (VocabularyEntry*) entry->value;
 
