@@ -2,148 +2,206 @@
  * Copyright © 2024 Austin Berrio
  *
  * @file include/interface/flex_string.h
- * @brief Interface for flexible string manipulation supporting common ASCII and UTF-8 operations.
+ * @brief Flexible String API for common ASCII and UTF-8 string manipulation.
+ *
+ * Provides utilities for working with UTF-8 strings, including splitting,
+ * joining, substitution, and regex-based operations.
  */
 
 #ifndef ALT_FLEX_STRING_H
 #define ALT_FLEX_STRING_H
 
-// Must be defined before including pcre2.h
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+// Include regex library for pattern matching (PCRE2 required)
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
-#include <stdlib.h>
-#include <string.h>
-
-#include "interface/logger.h"
-
-// ---------------------- Macros ----------------------
-
-/**
- * @brief Validates the input string and key for null or empty values.
- *
- * @param input The input string to check.
- * @param key A pointer to a character or string, such as a delimiter or pattern.
- *
- * If either the input or key is NULL or empty, an error is logged.
- */
-#define FLEX_STRING_GUARD(input, key) \
-    if (!(input) || *(input) == '\0' || !(key)) { \
-        LOG_ERROR("%s: Invalid input: input or key is NULL\n", __func__); \
-        return NULL; \
-    }
-
 // ---------------------- Structures ----------------------
 
-/// @brief Structure representing a mutable string.
-typedef struct {
-    char* data; // Mutable string data
-    uint32_t length; // Use UINT_MAX to enforce an upper bound
-} String;
-
-/// @note no need for start and end like in C++
-/// @note Enforcing immutability does not prevent or protect against copying or memory allocations. While conceptually sound, this is probably easier to enforce by simply using `const char*`.
-/// @brief Structure representing a immutable string.
-typedef struct {
-    const char* data; // Immutable string data
-    uint32_t length;
-} StringView;
-
 /**
- * @brief Structure representing a flexible string with multiple parts.
+ * @brief Represents a mutable string with dynamic memory management.
  */
-typedef struct FlexString {
-    char** parts; ///< Array of split strings
-    uint32_t length; ///< Number of parts (strings) in the array
+typedef struct {
+    char* data; ///< Pointer to the string data.
+    uint32_t length; ///< Length of the string (in characters, not bytes).
 } FlexString;
 
-// ---------------------- Flex life-cycle ----------------------
-
 /**
- * @brief Creates and initializes a default FlexString object.
- *
- * The object is initialized to null and length 0.
- *
- * @return A pointer to the newly created FlexString object.
+ * @brief Represents a flexible string with multiple parts.
  */
-FlexString* flex_string_create(void);
+typedef struct {
+    char** parts; ///< Array of split strings.
+    uint32_t length; ///< Number of parts (strings) in the array.
+} FlexStringSplit;
+
+// ---------------------- Lifecycle Functions ----------------------
 
 /**
- * @brief Frees the memory used by a FlexString object.
+ * @brief Creates a FlexString with the given data.
  *
- * @param flex_string A pointer to the FlexString object to free.
+ * @param data The initial string data.
+ * @return Pointer to a newly allocated FlexString.
  */
-void flex_string_free(FlexString* flex_string);
-
-// ---------------------- Flex operations ----------------------
+FlexString* flex_string_create(char* data);
 
 /**
- * @brief Splits a string into parts based on a delimiter, similar to Python's str.split().
+ * @brief Frees the memory used by a FlexString.
  *
- * @param input The input string to split.
- * @param delimiter The delimiter used to split the string.
- *
- * @return A pointer to a FlexString object containing the parts of the split string.
+ * @param string Pointer to the FlexString to free.
  */
-FlexString* flex_string_create_split(const char* input, const char* delimiter);
+void flex_string_free(FlexString* string);
 
 /**
- * @brief Tokenizes the input string based on a PCRE2-compatible regular expression pattern.
+ * @brief Creates an empty FlexStringSplit object.
  *
- * @param input The string to tokenize.
- * @param pattern The regular expression pattern to use for tokenization.
- *
- * @return A pointer to a FlexString object containing the tokens from the input string.
+ * @return Pointer to a newly allocated FlexStringSplit object.
  */
-FlexString* flex_string_create_tokens(const char* input, const char* pattern);
-
-// ---------------------- String operations ----------------------
-
-/// @note These should be multi-byte (UTF-8) compatible. They just need some minor adjustments.
-/// instead of using char, we should pass char* to account for the possibility of more than one
-/// byte. char made the initial prototypes easier to implement. But this won't be compatible in the
-/// long term.
+FlexStringSplit* flex_string_create_split(void);
 
 /**
- * @brief Substitutes all occurrences of a target character in the input string with a replacement
- * string.
+ * @brief Frees the memory used by a FlexStringSplit.
+ *
+ * @param split Pointer to the FlexStringSplit to free.
+ */
+void flex_string_free_split(FlexStringSplit* split);
+
+// ---------------------- Character Operations ----------------------
+
+/**
+ * @brief Determines the length of a UTF-8 character.
+ *
+ * This function takes a single byte as input and returns the length of the corresponding UTF-8
+ * character. It uses the UTF-8 character encoding rules to determine the length.
+ *
+ * @param byte The input byte to be processed.
+ * @return The length of the UTF-8 character represented by the input byte, or -1 if the byte is
+ * invalid.
+ */
+int8_t flex_string_utf8_char_length(uint8_t byte);
+
+/**
+ * @brief Validates a UTF-8 character.
+ *
+ * This function takes a pointer to a UTF-8 character (represented as a sequence of bytes) and
+ * checks its validity based on UTF-8 character encoding rules.
+ *
+ * @param string The input string to be validated.
+ * @param char_length The length of the input character.
+ * @return true if the character is valid, false otherwise.
+ */
+bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length);
+
+/**
+ * @brief Glues the bytes of a UTF-8 character into a null-terminated string.
+ *
+ * This function takes a pointer to a UTF-8 character (represented as a sequence of bytes) and
+ * returns a new string containing the character's bytes. The resulting string is null-terminated.
+ *
+ * @param string The input string containing the bytes of the UTF-8 character.
+ * @param char_length The length of the input character.
+ * @return A newly allocated null-terminated string containing the bytes of the UTF-8 character,
+ *         or NULL if memory allocation fails.
+ * @note The caller is responsible for freeing the returned string.
+ */
+char* flex_string_utf8_char_glue(const uint8_t* string, int8_t char_length);
+
+// ---------------------- String Operations ----------------------
+
+/**
+ * @brief Validates an entire UTF-8 string.
+ *
+ * This function iterates through the input string and validates each UTF-8 character
+ * using the UTF-8 character encoding rules.
+ *
+ * @param input The input string to be validated.
+ * @return true if the string is valid UTF-8, false otherwise.
+ */
+bool flex_string_utf8_validate(const char* input);
+
+/**
+ * @brief Calculates the length of a UTF-8 string in characters.
  *
  * @param input The input string.
+ * @return The number of UTF-8 characters in the string.
+ */
+int32_t flex_string_utf8_length(const char* input);
+
+/**
+ * @brief Substitutes all occurrences of a target UTF-8 character with a replacement string.
+ *
+ * @param input The input string.
+ * @param target The UTF-8 character to replace.
  * @param replacement The string to replace the target with.
- * @param target The character to replace in the input string.
- *
- * @return A new string with the substitutions applied.
+ * @return A new string with substitutions applied.
  */
-char* flex_string_substitute_char(const char* input, const char* replacement, char target);
-
-/**
- * @brief Prepends a character to the input string.
- *
- * @param input The input string.
- * @param prepend The character to prepend to the string.
- *
- * @return A new string with the prepended character.
- */
-char* flex_string_prepend_char(const char* input, char prepend);
-
-/**
- * @brief Appends a character to the input string.
- *
- * @param input The input string.
- * @param append The character to append to the string.
- *
- * @return A new string with the appended character.
- */
-char* flex_string_append_char(const char* input, char append);
+char* flex_string_replace(const char* input, const char* replacement, const char* target);
 
 /**
  * @brief Joins two strings into a new string.
  *
  * @param a The first string.
  * @param b The second string.
- *
- * @return A new string that contains the concatenation of `a` and `b`.
+ * @return A new string that concatenates `a` and `b`.
  */
 char* flex_string_join(const char* a, const char* b);
+
+/**
+ * @brief Splits a string into parts based on a delimiter.
+ *
+ * @param input The input string to split.
+ * @param delimiter The delimiter used to split the string.
+ * @return A FlexStringSplit object containing the parts of the split string.
+ */
+FlexStringSplit* flex_string_split(const char* input, const char* delimiter);
+
+/**
+ * @brief Tokenizes a string using a regex pattern.
+ *
+ * @param input The input string.
+ * @param pattern The PCRE2 regex pattern.
+ * @return A FlexStringSplit object containing the tokens.
+ */
+FlexStringSplit* flex_string_regex_tokenize(const char* input, const char* pattern);
+
+/**
+ * @brief Checks if a string starts with a given prefix.
+ *
+ * @param input The input string.
+ * @param prefix The prefix to check.
+ * @return True if the string starts with the prefix, otherwise false.
+ */
+bool flex_string_starts_with(const char* input, const char* prefix);
+
+/**
+ * @brief Checks if a string ends with a given suffix.
+ *
+ * @param input The input string.
+ * @param suffix The suffix to check.
+ * @return True if the string ends with the suffix, otherwise false.
+ */
+bool flex_string_ends_with(const char* input, const char* suffix);
+
+/**
+ * @brief Prepends a character to the input string.
+ *
+ * @param input The input string.
+ * @param prepend The UTF-8 string to prepend to the string.
+ *
+ * @return A new string with the prepended character.
+ */
+char* flex_string_prepend(const char* input, char* prepend);
+
+/**
+ * @brief Appends a character to the input string.
+ *
+ * @param input The input string.
+ * @param append The UTF-8 string to append to the string.
+ *
+ * @return A new string with the appended character.
+ */
+char* flex_string_append(const char* input, char* append);
 
 #endif // ALT_FLEX_STRING_H
