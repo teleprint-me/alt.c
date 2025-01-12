@@ -15,8 +15,8 @@
  * - Supports in-order, pre-order, and post-order tree walks.
  */
 
-#include "algorithm/binary_tree.h"
 #include "interface/logger.h"
+#include "algorithm/binary_tree.h"
 
 // ---------------------- Life-cycle functions ----------------------
 
@@ -75,7 +75,7 @@ BinaryTree* binary_tree_create(BinaryTreeKeyCompare compare) {
         return NULL;
     }
     tree->root = NULL;
-    tree->compare = (compare) ? compare : binary_tree_pair_compare_int32;
+    tree->compare = (compare) ? compare : binary_tree_node_compare_int32;
 
     if (0 != pthread_rwlock_init(&tree->rwlock, NULL)) {
         LOG_ERROR("%s: Failed to initialize rwlock\n", __func__);
@@ -99,7 +99,7 @@ void binary_tree_free(BinaryTree* tree) {
 
 // ---------------------- Default comparison functions ----------------------
 
-int binary_tree_pair_compare_int32(const void* key_a, const void* key_b) {
+int binary_tree_node_compare_int32(const void* key_a, const void* key_b) {
     if (!key_a || !key_b) {
         LOG_ERROR("%s: Null key provided for comparison\n", __func__);
         return 0;
@@ -109,7 +109,7 @@ int binary_tree_pair_compare_int32(const void* key_a, const void* key_b) {
     return (a > b) - (a < b); // Returns -1, 0, or 1
 }
 
-int binary_tree_pair_compare_string(const void* key_a, const void* key_b) {
+int binary_tree_node_compare_string(const void* key_a, const void* key_b) {
     if (!key_a || !key_b) {
         LOG_ERROR("%s: Null key provided for comparison\n", __func__);
         return 0;

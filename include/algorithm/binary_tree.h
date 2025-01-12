@@ -34,6 +34,17 @@ typedef enum BinaryTreeState {
     BINARY_TREE_LOCK_ERROR // Thread lock operation failed
 } BinaryTreeState;
 
+// ---------------------- Function pointers ----------------------
+
+/**
+ * @brief Compares two keys.
+ *
+ * @param key_a Pointer to the first key.
+ * @param key_b Pointer to the second key.
+ * @return -1 if key_a < key_b, 0 if key_a == key_b, 1 if key_a > key_b.
+ */
+typedef int (*BinaryTreeKeyCompare)(const void* key_a, const void* key_b);
+
 // ---------------------- Structures ----------------------
 
 // Key-value pair for a node in the tree
@@ -56,20 +67,6 @@ typedef struct BinaryTree {
     BinaryTreeKeyCompare compare; // The function used to compare keys
     pthread_rwlock_t rwlock; // _POSIX_C_SOURCE requires greater than or equal to 200112L.
 } BinaryTree;
-
-// ---------------------- Function pointers ----------------------
-
-// Function pointer to process each node
-typedef BinaryTreeState (*BinaryTreeNodeCallback)(BinaryTreeNode* node);
-
-/**
- * @brief Compares two keys.
- *
- * @param key_a Pointer to the first key.
- * @param key_b Pointer to the second key.
- * @return -1 if key_a < key_b, 0 if key_a == key_b, 1 if key_a > key_b.
- */
-typedef int (*BinaryTreeKeyCompare)(const void* key_a, const void* key_b);
 
 // ---------------------- Default comparison functions ----------------------
 
