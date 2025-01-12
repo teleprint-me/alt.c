@@ -20,6 +20,17 @@
 
 #include <pthread.h>
 
+typedef enum BinaryTreeState {
+    BINARY_TREE_SUCCESS, // Action was successful
+    BINARY_TREE_ERROR, // General failure
+    BINARY_TREE_NO_PARENT, // Node has no parent
+    BINARY_TREE_NO_CHILD, // Node has no child
+    BINARY_TREE_NO_KEY, // Key not found in tree
+    BINARY_TREE_NO_VALUE, // Value not found in tree
+    BINARY_TREE_MEMORY_ERROR, // Memory allocation failed
+    BINARY_TREE_LOCK_ERROR // Thread lock operation failed
+} BinaryTreeState;
+
 // Key-value pair for a node in the tree
 typedef struct BinaryTreePair {
     void* key; // The key of the node
@@ -71,13 +82,13 @@ int binary_tree_pair_string_compare(const void* key_a, const void* key_b);
 // ---------------------- Insertion and Deletion Functions ----------------------
 
 // Insert a new node into the tree
-void binary_tree_insert(BinaryTree* tree, BinaryTreePair* pair);
+BinaryTreeState binary_tree_insert(BinaryTree* tree, BinaryTreePair* pair);
 
 // Delete a node from the tree
-void binary_tree_delete(BinaryTree* tree, BinaryTreePair* pair);
+BinaryTreeState binary_tree_delete(BinaryTree* tree, BinaryTreePair* pair);
 
 // Transplant a node in the tree with a new node
-void binary_tree_transplant(BinaryTree* tree, BinaryTreePair* old_pair, BinaryTreePair* new_pair);
+BinaryTreeState binary_tree_transplant(BinaryTree* tree, BinaryTreeNode* old_node, BinaryTreeNode* new_node);
 
 // ---------------------- Searching Functions ----------------------
 
