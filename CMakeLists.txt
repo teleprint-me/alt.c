@@ -45,6 +45,7 @@ set(
     C_SOURCES
     # Algorithms
     "src/algorithm/hash_table.c"
+    "src/algorithm/binary_tree.c"
     # Interfaces
     "src/interface/logger.c"
     "src/interface/path.c"
