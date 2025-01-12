@@ -312,10 +312,10 @@ BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node) {
 
 // Find the successor of a node in the tree (crawls up the tree)
 // The successor of a node x is the node with the smallest key greater than x.
-BinaryTreeNode* binary_tree_successor(BinaryTree* tree, BinaryTreeNode* node) {
-    if (!tree || !node) {
-        LOG_ERROR("%s: Invalid tree or node\n", __func__);
-        return NULL; // Handle NULL inputs gracefully
+BinaryTreeNode* binary_tree_successor(BinaryTreeNode* node) {
+    if (!node) {
+        LOG_ERROR("%s: Node is NULL\n", __func__);
+        return NULL;
     }
 
     // Case 1: If the right subtree exists, find the minimum in the right subtree
@@ -324,36 +324,36 @@ BinaryTreeNode* binary_tree_successor(BinaryTree* tree, BinaryTreeNode* node) {
     }
 
     // Case 2: Walk up the tree to find the first ancestor where `node` is a left child
-    BinaryTreeNode* ancestor = node->parent;
-    while (ancestor && ancestor->left != node) {
-        ancestor = ancestor->parent;
+    BinaryTreeNode* successor = node->parent;
+    while (successor && node == successor->right) {
+        node = successor;
+        successor = successor->parent;
     }
 
-    return ancestor;
+    return successor;
 }
 
 // Find the predecessor of a node in the tree (crawls down the tree)
 // The predecessor of a node x is the node with the greatest key smaller than x.
-BinaryTreeNode* binary_tree_predecessor(BinaryTree* tree, BinaryTreeNode* node) {
-    if (!tree || !node) {
-        LOG_ERROR("%s: Invalid tree or node\n", __func__);
+BinaryTreeNode* binary_tree_predecessor(BinaryTreeNode* node) {
+    if (!node) {
+        LOG_ERROR("%s: Node is NULL\n", __func__);
         return NULL;
     }
 
-    // Case 1: If the left subtree is not NULL, the predecessor is the maximum of the left subtree.
+    // Case 1: If the left subtree exists, find the maximum in the left subtree
     if (node->left) {
-        return binary_tree_minimum(tree);
+        return binary_tree_maximum(node->left);
     }
 
-    // Case 2: Walk down the tree until we find a node that is a left child of its parent.
-    // How do I know which child to look at? This should be symmetric with successor.
-    // Case 3: x doesnt have a left subtree, it is the right child of its parent.
-    BinaryTreeNode* current = node->left;
-    while (current && current->left) {
-        node = current;
-        current = current->left;
+    // Case 2: Walk up the tree to find the first ancestor where `node` is a right child
+    BinaryTreeNode* predecessor = node->parent;
+    while (predecessor && node == predecessor->left) {
+        node = predecessor;
+        predecessor = predecessor->parent;
     }
-    return current;
+
+    return predecessor;
 }
 
 // ---------------------- Walk the tree ----------------------
