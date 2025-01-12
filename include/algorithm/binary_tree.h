@@ -116,14 +116,14 @@ binary_tree_transplant(BinaryTree* tree, BinaryTreeNode* old_node, BinaryTreeNod
 
 // ---------------------- Search by key ----------------------
 
-// Find a node in the tree
+// Find a node in the tree (iterative search)
 BinaryTreeNode* binary_tree_search(BinaryTree* tree, void* key);
 
 // Find the minimum key in the tree where x is a node in the tree.
-BinaryTreeNode* binary_tree_minimum(BinaryTree* tree, void* key);
+BinaryTreeNode* binary_tree_minimum(BinaryTreeNode* node);
 
 // Find the maximum key in the tree where x is a node in the tree.
-BinaryTreeNode* binary_tree_maximum(BinaryTree* tree, void* key);
+BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node);
 
 // ---------------------- Search by node ----------------------
 
