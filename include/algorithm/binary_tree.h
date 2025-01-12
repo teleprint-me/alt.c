@@ -15,8 +15,8 @@
  * - Supports in-order, pre-order, and post-order tree walks.
  */
 
-#ifndef BINARY_TREE_H
-#define BINARY_TREE_H
+#ifndef ALT_BINARY_TREE_H
+#define ALT_BINARY_TREE_H
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -163,4 +163,4 @@ void print_node_int32(BinaryTreeNode* node);
 // Print the key of a node as a string
 void print_node_string(BinaryTreeNode* node);
 
-#endif // BINARY_TREE_H
+#endif // ALT_BINARY_TREE_H
