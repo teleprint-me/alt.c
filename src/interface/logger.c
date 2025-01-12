@@ -26,7 +26,7 @@ const char* LOG_TYPE_NAME[] = {"unknown", "stream", "file"};
  *
  * @return True if the type and name were set successfully, false otherwise.
  */
-bool set_logger_type_and_name(logger_t* logger, log_type_t log_type) {
+bool set_logger_type_and_name(Logger* logger, LogType log_type) {
     // Set logger type based on provided logger type
     switch (log_type) {
         case LOG_TYPE_UNKNOWN:
@@ -61,7 +61,7 @@ bool set_logger_type_and_name(logger_t* logger, log_type_t log_type) {
  *
  * @return True if the file path was set successfully, false otherwise.
  */
-bool set_logger_file_path_and_stream(logger_t* logger, const char* file_path) {
+bool set_logger_file_path_and_stream(Logger* logger, const char* file_path) {
     if (file_path == NULL) {
         // set the logger type to stream upon failure.
         set_logger_type_and_name(logger, LOG_TYPE_STREAM);
@@ -93,9 +93,9 @@ bool set_logger_file_path_and_stream(logger_t* logger, const char* file_path) {
  * @return A pointer to the newly created logger instance, or NULL if memory
  * allocation fails or if the logger type is invalid.
  */
-logger_t* logger_new(log_type_t log_type) {
+Logger* logger_new(LogType log_type) {
     // Allocate memory for the logger instance
-    logger_t* logger = (logger_t*) malloc(sizeof(logger_t));
+    Logger* logger = (Logger*) malloc(sizeof(Logger));
 
     // Check if memory allocation was successful
     if (NULL == logger) {
@@ -144,9 +144,9 @@ logger_t* logger_new(log_type_t log_type) {
  * @return A pointer to the newly created logger instance, or NULL if memory
  * allocation fails or if the specified log file cannot be opened.
  */
-logger_t* logger_create(log_level_t log_level, log_type_t log_type, const char* file_path) {
+Logger* logger_create(LogLevel log_level, LogType log_type, const char* file_path) {
     // Create a new logger instance
-    logger_t* logger = logger_new(log_type);
+    Logger* logger = logger_new(log_type);
     if (logger == NULL) {
         return NULL;
     }
@@ -185,7 +185,7 @@ logger_t* logger_create(log_level_t log_level, log_type_t log_type, const char* 
  * @param logger A pointer to the logger instance to be destroyed.
  * @return True if the logger was successfully destroyed, false otherwise.
  */
-bool logger_free(logger_t* logger) {
+bool logger_free(Logger* logger) {
     if (NULL == logger) {
         return false;
     }
@@ -224,11 +224,11 @@ bool logger_free(logger_t* logger) {
  *
  * @return true if the message was successfully logged, false otherwise.
  */
-bool logger_message(logger_t* logger, log_level_t log_level, const char* format, ...) {
-    // block if and only if the log_level is less than the logger->log_level
+bool logger_message(Logger* logger, LogLevel log_level, const char* format, ...) {
+    // block if and only if the LogLevel is less than the logger->LogLevel
     if (log_level < logger->log_level) {
         return false; // Do not log messages below the current
-                      // logger->log_level
+                      // logger->LogLevel
     }
 
     int err = errno; // Capture errno at the start of the function to avoid changes
@@ -239,7 +239,7 @@ bool logger_message(logger_t* logger, log_level_t log_level, const char* format,
         // WARN: DO NOT REINITIALIZE THE MUTEX
     }
 
-    // Only lock the thread if log_level is valid!
+    // Only lock the thread if LogLevel is valid!
     pthread_mutex_lock(&logger->thread_lock);
 
     // Prefix log messages based on the level
@@ -304,7 +304,7 @@ bool logger_message(logger_t* logger, log_level_t log_level, const char* format,
  * @warning Modifying the global logger object or attempting to reinitialize
  * the mutex after initialization can lead to undefined behavior.
  */
-logger_t global_logger = {
+Logger global_logger = {
     LOG_LEVEL_DEBUG, /**< Logging level */
     LOG_TYPE_STREAM, /**< Logger type */
     "stream", /**< Logger type name */
@@ -333,8 +333,8 @@ logger_t global_logger = {
  * global logger has been initialized to prevent unintended side effects.
  */
 void initialize_global_logger(
-    log_level_t log_level,
-    log_type_t log_type,
+    LogLevel log_level,
+    LogType log_type,
     const char* log_type_name,
     FILE* file_stream,
     const char* file_path

@@ -30,12 +30,12 @@
  * @param LOG_LEVEL_WARN Warning level logging.
  * @param LOG_LEVEL_ERROR  Error level logging.
  */
-typedef enum LOG_LEVEL {
+typedef enum LogLevel {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARN,
     LOG_LEVEL_ERROR
-} log_level_t;
+} LogLevel;
 
 /**
  * @brief Enumeration representing different types of logging.
@@ -44,11 +44,11 @@ typedef enum LOG_LEVEL {
  * @param LOG_TYPE_STREAM Log to a stream (e.g., stdout or stderr).
  * @param LOG_TYPE_FILE Log to a file.
  */
-typedef enum LOG_TYPE {
+typedef enum LogType {
     LOG_TYPE_UNKNOWN,
     LOG_TYPE_STREAM,
     LOG_TYPE_FILE
-} log_type_t;
+} LogType;
 
 /**
  * @brief Structure representing a logger object.
@@ -61,13 +61,13 @@ typedef enum LOG_TYPE {
  * @param thread_lock Mutex to ensure thread-safe logging.
  */
 typedef struct Logger {
-    log_level_t log_level;
-    log_type_t log_type;
+    LogLevel log_level;
+    LogType log_type;
     const char* log_type_name;
     FILE* file_stream;
     const char* file_path;
     pthread_mutex_t thread_lock;
-} logger_t;
+} Logger;
 
 /**
  * @brief Sets the logger type and name.
@@ -80,7 +80,7 @@ typedef struct Logger {
  *
  * @return True if the type and name were set successfully, false otherwise.
  */
-bool set_logger_type_and_name(logger_t* logger, log_type_t log_type);
+bool set_logger_type_and_name(Logger* logger, LogType log_type);
 
 /**
  * @brief Sets the file path and stream for the logger.
@@ -99,7 +99,7 @@ bool set_logger_type_and_name(logger_t* logger, log_type_t log_type);
  *
  * @return True if the file path was set successfully, false otherwise.
  */
-bool set_logger_file_path_and_stream(logger_t* logger, const char* file_path);
+bool set_logger_file_path_and_stream(Logger* logger, const char* file_path);
 
 /**
  * @brief Creates a new logger instance.
@@ -112,7 +112,7 @@ bool set_logger_file_path_and_stream(logger_t* logger, const char* file_path);
  * @return A pointer to the newly created logger instance, or NULL if memory
  * allocation fails or if the logger type is invalid.
  */
-logger_t* logger_new(log_type_t log_type);
+Logger* logger_new(LogType log_type);
 
 /**
  * @brief Creates a new logger instance with the specified log file path and
@@ -131,7 +131,7 @@ logger_t* logger_new(log_type_t log_type);
  * @return A pointer to the newly created logger instance, or NULL if memory
  * allocation fails or if the specified log file cannot be opened.
  */
-logger_t* logger_create(log_level_t log_level, log_type_t log_type, const char* file_path);
+Logger* logger_create(LogLevel log_level, LogType log_type, const char* file_path);
 
 /**
  * @brief Destroys a logger instance and releases associated resources.
@@ -142,7 +142,7 @@ logger_t* logger_create(log_level_t log_level, log_type_t log_type, const char* 
  * @param logger A pointer to the logger instance to be destroyed.
  * @return True if the logger was successfully destroyed, false otherwise.
  */
-bool logger_free(logger_t* logger);
+bool logger_free(Logger* logger);
 
 /**
  * @brief Logs a message with the specified log level to the logger's file.
@@ -158,7 +158,7 @@ bool logger_free(logger_t* logger);
  *
  * @return true if the message was successfully logged, false otherwise.
  */
-bool logger_message(logger_t* logger, log_level_t log_level, const char* format, ...);
+bool logger_message(Logger* logger, LogLevel log_level, const char* format, ...);
 
 /**
  * @brief Macro for logging messages using a logger instance.
@@ -196,9 +196,9 @@ bool logger_message(logger_t* logger, log_level_t log_level, const char* format,
  *
  * @var global_logger
  * The global logger object has the following attributes:
- * - log_level: The logging level of the logger.
- * - log_type: The type of logger.
- * - log_type_name: The name associated with the logger type.
+ * - LogLevel: The logging level of the logger.
+ * - LogType: The type of logger.
+ * - LogType_name: The name associated with the logger type.
  * - file_stream: The file stream for writing log messages.
  * - file_path: The path to the log file.
  * - thread_lock: Mutex to ensure thread-safe logging.
@@ -206,7 +206,7 @@ bool logger_message(logger_t* logger, log_level_t log_level, const char* format,
  * @warning Modifying the global logger object or attempting to reinitialize
  * the mutex after initialization can lead to undefined behavior.
  */
-extern logger_t global_logger;
+extern Logger global_logger;
 
 /**
  * @brief Initialize Global Logger
@@ -228,8 +228,8 @@ extern logger_t global_logger;
  * global logger has been initialized to prevent unintended side effects.
  */
 void initialize_global_logger(
-    log_level_t log_level,
-    log_type_t log_type,
+    LogLevel log_level,
+    LogType log_type,
     const char* log_type_name,
     FILE* file_stream,
     const char* file_path
