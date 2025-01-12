@@ -136,12 +136,15 @@ BinaryTreeNode* binary_tree_predecessor(BinaryTreeNode* node);
 // ---------------------- Walk the tree ----------------------
 
 // Traverse the tree in order
-void binary_tree_inorder_walk(BinaryTree* tree, BinaryTreeNodeCallback callback);
+BinaryTreeState binary_tree_inorder_walk_int32(BinaryTreeNode* node);
+BinaryTreeState binary_tree_inorder_walk_string(BinaryTreeNode* node);
+
+// TODO: Pre-order and post-order
 
 // Perform a pre-order traversal of the tree
-void binary_tree_preorder_walk(BinaryTree* tree, BinaryTreeNodeCallback callback);
+void binary_tree_preorder_walk(BinaryTreeNode* node);
 
 // Perform a post-order traversal of the tree
-void binary_tree_postorder_walk(BinaryTree* tree, BinaryTreeNodeCallback callback);
+void binary_tree_postorder_walk(BinaryTreeNode* node);
 
 #endif // BINARY_TREE_H
