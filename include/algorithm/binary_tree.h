@@ -44,16 +44,16 @@ typedef struct BinaryTreePair {
 
 // Node in the tree
 typedef struct BinaryTreeNode {
-    BinaryTreePair* pair;
-    struct BinaryTreeNode* left;
-    struct BinaryTreeNode* right;
-    struct BinaryTreeNode* parent;
+    BinaryTreePair* pair; // The key-value pair
+    struct BinaryTreeNode* left; // The left child of the node
+    struct BinaryTreeNode* right; // The right child of the node
+    struct BinaryTreeNode* parent; // The parent of the node
 } BinaryTreeNode;
 
 // Tree allows reads, but locks on writes
 typedef struct BinaryTree {
-    BinaryTreeNode* root;
-    BinaryTreeNodeCompare compare;
+    BinaryTreeNode* root; // The root node of the tree
+    BinaryTreeKeyCompare compare; // The function used to compare keys
     pthread_rwlock_t rwlock; // _POSIX_C_SOURCE requires greater than or equal to 200112L.
 } BinaryTree;
 
@@ -63,20 +63,20 @@ typedef struct BinaryTree {
 typedef BinaryTreeState (*BinaryTreeNodeCallback)(BinaryTreeNode* node);
 
 /**
- * @brief Compares two BinaryTreeNode objects.
+ * @brief Compares two keys.
  *
- * @param a Pointer to the first BinaryTreeNode.
- * @param b Pointer to the second BinaryTreeNode.
- * @return -1 if a < b, 0 if a == b, 1 if a > b.
+ * @param key_a Pointer to the first key.
+ * @param key_b Pointer to the second key.
+ * @return -1 if key_a < key_b, 0 if key_a == key_b, 1 if key_a > key_b.
  */
-typedef int (*BinaryTreeNodeCompare)(const BinaryTreeNode* a, const BinaryTreeNode* b);
+typedef int (*BinaryTreeKeyCompare)(const void* key_a, const void* key_b);
 
 // ---------------------- Default comparison functions ----------------------
 
-int binary_tree_node_compare_int32(const BinaryTreeNode* a, const BinaryTreeNode* b);
-int binary_tree_node_compare_string(const BinaryTreeNode* a, const BinaryTreeNode* b);
+int binary_tree_node_compare_int32(const void* key_a, const void* key_b);
+int binary_tree_node_compare_string(const void* key_a, const void* key_b);
 
-// ---------------------- Life-cycle functions ----------------------
+// ---------------------- Create a key-value pair ----------------------
 
 /// @note This function does not allocate the key or value. The caller must manage the memory
 /// separately.
@@ -84,6 +84,8 @@ BinaryTreePair* binary_tree_pair_create(void* key, void* value);
 /// @note This function does not free the key or value. The caller must manage the memory
 /// separately.
 void binary_tree_pair_free(BinaryTreePair* pair);
+
+// ---------------------- Create a node ----------------------
 
 // Create a new node
 BinaryTreeNode* binary_tree_node_create(BinaryTreePair* pair);
@@ -93,8 +95,10 @@ BinaryTreeNode* binary_tree_node_create_from_pair(void* key, void* value);
 // Free a node
 void binary_tree_node_free(BinaryTreeNode* node);
 
+// ---------------------- Create a tree ----------------------
+
 // Create a new tree
-BinaryTree* binary_tree_create(BinaryTreeNodeCompare compare);
+BinaryTree* binary_tree_create(BinaryTreeKeyCompare compare);
 // Free the tree
 void binary_tree_free(BinaryTree* tree);
 
