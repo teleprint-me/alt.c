@@ -18,7 +18,29 @@
 #include "interface/logger.h"
 #include "algorithm/binary_tree.h"
 
-// ---------------------- Life-cycle functions ----------------------
+// ---------------------- Default comparison functions ----------------------
+
+int binary_tree_node_compare_int32(const void* key_a, const void* key_b) {
+    if (!key_a || !key_b) {
+        LOG_ERROR("%s: Null key provided for comparison\n", __func__);
+        return 0;
+    }
+    int a = *(int*) key_a;
+    int b = *(int*) key_b;
+    return (a > b) - (a < b); // Returns -1, 0, or 1
+}
+
+int binary_tree_node_compare_string(const void* key_a, const void* key_b) {
+    if (!key_a || !key_b) {
+        LOG_ERROR("%s: Null key provided for comparison\n", __func__);
+        return 0;
+    }
+    const char* a = (const char*) key_a;
+    const char* b = (const char*) key_b;
+    return strcmp(a, b); // Returns -1, 0, or 1
+}
+
+// ---------------------- Create a key-value pair ----------------------
 
 BinaryTreePair* binary_tree_pair_create(void* key, void* value) {
     BinaryTreePair* pair = malloc(sizeof(BinaryTreePair));
@@ -36,6 +58,8 @@ void binary_tree_pair_free(BinaryTreePair* pair) {
         free(pair);
     }
 }
+
+// ---------------------- Create a node ----------------------
 
 BinaryTreeNode* binary_tree_node_create(BinaryTreePair* pair) {
     BinaryTreeNode* node = malloc(sizeof(BinaryTreeNode));
@@ -68,6 +92,8 @@ void binary_tree_node_free(BinaryTreeNode* node) {
     }
 }
 
+// ---------------------- Create a tree ----------------------
+
 BinaryTree* binary_tree_create(BinaryTreeKeyCompare compare) {
     BinaryTree* tree = malloc(sizeof(BinaryTree));
     if (!tree) {
@@ -95,28 +121,6 @@ void binary_tree_free(BinaryTree* tree) {
         }
         free(tree);
     }
-}
-
-// ---------------------- Default comparison functions ----------------------
-
-int binary_tree_node_compare_int32(const void* key_a, const void* key_b) {
-    if (!key_a || !key_b) {
-        LOG_ERROR("%s: Null key provided for comparison\n", __func__);
-        return 0;
-    }
-    int a = *(int*) key_a;
-    int b = *(int*) key_b;
-    return (a > b) - (a < b); // Returns -1, 0, or 1
-}
-
-int binary_tree_node_compare_string(const void* key_a, const void* key_b) {
-    if (!key_a || !key_b) {
-        LOG_ERROR("%s: Null key provided for comparison\n", __func__);
-        return 0;
-    }
-    const char* a = (const char*) key_a;
-    const char* b = (const char*) key_b;
-    return strcmp(a, b); // Returns -1, 0, or 1
 }
 
 // ---------------------- Insertion and Deletion Functions ----------------------
@@ -272,7 +276,8 @@ BinaryTreeNode* binary_tree_search(BinaryTree* tree, void* key) {
     return NULL;
 }
 
-// Find the minimum key in the tree
+// ---------------------- Search by node ----------------------
+
 BinaryTreeNode* binary_tree_minimum(BinaryTreeNode* node) {
     if (!node) {
         LOG_ERROR("%s: Node is NULL\n", __func__);
@@ -306,8 +311,6 @@ BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node) {
 
     return current;
 }
-
-// ---------------------- Search by node ----------------------
 
 BinaryTreeNode* binary_tree_successor(BinaryTreeNode* node) {
     if (!node) {
