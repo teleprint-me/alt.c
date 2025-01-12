@@ -127,10 +127,10 @@ BinaryTreeNode* binary_tree_minimum(BinaryTreeNode* node);
 // Find the maximum key in the tree where x is a node in the tree.
 BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node);
 
-// Find the successor of a node in the tree
+// The successor is the node with the smallest key greater than the given node.
 BinaryTreeNode* binary_tree_successor(BinaryTreeNode* node);
 
-// Find the predecessor of a node in the tree
+// The predecessor is the node with the largest key smaller than the given node.
 BinaryTreeNode* binary_tree_predecessor(BinaryTreeNode* node);
 
 // ---------------------- Walk the tree ----------------------
