@@ -121,10 +121,10 @@ BinaryTreeNode* binary_tree_search(BinaryTree* tree, void* key);
 
 // ---------------------- Search by node ----------------------
 
-// Find the minimum key in the tree where x is a node in the tree.
+// Find the minimum key in the tree.
 BinaryTreeNode* binary_tree_minimum(BinaryTreeNode* node);
 
-// Find the maximum key in the tree where x is a node in the tree.
+// Find the maximum key in the tree.
 BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node);
 
 // The successor is the node with the smallest key greater than the given node.

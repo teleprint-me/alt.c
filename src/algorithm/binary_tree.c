@@ -196,7 +196,7 @@ BinaryTreeState binary_tree_delete(BinaryTree* tree, BinaryTreeNode* node) {
     }
     // Case 3: Node has two children
     else {
-        BinaryTreeNode* successor = binary_tree_successor(tree, node_to_delete);
+        BinaryTreeNode* successor = binary_tree_successor(node_to_delete);
         if (successor && successor->parent != node_to_delete) {
             binary_tree_transplant(tree, successor, successor->right);
             successor->right = node_to_delete->right;
@@ -290,7 +290,6 @@ BinaryTreeNode* binary_tree_minimum(BinaryTreeNode* node) {
     return current;
 }
 
-// Find the maximum key in the tree
 BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node) {
     if (!node) {
         LOG_ERROR("%s: Node is NULL\n", __func__);
@@ -310,8 +309,6 @@ BinaryTreeNode* binary_tree_maximum(BinaryTreeNode* node) {
 
 // ---------------------- Search by node ----------------------
 
-// Find the successor of a node in the tree (crawls up the tree)
-// The successor of a node x is the node with the smallest key greater than x.
 BinaryTreeNode* binary_tree_successor(BinaryTreeNode* node) {
     if (!node) {
         LOG_ERROR("%s: Node is NULL\n", __func__);
@@ -333,8 +330,6 @@ BinaryTreeNode* binary_tree_successor(BinaryTreeNode* node) {
     return successor;
 }
 
-// Find the predecessor of a node in the tree (crawls down the tree)
-// The predecessor of a node x is the node with the greatest key smaller than x.
 BinaryTreeNode* binary_tree_predecessor(BinaryTreeNode* node) {
     if (!node) {
         LOG_ERROR("%s: Node is NULL\n", __func__);
