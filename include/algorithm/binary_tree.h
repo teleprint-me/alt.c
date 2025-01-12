@@ -45,6 +45,13 @@ typedef enum BinaryTreeState {
  */
 typedef int (*BinaryTreeKeyCompare)(const void* key_a, const void* key_b);
 
+/**
+ * @brief Callback function for each node in the tree.
+ *
+ * @param node Pointer to the node.
+ */
+typedef void (*BinaryTreeNodeCallback)(BinaryTreeNode* node);
+
 // ---------------------- Structures ----------------------
 
 // Key-value pair for a node in the tree
@@ -133,15 +140,14 @@ BinaryTreeNode* binary_tree_predecessor(BinaryTreeNode* node);
 // ---------------------- Walk the tree ----------------------
 
 // Traverse the tree in order
-BinaryTreeState binary_tree_inorder_walk_int32(BinaryTreeNode* node);
-BinaryTreeState binary_tree_inorder_walk_string(BinaryTreeNode* node);
+void binary_tree_inorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback callback);
 
 // TODO: Pre-order and post-order
 
 // Perform a pre-order traversal of the tree
-void binary_tree_preorder_walk(BinaryTreeNode* node);
+void binary_tree_preorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback callback);
 
 // Perform a post-order traversal of the tree
-void binary_tree_postorder_walk(BinaryTreeNode* node);
+void binary_tree_postorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback callback);
 
 #endif // BINARY_TREE_H

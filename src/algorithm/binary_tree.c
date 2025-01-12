@@ -353,39 +353,17 @@ BinaryTreeNode* binary_tree_predecessor(BinaryTreeNode* node) {
 
 // ---------------------- Walk the tree ----------------------
 
-// Traverse the tree in order
-BinaryTreeState binary_tree_inorder_walk_int32(BinaryTreeNode* node) {
+void binary_tree_inorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback callback) {
     if (!node) {
-        LOG_ERROR("%s: Node is NULL\n", __func__);
-        return BINARY_TREE_ERROR;
+        return; // Base case: empty tree
     }
 
     // Traverse the left subtree
-    binary_tree_inorder_walk_int32(node->left);
+    binary_tree_inorder_walk(node->left, callback);
 
-    // Print the key
-    printf("key=%d\n", *(int*)(node->pair->key));
+    // Apply the callback to the current node
+    callback(node);
 
     // Traverse the right subtree
-    binary_tree_inorder_walk_int32(node->right);
-
-    return BINARY_TREE_SUCCESS;
-}
-
-BinaryTreeState binary_tree_inorder_walk_string(BinaryTreeNode* node) {
-    if (!node) {
-        LOG_ERROR("%s: Node is NULL\n", __func__);
-        return BINARY_TREE_ERROR;
-    }
-
-    // Traverse the left subtree
-    binary_tree_inorder_walk_string(node->left);
-
-    // Print the key
-    printf("key=%s\n", (char*)(node->pair->key));
-    
-    // Traverse the right subtree
-    binary_tree_inorder_walk_string(node->right);
-    
-    return BINARY_TREE_SUCCESS;
+    binary_tree_inorder_walk(node->right, callback);
 }
