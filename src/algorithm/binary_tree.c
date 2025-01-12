@@ -113,3 +113,112 @@ int binary_tree_pair_string_compare(const void* key_a, const void* key_b) {
 
 // ---------------------- Insertion and Deletion Functions ----------------------
 
+BinaryTreeState binary_tree_insert(BinaryTree* tree, BinaryTreePair* pair) {
+    if (NULL == tree || NULL == pair) {
+        LOG_ERROR("%s: Tree or pair is NULL\n", __func__);
+        return BINARY_TREE_ERROR;
+    }
+    if (0 != pthread_rwlock_wrlock(&tree->rwlock)) {
+        LOG_ERROR("%s: Failed to acquire write lock\n", __func__);
+        return BINARY_TREE_LOCK_ERROR;
+    }
+
+    BinaryTreeNode* new_node = binary_tree_node_create(pair);
+    if (NULL == new_node) {
+        LOG_ERROR("%s: Failed to create a new BinaryTreeNode\n", __func__);
+        return BINARY_TREE_MEMORY_ERROR;
+    }
+
+    BinaryTreeNode* parent = NULL;
+    BinaryTreeNode* current = tree->root;
+    while (NULL != current) {
+        parent = current;
+        if (0 > tree->compare(pair->key, current->pair->key)) {
+            current = current->left;
+        } else {
+            current = current->right;
+        }
+    }
+
+    new_node->parent = parent;
+    if (NULL == parent) {
+        // The tree was empty
+        tree->root = new_node;
+    } else if (0 > tree->compare(pair->key, parent->pair->key)) {
+        parent->left = new_node;
+    } else {
+        parent->right = new_node;
+    }
+
+    if(0 != pthread_rwlock_unlock(&tree->rwlock)) {
+        LOG_ERROR("%s: Failed to unlock rwlock\n", __func__);
+        return BINARY_TREE_LOCK_ERROR;
+    }
+    return BINARY_TREE_SUCCESS;
+}
+
+void binary_tree_delete(BinaryTree* tree, BinaryTreePair* pair) {
+    if (NULL == tree || NULL == pair) {
+        LOG_ERROR("%s: Tree or pair is NULL\n", __func__);
+        return BINARY_TREE_ERROR;
+    }
+    if (0 != pthread_rwlock_wrlock(&tree->rwlock)) {
+        LOG_ERROR("%s: Failed to lock rwlock\n", __func__);
+        return BINARY_TREE_LOCK_ERROR;
+    }
+
+    BinaryTreeNode* node_to_delete = binary_tree_find_node(tree, pair->key);
+    if (NULL == node_to_delete) {
+        LOG_ERROR("%s: Node with the given key not found\n", __func__);
+        pthread_rwlock_unlock(&tree->rwlock);
+        return;
+    }
+
+    if (NULL == node_to_delete->left) {
+        binary_tree_transplant(tree, node_to_delete, node_to_delete->right);
+    } else if (NULL == node_to_delete->right) {
+        binary_tree_transplant(tree, node_to_delete, node_to_delete->left);
+    } else {
+        BinaryTreeNode* successor = binary_tree_find_minimum(tree, node_to_delete->right->pair->key);
+        if (successor->parent != node_to_delete) {
+            binary_tree_transplant(tree, successor, successor->right);
+            successor->right = node_to_delete->right;
+            if (NULL != successor->right) {
+                successor->right->parent = successor;
+            }
+        }
+        binary_tree_transplant(tree, node_to_delete, successor);
+        successor->left = node_to_delete->left;
+        if (NULL != successor->left) {
+            successor->left->parent = successor;
+        }
+    }
+
+    binary_tree_node_free(node_to_delete);
+    if (0 != pthread_rwlock_unlock(&tree->rwlock)) {
+        LOG_ERROR("%s: Failed to unlock rwlock\n", __func__);
+        return BINARY_TREE_LOCK_ERROR;
+    }
+    return BINARY_TREE_SUCCESS;
+}
+
+BinaryTreeState binary_tree_transplant(BinaryTree* tree, BinaryTreeNode* old_node, BinaryTreeNode* new_node) {
+    if (NULL == tree || NULL == old_node) {
+        LOG_ERROR("%s: Tree or old_node is NULL\n", __func__);
+        return BINARY_TREE_ERROR;
+    }
+
+    if (NULL == old_node->parent) {
+        tree->root = new_node;
+    } else if (old_node == old_node->parent->left) {
+        old_node->parent->left = new_node;
+    } else {
+        old_node->parent->right = new_node;
+    }
+
+    if (NULL != new_node) {
+        new_node->parent = old_node->parent;
+    }
+
+    return BINARY_TREE_SUCCESS;
+}
