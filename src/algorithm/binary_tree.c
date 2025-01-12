@@ -367,3 +367,13 @@ void binary_tree_inorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback callb
     // Traverse the right subtree
     binary_tree_inorder_walk(node->right, callback);
 }
+
+// ---------------------- Tree walking utilities ----------------------
+
+void print_node_int32(BinaryTreeNode* node) {
+    printf("key=%d\n", *(int*)(node->pair->key));
+}
+
+void print_node_string(BinaryTreeNode* node) {
+    printf("key=%s\n", (char*)(node->pair->key));
+}

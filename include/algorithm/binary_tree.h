@@ -21,6 +21,29 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+// ---------------------- Forward Declarations ----------------------
+
+// Forward declare BinaryTreeNode
+typedef struct BinaryTreeNode BinaryTreeNode;
+
+// ---------------------- Function Pointer Typedefs ----------------------
+
+/**
+ * @brief Callback function for each node in the tree.
+ *
+ * @param node Pointer to the node.
+ */
+typedef void (*BinaryTreeNodeCallback)(BinaryTreeNode* node);
+
+/**
+ * @brief Compares two keys.
+ *
+ * @param key_a Pointer to the first key.
+ * @param key_b Pointer to the second key.
+ * @return -1 if key_a < key_b, 0 if key_a == key_b, 1 if key_a > key_b.
+ */
+typedef int (*BinaryTreeKeyCompare)(const void* key_a, const void* key_b);
+
 // ---------------------- Enumerations ----------------------
 
 typedef enum BinaryTreeState {
@@ -33,24 +56,6 @@ typedef enum BinaryTreeState {
     BINARY_TREE_MEMORY_ERROR, // Memory allocation failed
     BINARY_TREE_LOCK_ERROR // Thread lock operation failed
 } BinaryTreeState;
-
-// ---------------------- Function pointers ----------------------
-
-/**
- * @brief Compares two keys.
- *
- * @param key_a Pointer to the first key.
- * @param key_b Pointer to the second key.
- * @return -1 if key_a < key_b, 0 if key_a == key_b, 1 if key_a > key_b.
- */
-typedef int (*BinaryTreeKeyCompare)(const void* key_a, const void* key_b);
-
-/**
- * @brief Callback function for each node in the tree.
- *
- * @param node Pointer to the node.
- */
-typedef void (*BinaryTreeNodeCallback)(BinaryTreeNode* node);
 
 // ---------------------- Structures ----------------------
 
@@ -149,5 +154,13 @@ void binary_tree_preorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback call
 
 // Perform a post-order traversal of the tree
 void binary_tree_postorder_walk(BinaryTreeNode* node, BinaryTreeNodeCallback callback);
+
+// ---------------------- Tree walking utilities ----------------------
+
+// Print the key of a node as an integer
+void print_node_int32(BinaryTreeNode* node);
+
+// Print the key of a node as a string
+void print_node_string(BinaryTreeNode* node);
 
 #endif // BINARY_TREE_H
