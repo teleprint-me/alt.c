@@ -1,32 +1,35 @@
-# Alt
+# ALT: A C Library for Interpretable Machine Learning Models
 
-[![Status](https://img.shields.io/badge/Status-Under_Construction-red)](https://teleprint.me/)
+[![Status](https://img.shields.io/badge/Status-Under_Construction-red)](https://github.com/teleprint-me/alt.c)
 
-A transformer model built completely from scratch in C.
+ALT is an open-source C library for building interpretable machine learning models, specifically transformer models for natural language processing tasks.
 
-## Dependencies
+## Features
 
-### Library Dependencies
+* Transformer models for natural language processing tasks such as completion, chat completion, and infill operations.
+* Built from scratch in C for portability and efficiency.
+* Support for various features of transformer models, such as byte-pair encoding, continuous bag of words, skip-gram modeling, multi-layer perceptrons, sliding window attention, grouped query attention, forward, upward, and downward projections, single precision and half-precision, 8-bit and 4-bit quantization for digital signal processing, and more.
 
-- `cmake`: Tool for managing source code building
-- `libc`: Standard C library
-- `pthread`: POSIX multi-threading library for portable CPUs
-- `vulkan`: Portable multi-threading library for GPUs 
-- `libpcre2`: Implements Perl 5-style regular expressions
-- `libuuid`: DCE compatible Universally Unique Identifier library
-- `libutf8proc`: C library for Unicode handling
-- `stb`: Image loading/decoding library
+## Requirements
 
-### Library Requirements
+* Any Linux distribution should work, but officially supports Arch Linux.
+* POSIX for CPU multi-threading.
+* Vulkan for GPU multi-threading.
 
-- Any Linux distribution should work.
-- Officially supports Arch Linux.
-- Requires POSIX for CPU multi-threading.
-- Requires Vulkan for GPU multi-threading.
+## Installation
 
-**NOTE:** Currently, I only officially support Arch Linux. I may consider Android support further down the line once the codebase matures.
+### Dependencies
 
-#### Install System Dependencies (Arch Linux)
+* `cmake`: Tool for managing source code building
+* `libc`: Standard C library
+* `pthread`: POSIX multi-threading library for portable CPUs
+* `vulkan`: Portable multi-threading library for GPUs
+* `libpcre2`: Implements Perl 5-style regular expressions
+* `libuuid`: DCE compatible Universally Unique Identifier library
+* `libutf8proc`: C library for Unicode handling
+* `stb`: Image loading/decoding library
+
+### Installation (Arch Linux)
 
 ```sh
 sudo pacman -S gcc gdb cmake util-linux-libs pcre2 libutf8proc stb vulkan-headers vulkan-tools
@@ -37,8 +40,6 @@ sudo pacman -S gcc gdb cmake util-linux-libs pcre2 libutf8proc stb vulkan-header
 ```sh
 sudo pacman -S python-pip python-virtualenv python-isort python-black flake8
 ```
-
-## Setup
 
 ### Clone the Repository
 
@@ -58,20 +59,19 @@ virtualenv .venv
 source .venv/bin/activate
 ```
 
-**Important Note:**  
-Arch Linux has recently upgraded Python from **3.12.x** to **3.13.x**. At the time of writing, some critical libraries, such as SentencePiece and PyTorch, are not fully compatible with Python 3.13.x. This causes issues with the development environment.
+**Important Note:** Arch Linux has recently upgraded Python from **3.12.x** to **3.13.x**. Some critical libraries, such as SentencePiece and PyTorch, are not fully compatible with Python 3.13.x. This causes issues with the development environment.
 
 To resolve this, I have created a Knowledge Base article that provides a detailed guide on building and using a local Python 3.12.x environment without interfering with the system-wide Python installation. Refer to [docs/kb/python.md](docs/kb/python.md) for step-by-step instructions.
 
 ### Install CPU Torch
 
-Install the CPU-only version of PyTorch, along with the TorchText library, to avoid GPU dependency issues (optional if GPU support is not required):
+Install the CPU-only version of PyTorch, to avoid GPU dependency issues (GPU support is not required):
 
 ```sh
-pip install torch torchtext --index-url https://download.pytorch.org/whl/cpu --upgrade
+pip install torch --index-url https://download.pytorch.org/whl/cpu --upgrade
 ```
 
-### Install Additional Python Requirements
+### Install Python Requirements
 
 Install the additional Python dependencies listed in `requirements.txt`. **It is recommended to install these after PyTorch to avoid potential conflicts:**
 
@@ -79,14 +79,14 @@ Install the additional Python dependencies listed in `requirements.txt`. **It is
 pip install -r requirements.txt
 ```
 
-## Build the Project
+## Building the Project
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --config Debug -j $(nproc)
 ```
 
-## Convert Mistral 7B v0.1
+## Converting Mistral 7B v0.1
 
 ### Convert tokenizer model to alt
 
