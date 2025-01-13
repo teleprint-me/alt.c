@@ -36,33 +36,27 @@ int handle_test_case(const char* test_name, int (*test_func)(void)) {
 int test_flex_string_utf8_char_length(void) {
     struct TestCase {
         const char* input;
-        int expected_length;
+        int expected_length; // Byte length of the first UTF-8 character
     };
 
     struct TestCase test_cases[] = {
         {"a", 1},          // ASCII 'a'
         {"\x7F", 1},       // DEL character
-        {"\u00A2", 1},     // CENT SIGN (¢)
-        {"\u20AC", 1},     // EURO SIGN (€)
-        {"\U0001F600", 1}, // GRINNING FACE emoji (😀)
+        {"\u00A2", 2},     // CENT SIGN (¢)
+        {"\u20AC", 3},     // EURO SIGN (€)
+        {"\U0001F600", 4}, // GRINNING FACE emoji (😀)
     };
 
     size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
     LOG_INFO("Number of tests: %zu\n", num_tests);
 
     for (size_t i = 0; i < num_tests; i++) {
-        const uint8_t* stream = (const uint8_t*)test_cases[i].input;
+        const uint8_t* input = (const uint8_t*)test_cases[i].input;
         int expected = test_cases[i].expected_length;
-        int actual = 0;
 
-        while (*stream) {
-            int8_t char_length = flex_string_utf8_char_length(*stream);
-            ASSERT(char_length > 0, "Invalid UTF-8 leading byte detected");
-            stream += char_length;
-            actual++;
-        }
-
-        ASSERT(actual == expected, "Incorrect number of UTF-8 characters detected");
+        int8_t char_length = flex_string_utf8_char_length(*input);
+        ASSERT(char_length > 0, "Invalid UTF-8 leading byte detected");
+        ASSERT(char_length == expected, "Incorrect UTF-8 byte length detected");
     }
 
     return 0;
