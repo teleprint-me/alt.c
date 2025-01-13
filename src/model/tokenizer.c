@@ -75,9 +75,9 @@ HashTable* get_stats(HashTable* vocab) {
             VocabularyEntry* vocab_entry = (VocabularyEntry*) entry->value;
 
             // Split the word into symbols
-            FlexString* split = flex_string_create_split(vocab_entry->word, " ");
+            FlexStringSplit* split = flex_string_split(vocab_entry->word, " ");
             if (!split || split->length < 2) {
-                flex_string_free(split); // No pairs possible, free and continue
+                flex_string_free_split(split); // No pairs possible, free and continue
                 continue;
             }
 
@@ -97,7 +97,7 @@ HashTable* get_stats(HashTable* vocab) {
                 }
             }
 
-            flex_string_free(split);
+            flex_string_free_split(split);
         }
     }
 
