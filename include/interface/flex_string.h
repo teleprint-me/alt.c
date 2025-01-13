@@ -27,6 +27,8 @@
 typedef struct {
     char* data; ///< Pointer to the string data.
     uint32_t length; ///< Length of the string (in characters, not bytes).
+    uint32_t capacity; ///< Capacity of the allocated buffer (in bytes).
+    uint8_t valid_utf8; ///< Indicates whether the string is valid UTF-8 (1 = true, 0 = false).
 } FlexString;
 
 /**
@@ -35,6 +37,7 @@ typedef struct {
 typedef struct {
     char** parts; ///< Array of split strings.
     uint32_t length; ///< Number of parts (strings) in the array.
+    uint32_t capacity; ///< Capacity of the `parts` array.
 } FlexStringSplit;
 
 // ---------------------- Lifecycle Functions ----------------------
@@ -43,6 +46,7 @@ typedef struct {
  * @brief Creates a FlexString with the given data.
  *
  * @param data The initial string data.
+ * @note The FlexString automatically determines the length of the string.
  * @return Pointer to a newly allocated FlexString.
  */
 FlexString* flex_string_create(char* data);
@@ -57,9 +61,10 @@ void flex_string_free(FlexString* string);
 /**
  * @brief Creates an empty FlexStringSplit object.
  *
+ * @param initial_capacity The initial capacity of the FlexStringSplit object.
  * @return Pointer to a newly allocated FlexStringSplit object.
  */
-FlexStringSplit* flex_string_create_split(void);
+FlexStringSplit* flex_string_create_split(uint32_t initial_capacity);
 
 /**
  * @brief Frees the memory used by a FlexStringSplit.
@@ -139,14 +144,14 @@ int32_t flex_string_length(const char* input);
  */
 char* flex_string_copy(const char* src, uint32_t length);
 
-/** 
+/**
  * @brief Safely copy a UTF-8 string (uses for loop to ensure precision)
- * 
+ *
  * @param src The source string.
  * @param length The length of the source string.
  * @note The caller is responsible for freeing the destination string.
  * @return The destination string.
-*/
+ */
 char* flex_string_copy_safe(const char* src, uint32_t length);
 
 /**
