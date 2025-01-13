@@ -20,7 +20,7 @@
  *   [DEBUG] Logging to a file: 1, 2, 3... Done!
  */
 
-#include "logger.h"
+#include "interface/logger.h"
 
 #include <stdio.h>
 
@@ -34,7 +34,7 @@ void test_global_logger_initialization() {
 
 // Test lazy initialization and logging behavior
 void test_lazy_initialization_and_logging() {
-    logger_t* lazy_logger = logger_create(LOG_LEVEL_DEBUG, LOG_TYPE_UNKNOWN, NULL);
+    Logger* lazy_logger = logger_create(LOG_LEVEL_DEBUG, LOG_TYPE_UNKNOWN, NULL);
     LOG(lazy_logger, LOG_LEVEL_DEBUG, "Lazy logger debug\n");
     LOG(lazy_logger, LOG_LEVEL_ERROR, "Lazy logger error\n");
     logger_free(lazy_logger);
@@ -42,7 +42,7 @@ void test_lazy_initialization_and_logging() {
 
 // Test logging at different levels
 void test_logging_at_different_levels() {
-    logger_t* level_logger = logger_create(LOG_LEVEL_INFO, LOG_TYPE_STREAM, NULL);
+    Logger* level_logger = logger_create(LOG_LEVEL_INFO, LOG_TYPE_STREAM, NULL);
     LOG(level_logger, LOG_LEVEL_DEBUG, "Should not log debug\n");
     LOG(level_logger, LOG_LEVEL_INFO, "Should log info\n");
     LOG(level_logger, LOG_LEVEL_ERROR, "Should log error\n");
@@ -52,7 +52,7 @@ void test_logging_at_different_levels() {
 // Test logging to a file
 void test_logging_to_file() {
     const char* file_path = "test.log";
-    logger_t* file_logger = logger_create(LOG_LEVEL_DEBUG, LOG_TYPE_FILE, file_path);
+    Logger* file_logger = logger_create(LOG_LEVEL_DEBUG, LOG_TYPE_FILE, file_path);
     LOG(file_logger, LOG_LEVEL_DEBUG, "Logging to a file: 1, 2, %d... Done!\n", 3);
 
     // Clean up

@@ -69,15 +69,25 @@ add_library("alt" ${C_SOURCES})
 # Include headers
 target_include_directories("alt" PUBLIC include)
 
+# Enable testing
+enable_testing()
+add_subdirectory(tests)
+
 # Add examples
-add_subdirectory(examples)
-add_subdirectory(examples/scratchpad)
-add_subdirectory(examples/interface)
-add_subdirectory(examples/interface/path)
-add_subdirectory(examples/interface/data_types)
-add_subdirectory(examples/algorithm)
-add_subdirectory(examples/vk)
-add_subdirectory(examples/models)
+# Define subdirectories
+set(EXAMPLES 
+    "examples"
+    "examples/scratchpad"
+    "examples/interface"
+    "examples/interface/path"
+    "examples/interface/data_types"
+    "examples/algorithm"
+    "examples/vk"
+    "examples/models"
+)
+foreach (example IN LISTS EXAMPLES)
+    add_subdirectory(${example})
+endforeach()
 
 # Link necessary libraries (e.g., math, real-time library, Vulkan if Linux)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

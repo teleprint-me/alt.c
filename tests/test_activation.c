@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-#include "activation.h"
+#include "interface/activation.h"
 
 void test_gelu(void) {
     double test_values[] = {-2.0, -1.0, 0.0, 1.0, 2.0};
@@ -15,8 +15,8 @@ void test_gelu(void) {
     printf("Testing GELU Activation Function:\n");
     for (int i = 0; i < num_tests; i++) {
         double x = test_values[i];
-        double exact = activate_gelu(x, false);
-        double approx = activate_gelu(x, true);
+        double exact = activate_gelu_exact(x);
+        double approx = activate_gelu_approximation(x);
         printf("Input: %.2f, GELU (Exact): %.5f, GELU (Approx): %.5f\n", x, exact, approx);
     }
 }
@@ -30,11 +30,11 @@ void test_activation_functions(void) {
     for (int i = 0; i < num_tests; i++) {
         double x = test_values[i];
         printf("Input: %.2f\n", x);
-        printf("  Binary Step: %.2f\n", activate_binary_step(x));
-        printf("  Sigmoid: %.5f\n", activate_sigmoid(x));
-        printf("  Tanh: %.5f\n", activate_tanh(x));
-        printf("  ReLU: %.2f\n", activate_relu(x));
-        printf("  SiLU: %.5f\n", activate_silu(x));
+        printf("  Binary Step: %.2f\n", (double) activate_binary_step(x));
+        printf("  Sigmoid: %.5f\n", (double) activate_sigmoid(x));
+        printf("  Tanh: %.5f\n", (double) activate_tanh(x));
+        printf("  ReLU: %.2f\n", (double) activate_relu(x));
+        printf("  SiLU: %.5f\n", (double) activate_silu(x));
     }
 }
 
