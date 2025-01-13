@@ -3,6 +3,7 @@
  * @brief Example demonstrating flexible string manipulation and tokenization.
  */
 
+#include "interface/logger.h"
 #include "interface/flex_string.h"
 
 #include <stdio.h>
@@ -12,7 +13,7 @@
 #define MARKER "\u2581" // '▁'
 
 // Helper function to print tokens
-void print_tokens(FlexString* tokenizer) {
+void print_tokens(FlexStringSplit* tokenizer) {
     if (!tokenizer || tokenizer->length == 0) {
         printf("No tokens found.\n");
         return;
@@ -26,7 +27,7 @@ void print_tokens(FlexString* tokenizer) {
         }
 
         // Substitute spaces with the 'marker'
-        char* token_with_marker = flex_string_substitute_char(tokenizer->parts[i], MARKER, ' ');
+        char* token_with_marker = flex_string_replace(tokenizer->parts[i], MARKER, " ");
         if (!token_with_marker) {
             LOG_ERROR("%s: Failed to substitute marker in token %d.\n", __func__, i);
             continue;
@@ -46,7 +47,7 @@ int main(void) {
         = "('s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+)";
 
     // Tokenize input text using the provided pattern
-    FlexString* tokenizer = flex_string_create_tokens(text, token_pattern);
+    FlexStringSplit* tokenizer = flex_string_regex_tokenize(text, token_pattern);
     if (!tokenizer) {
         LOG_ERROR("%s: Tokenization failed.\n", __func__);
         return 1;
@@ -56,7 +57,7 @@ int main(void) {
     print_tokens(tokenizer);
 
     // Free the memory allocated for the tokens and the FlexString object
-    flex_string_free(tokenizer);
+    flex_string_free_split(tokenizer);
 
     return 0;
 }
