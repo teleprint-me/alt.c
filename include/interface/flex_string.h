@@ -130,6 +130,24 @@ bool flex_string_validate(const char* input);
 int32_t flex_string_length(const char* input);
 
 /**
+ * @brief Copy a UTF-8 string (uses memcpy for performance)
+ *
+ * @param src The source string.
+ * @param length The length of the source string.
+ * @return The destination string.
+ */
+char* flex_string_copy(const char* src, uint32_t length);
+
+/** 
+ * @brief Safely copy a UTF-8 string (uses for loop to ensure precision)
+ * 
+ * @param src The source string.
+ * @param length The length of the source string.
+ * @return The destination string.
+*/
+char* flex_string_copy_safe(const char* src, uint32_t length);
+
+/**
  * @brief Compare two UTF-8 strings for equality.
  *
  * @param a The first string.
