@@ -74,14 +74,14 @@ typedef struct HashTable {
  * @param key_type Type of keys the table will store (integer or string).
  * @return Pointer to the newly created hash table, or NULL on failure.
  */
-HashTable* hash_create_table(uint64_t initial_size, HashTableType key_type);
+HashTable* hash_table_create(uint64_t initial_size, HashTableType key_type);
 
 /**
  * @brief Frees the memory associated with the hash table.
  *
  * @param table Pointer to the hash table to free.
  */
-void hash_free_table(HashTable* table);
+void hash_table_free(HashTable* table);
 
 // -------------------- Hash Functions --------------------
 
@@ -93,7 +93,7 @@ void hash_free_table(HashTable* table);
  * @param value Pointer to the value.
  * @return HASH_SUCCESS on success, or an appropriate error code.
  */
-HashTableState hash_insert(HashTable* table, const void* key, void* value);
+HashTableState hash_table_insert(HashTable* table, const void* key, void* value);
 
 /**
  * @brief Resizes the hash table to a new size.
@@ -102,7 +102,7 @@ HashTableState hash_insert(HashTable* table, const void* key, void* value);
  * @param new_size The new size of the hash table.
  * @return HASH_SUCCESS on success, or HASH_ERROR on failure.
  */
-HashTableState hash_resize(HashTable* table, uint64_t new_size);
+HashTableState hash_table_resize(HashTable* table, uint64_t new_size);
 
 /**
  * @brief Deletes a key-value pair from the hash table.
@@ -111,7 +111,7 @@ HashTableState hash_resize(HashTable* table, uint64_t new_size);
  * @param key Pointer to the key to delete.
  * @return HASH_SUCCESS on success, or HASH_KEY_NOT_FOUND if the key is not found.
  */
-HashTableState hash_delete(HashTable* table, const void* key);
+HashTableState hash_table_delete(HashTable* table, const void* key);
 
 /**
  * @brief Clears all entries in the hash table.
@@ -119,7 +119,7 @@ HashTableState hash_delete(HashTable* table, const void* key);
  * @param table Pointer to the hash table.
  * @return HASH_SUCCESS on success, or HASH_ERROR on failure.
  */
-HashTableState hash_clear(HashTable* table);
+HashTableState hash_table_clear(HashTable* table);
 
 /**
  * @brief Searches for a key in the hash table.
@@ -128,7 +128,7 @@ HashTableState hash_clear(HashTable* table);
  * @param key Pointer to the key to search.
  * @return Pointer to the associated value, or NULL if the key is not found.
  */
-void* hash_search(HashTable* table, const void* key);
+void* hash_table_search(HashTable* table, const void* key);
 
 // ------------------- Hash Integers -------------------
 

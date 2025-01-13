@@ -255,7 +255,7 @@ HashTableState mistral_add_token_to_table(TokenizerModel* model, Token* token) {
     }
 
     // Check for duplicate token string
-    int32_t* existing_id = (int32_t*) hash_search(model->table, token->data);
+    int32_t* existing_id = (int32_t*) hash_table_search(model->table, token->data);
     if (existing_id) {
         LOG_ERROR(
             "%s: Duplicate token detected in HashTable. Existing data: '%s', New data: '%s'\n",
@@ -267,7 +267,7 @@ HashTableState mistral_add_token_to_table(TokenizerModel* model, Token* token) {
     }
 
     // Insert string -> Add token as key and id as value to enable reverse lookups
-    if (hash_insert(model->table, token->data, &token->id) != HASH_SUCCESS) {
+    if (hash_table_insert(model->table, token->data, &token->id) != HASH_SUCCESS) {
         LOG_ERROR("%s: Failed to insert token string -> ID into HashTable.\n", __func__);
         return HASH_ERROR;
     }
@@ -325,7 +325,7 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
     }
 
     // Create the hash table
-    tokenizer->table = hash_create_table(tokenizer->vocab_size, HASH_TYPE_STRING);
+    tokenizer->table = hash_table_create(tokenizer->vocab_size, HASH_TYPE_STRING);
     if (!tokenizer->table) {
         LOG_ERROR("%s: Failed to create hash table for tokenizer.\n", __func__);
         mistral_free_tokenizer_section(tokenizer);
@@ -371,8 +371,8 @@ TokenizerModel* mistral_read_tokenizer_section(MagicFile* magic_file) {
 void mistral_free_tokenizer_section(TokenizerModel* tokenizer) {
     if (tokenizer) {
         if (tokenizer->table) {
-            hash_clear(tokenizer->table);
-            hash_free_table(tokenizer->table);
+            hash_table_clear(tokenizer->table);
+            hash_table_free(tokenizer->table);
         }
 
         if (tokenizer->tokens) {
@@ -423,7 +423,7 @@ int32_t mistral_get_id_by_token(TokenizerModel* tokenizer, const char* data) {
         return -1; // Use -1 to indicate failure
     }
 
-    int32_t* id = (int32_t*) hash_search(tokenizer->table, data);
+    int32_t* id = (int32_t*) hash_table_search(tokenizer->table, data);
     if (!id) {
         LOG_WARN("%s: Token '%s' not found.\n", __func__, data);
         return -1;

@@ -10,7 +10,7 @@
 
 int main(void) {
     // Create a hash table for strings
-    HashTable* string_table = hash_create_table(8, HASH_TYPE_STRING);
+    HashTable* string_table = hash_table_create(8, HASH_TYPE_STRING);
 
     if (!string_table) {
         fprintf(stderr, "Failed to create string hash table.\n");
@@ -18,9 +18,9 @@ int main(void) {
     }
 
     // Insert string keys and values
-    hash_insert(string_table, "hello", "world");
-    hash_insert(string_table, "foo", "bar");
-    hash_insert(string_table, "baz", "qux");
+    hash_table_insert(string_table, "hello", "world");
+    hash_table_insert(string_table, "foo", "bar");
+    hash_table_insert(string_table, "baz", "qux");
 
     // Search for a string key
     char* value = hash_string_search(string_table, "hello");
@@ -31,7 +31,7 @@ int main(void) {
     }
 
     // Delete a key
-    if (hash_delete(string_table, "foo") == HASH_SUCCESS) {
+    if (hash_table_delete(string_table, "foo") == HASH_SUCCESS) {
         printf("Deleted key 'foo'.\n");
     } else {
         printf("Failed to delete key 'foo'.\n");
@@ -46,25 +46,25 @@ int main(void) {
     }
 
     // Clear the table
-    if (hash_clear(string_table) == HASH_SUCCESS) {
+    if (hash_table_clear(string_table) == HASH_SUCCESS) {
         printf("Cleared string hash table.\n");
     }
 
     // Create a hash table for integers
-    HashTable* int_table = hash_create_table(8, HASH_TYPE_INTEGER);
+    HashTable* int_table = hash_table_create(8, HASH_TYPE_INTEGER);
 
     if (!int_table) {
         fprintf(stderr, "Failed to create integer hash table.\n");
-        hash_free_table(string_table);
+        hash_table_free(string_table);
         return 1;
     }
 
     // Insert integer keys and values
     int key1 = 42, key2 = 99, key3 = 123;
     int value1 = 1, value2 = 2, value3 = 3;
-    hash_insert(int_table, &key1, &value1);
-    hash_insert(int_table, &key2, &value2);
-    hash_insert(int_table, &key3, &value3);
+    hash_table_insert(int_table, &key1, &value1);
+    hash_table_insert(int_table, &key2, &value2);
+    hash_table_insert(int_table, &key3, &value3);
 
     // Search for an integer key
     int* int_value = hash_integer_search(int_table, &key2);
@@ -75,7 +75,7 @@ int main(void) {
     }
 
     // Delete an integer key
-    if (hash_delete(int_table, &key1) == HASH_SUCCESS) {
+    if (hash_table_delete(int_table, &key1) == HASH_SUCCESS) {
         printf("Deleted key %d.\n", key1);
     } else {
         printf("Failed to delete key %d.\n", key1);
@@ -90,8 +90,8 @@ int main(void) {
     }
 
     // Free tables
-    hash_free_table(string_table);
-    hash_free_table(int_table);
+    hash_table_free(string_table);
+    hash_table_free(int_table);
 
     printf("Hash table example complete.\n");
     return 0;

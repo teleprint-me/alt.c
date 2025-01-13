@@ -67,7 +67,7 @@ void free_vocab_entry(VocabularyEntry* entry) {
 }
 
 HashTable* get_stats(HashTable* vocab) {
-    HashTable* stats = hash_create_table(64, HASH_TYPE_STRING);
+    HashTable* stats = hash_table_create(64, HASH_TYPE_STRING);
 
     for (uint64_t i = 0; i < vocab->size; ++i) {
         HashTableEntry* entry = &vocab->entries[i];
@@ -87,13 +87,13 @@ HashTable* get_stats(HashTable* vocab) {
                 snprintf(pair, sizeof(pair), "%s %s", split->parts[j], split->parts[j + 1]);
 
                 // Update frequency in stats
-                int* frequency = (int*) hash_search(stats, pair);
+                int* frequency = (int*) hash_table_search(stats, pair);
                 if (frequency) {
                     (*frequency) += *(vocab_entry->frequency);
                 } else {
                     frequency = (int*) malloc(sizeof(int));
                     *frequency = *(vocab_entry->frequency);
-                    hash_insert(stats, strdup(pair), frequency);
+                    hash_table_insert(stats, strdup(pair), frequency);
                 }
             }
 
@@ -122,7 +122,7 @@ void free_stats(HashTable* stats) {
         }
 
         // Free the hash table (entries are owned by the hash table)
-        hash_free_table(stats);
+        hash_table_free(stats);
     }
 }
 
@@ -161,7 +161,7 @@ void merge_vocab(HashTable* vocab, const char* pair) {
 
 HashTable* create_byte_map(void) {
     // Create a hash table with a size of 256 to map 256 possible byte values
-    HashTable* map = hash_create_table(256, HASH_TYPE_STRING);
+    HashTable* map = hash_table_create(256, HASH_TYPE_STRING);
     if (!map) {
         return NULL; // Handle memory allocation failure
     }
@@ -169,7 +169,7 @@ HashTable* create_byte_map(void) {
     // Populate the hash table with the tokens corresponding to each byte value
     for (unsigned int i = 0; i < 256; ++i) {
         char* token = byte_to_token(i);
-        if (hash_insert(map, token, (void*) (uintptr_t) i) != HASH_SUCCESS) {
+        if (hash_table_insert(map, token, (void*) (uintptr_t) i) != HASH_SUCCESS) {
             free(token); // Handle insertion failure
             return NULL;
         }
@@ -200,7 +200,7 @@ char* byte_to_token(unsigned char byte) {
 }
 
 int token_to_byte(HashTable* byte_map, const char* token) {
-    unsigned char* byte = (unsigned char*) hash_search(byte_map, token);
+    unsigned char* byte = (unsigned char*) hash_table_search(byte_map, token);
     if (!byte) {
         return -1; // Token not found
     }

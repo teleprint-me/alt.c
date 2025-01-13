@@ -18,28 +18,28 @@
 
 // Example vocabulary
 HashTable* create_vocab(void) {
-    HashTable* vocab = hash_create_table(16, HASH_TYPE_STRING);
+    HashTable* vocab = hash_table_create(16, HASH_TYPE_STRING);
 
     VocabularyEntry* entry = create_vocab_entry("l o w </w>", 5);
-    if (hash_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
+    if (hash_table_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
         fprintf(stderr, "Error: Failed to insert 'l o w </w>' into vocab.\n");
         free_vocab_entry(entry);
     }
 
     entry = create_vocab_entry("l o w e r </w>", 2);
-    if (hash_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
+    if (hash_table_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
         fprintf(stderr, "Error: Failed to insert 'l o w e r </w>' into vocab.\n");
         free_vocab_entry(entry);
     }
 
     entry = create_vocab_entry("n e w e s t </w>", 6);
-    if (hash_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
+    if (hash_table_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
         fprintf(stderr, "Error: Failed to insert 'n e w e s t </w>' into vocab.\n");
         free_vocab_entry(entry);
     }
 
     entry = create_vocab_entry("w i d e s t </w>", 3);
-    if (hash_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
+    if (hash_table_insert(vocab, entry->word, entry) != HASH_SUCCESS) {
         fprintf(stderr, "Error: Failed to insert 'w i d e s t </w>' into vocab.\n");
         free_vocab_entry(entry);
     }
@@ -61,7 +61,7 @@ void free_vocab(HashTable* vocab) {
                 entry->value = NULL;
             }
         }
-        hash_free_table(vocab); // Free the hash table itself
+        hash_table_free(vocab); // Free the hash table itself
     }
 }
 

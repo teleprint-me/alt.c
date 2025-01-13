@@ -18,7 +18,7 @@
 
 // -------------------- Hash Life-cycle --------------------
 
-HashTable* hash_create_table(uint64_t initial_size, HashTableType key_type) {
+HashTable* hash_table_create(uint64_t initial_size, HashTableType key_type) {
     HashTable* table = (HashTable*) malloc(sizeof(HashTable));
     if (!table) {
         LOG_ERROR("%s: Failed to allocate memory for HashTable.\n", __func__);
@@ -53,7 +53,7 @@ HashTable* hash_create_table(uint64_t initial_size, HashTableType key_type) {
     return table;
 }
 
-void hash_free_table(HashTable* table) {
+void hash_table_free(HashTable* table) {
     if (table) {
         if (table->entries) {
             free(table->entries);
@@ -65,7 +65,7 @@ void hash_free_table(HashTable* table) {
 
 // -------------------- Hash Functions --------------------
 
-HashTableState hash_insert(HashTable* table, const void* key, void* value) {
+HashTableState hash_table_insert(HashTable* table, const void* key, void* value) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -81,7 +81,7 @@ HashTableState hash_insert(HashTable* table, const void* key, void* value) {
 
     // Resize if the load factor exceeds 0.75
     if ((double) table->count / table->size > 0.75) {
-        if (hash_resize(table, table->size * 2) != HASH_SUCCESS) {
+        if (hash_table_resize(table, table->size * 2) != HASH_SUCCESS) {
             return HASH_ERROR;
         }
     }
@@ -104,7 +104,7 @@ HashTableState hash_insert(HashTable* table, const void* key, void* value) {
     return HASH_TABLE_FULL;
 }
 
-HashTableState hash_resize(HashTable* table, uint64_t new_size) {
+HashTableState hash_table_resize(HashTable* table, uint64_t new_size) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -142,7 +142,7 @@ HashTableState hash_resize(HashTable* table, uint64_t new_size) {
     for (uint64_t i = 0; i < old_size; i++) {
         HashTableEntry* entry = &old_entries[i];
         if (entry->key) {
-            HashTableState state = hash_insert(table, entry->key, entry->value);
+            HashTableState state = hash_table_insert(table, entry->key, entry->value);
             if (state != HASH_SUCCESS) {
                 LOG_ERROR("%s: Failed to rehash key during resize.\n", __func__);
                 free(new_entries);
@@ -162,7 +162,7 @@ HashTableState hash_resize(HashTable* table, uint64_t new_size) {
     return HASH_SUCCESS;
 }
 
-HashTableState hash_delete(HashTable* table, const void* key) {
+HashTableState hash_table_delete(HashTable* table, const void* key) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -204,7 +204,7 @@ HashTableState hash_delete(HashTable* table, const void* key) {
                 table->count--;
 
                 // Reinsert the entry to its correct position in the table
-                hash_insert(table, rehash_key, rehash_value);
+                hash_table_insert(table, rehash_key, rehash_value);
             }
 
             return HASH_SUCCESS;
@@ -215,7 +215,7 @@ HashTableState hash_delete(HashTable* table, const void* key) {
     return HASH_KEY_NOT_FOUND; // Key not found after full probing
 }
 
-HashTableState hash_clear(HashTable* table) {
+HashTableState hash_table_clear(HashTable* table) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return HASH_ERROR;
@@ -238,7 +238,7 @@ HashTableState hash_clear(HashTable* table) {
     return HASH_SUCCESS;
 }
 
-void* hash_search(HashTable* table, const void* key) {
+void* hash_table_search(HashTable* table, const void* key) {
     if (!table) {
         LOG_ERROR("%s: Table is NULL.\n", __func__);
         return NULL;
@@ -278,7 +278,7 @@ int hash_integer_compare(const void* key1, const void* key2) {
 }
 
 int32_t* hash_integer_search(HashTable* table, const void* key) {
-    return (int32_t*) hash_search(table, key);
+    return (int32_t*) hash_table_search(table, key);
 }
 
 // ------------------- Hash Strings -------------------
@@ -304,5 +304,5 @@ int hash_string_compare(const void* key1, const void* key2) {
 }
 
 char* hash_string_search(HashTable* table, const void* key) {
-    return (char*) hash_search(table, key);
+    return (char*) hash_table_search(table, key);
 }
