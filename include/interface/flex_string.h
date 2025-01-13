@@ -130,11 +130,21 @@ bool flex_string_validate(const char* input);
 int32_t flex_string_length(const char* input);
 
 /**
- * @brief Substitutes all occurrences of a target UTF-8 character with a replacement string.
+ * @brief Compare two UTF-8 strings for equality.
+ *
+ * @param a The first string.
+ * @param b The second string.
+ * @return 0 if a == b, -1 if a < b, 1 if a > b.
+ */
+int32_t flex_string_compare(const char* a, const char* b);
+
+/**
+ * @brief Substitutes all occurrences of a target UTF-8 substring with a replacement substring.
  *
  * @param input The input string.
- * @param target The UTF-8 character to replace.
- * @param replacement The string to replace the target with.
+ * @param target The UTF-8 substring to replace.
+ * @param replacement The substring to replace the target with.
+ * @note The target and replacement substrings may be any valid sequence of UTF-8 bytes.
  * @return A new string with substitutions applied.
  */
 char* flex_string_replace(const char* input, const char* replacement, const char* target);
