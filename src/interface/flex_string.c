@@ -14,37 +14,35 @@
 // ---------------------- Lifecycle Functions ----------------------
 
 FlexString* flex_string_create(char* data) {
-    if (!data || *data == '\0') {
-        LOG_ERROR("%s: Input data is NULL\n", __func__);
+    if (!data) {
+        LOG_ERROR("%s: Input data is NULL.\n", __func__);
+        return NULL;
+    }
+
+    // Validate the input string
+    if (!flex_string_validate(data)) {
+        LOG_ERROR("%s: Input data is not a valid UTF-8 string.\n", __func__);
         return NULL;
     }
 
     FlexString* string = malloc(sizeof(FlexString));
     if (!string) {
-        LOG_ERROR("%s: Failed to allocate memory to string.\n", __func__);
+        LOG_ERROR("%s: Failed to allocate memory for FlexString.\n", __func__);
         return NULL;
     }
 
-    // Validate input data
-    if (flex_string_validate(data) == false) {
-        LOG_ERROR("%s: Illegal sequence detected: Cowardly refusing to continue.\n", __func__);
-        free(string);
-        return NULL;
-    }
+    uint32_t length = flex_string_length(data); // Character length
+    uint32_t capacity = strlen(data) + 1; // Byte length + null terminator
 
-    // Calculate the length of the input string
-    string->length = flex_string_length(data);
-    // Allocate memory for the string data (including null terminator)
-    string->data = malloc((string->length + 1) * sizeof(char));
+    string->data = flex_string_copy_safe(data, capacity * sizeof(char)); // Logs errors if not successful
     if (!string->data) {
-        LOG_ERROR("%s: Failed to allocate memory to string data.\n", __func__);
-        free(string);
+        flex_string_free(string);
         return NULL;
     }
 
-    // Copying each byte manually for UTF-8 safety and transparency.
-    string->data = flex_string_copy_safe(data, string->length);
-
+    string->length = length;
+    string->capacity = capacity;
+    string->valid_utf8 = 1; // Already validated
     return string;
 }
 
@@ -57,14 +55,27 @@ void flex_string_free(FlexString* string) {
     }
 }
 
-FlexStringSplit* flex_string_create_split(void) {
-    FlexStringSplit* split = (FlexStringSplit*) malloc(sizeof(FlexStringSplit));
+FlexStringSplit* flex_string_create_split(uint32_t initial_capacity) {
+    if (initial_capacity == 0) {
+        initial_capacity = 4; // Default capacity
+    }
+
+    FlexStringSplit* split = malloc(sizeof(FlexStringSplit));
     if (!split) {
-        LOG_ERROR("%s: Failed to allocate memory to FlexStringSplit\n", __func__);
+        LOG_ERROR("%s: Failed to allocate memory for FlexStringSplit.\n", __func__);
         return NULL;
     }
-    split->parts = NULL; // Use realloc() at runtime
+
+    split->parts = malloc(initial_capacity * sizeof(char*));
+    if (!split->parts) {
+        LOG_ERROR("%s: Failed to allocate memory for FlexStringSplit parts.\n", __func__);
+        free(split);
+        return NULL;
+    }
+
     split->length = 0;
+    split->capacity = initial_capacity;
+
     return split;
 }
 
@@ -291,32 +302,76 @@ int32_t flex_string_compare(const char* a, const char* b) {
     return 0; // Strings are equal
 }
 
-/**
- * @brief Substitutes all occurrences of a target UTF-8 character with a replacement string.
- *
- * @param input The input string.
- * @param target The UTF-8 character to replace.
- * @param replacement The string to replace the target with.
- * @return A new string with substitutions applied.
- */
 char* flex_string_replace(const char* input, const char* replacement, const char* target) {
-    // Ensure input strings are not NULL
+    // Validate input
     if (!input || !target) {
-        LOG_ERROR("%s: Invalid input string\n", __func__);
+        LOG_ERROR("%s: Invalid input or target string.\n", __func__);
         return NULL;
     }
-    // Ensure target is a valid UTF-8 character
-    if (true != flex_string_validate(target)) {
-        LOG_ERROR("%s: Invalid target character\n", __func__);
+    if (!flex_string_validate(target)) {
+        LOG_ERROR("%s: Target is not a valid UTF-8 string.\n", __func__);
         return NULL;
     }
-    // Ensure replacement is a valid UTF-8 character
-    if (true != flex_string_validate(replacement)) {
-        LOG_ERROR("%s: Invalid replacement character\n", __func__);
+    if (replacement && !flex_string_validate(replacement)) {
+        LOG_ERROR("%s: Replacement is not a valid UTF-8 string.\n", __func__);
         return NULL;
     }
-    // Ensure target and replacement are not the same
-    return; // TODO: Handle error case
+
+    // If the target and replacement are the same, return a copy of the input
+    if (replacement && flex_string_compare(target, replacement) == 0) {
+        return flex_string_copy(input, strlen(input));
+    }
+
+    // Determine lengths of input, target, and replacement
+    size_t input_len = flex_string_length(input);
+    size_t target_len = flex_string_length(target);
+    size_t replacement_len = flex_string_length(replacement);
+
+    // Allocate buffer for the result (estimate: input_len + some extra space)
+    char* result = malloc(input_len + 1); // Initial allocation
+    if (!result) {
+        LOG_ERROR("%s: Failed to allocate memory for the result string.\n", __func__);
+        return NULL;
+    }
+
+    size_t result_capacity = input_len + 1;
+    size_t result_len = 0;
+
+    const char* current = input;
+    while (*current) {
+        // Check if the current substring matches the target
+        if (flex_string_compare(current, target) == 0) {
+            // Ensure enough space in the result buffer
+            size_t new_capacity = result_len + replacement_len + 1;
+            if (new_capacity > result_capacity) {
+                result_capacity = new_capacity * 2; // Double the capacity
+                char* temp = realloc(result, result_capacity);
+                if (!temp) {
+                    LOG_ERROR("%s: Memory allocation failed during resizing.\n", __func__);
+                    free(result);
+                    return NULL;
+                }
+                result = temp;
+            }
+
+            // Append the replacement
+            if (replacement) {
+                result = flex_string_copy_safe(replacement, replacement_len);
+                result_len += replacement_len;
+            }
+
+            // Skip past the target in the input
+            current += target_len;
+        } else {
+            // Copy the current character into the result
+            result[result_len++] = *current++;
+        }
+    }
+
+    // Null-terminate the result
+    result[result_len] = '\0';
+
+    return result;
 }
 
 char* flex_string_join(const char* a, const char* b) {
@@ -343,17 +398,18 @@ char* flex_string_join(const char* a, const char* b) {
 }
 
 FlexStringSplit* flex_string_split(const char* input, const char* delimiter) {
-    if (!input || !delimiter){
+    if (!input || !delimiter) {
         LOG_ERROR("%s: Invalid input or delimiter\n", __func__);
         return NULL;
     }
-    if (!flex_string_validate(input)){
+    if (!flex_string_validate(input)) {
         LOG_ERROR("%s: Invalid input string\n", __func__);
         return NULL;
     }
 
-    FlexStringSplit* split = flex_string_create_split();
-    if (!split){
+    // Initial capacity is 0
+    FlexStringSplit* split = flex_string_create_split(0);
+    if (!split) {
         LOG_ERROR("%s: Failed to allocate memory\n", __func__);
         return NULL;
     }
