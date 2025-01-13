@@ -42,11 +42,8 @@ FlexString* flex_string_create(char* data) {
         return NULL;
     }
 
-    // Copy the input string to the newly allocated memory
-    for (uint32_t i = 0; i < string->length; i++) {
-        string->data[i] = data[i];
-    }
-    string->data[string->length] = '\0'; // Null-terminate the string
+    // Copying each byte manually for UTF-8 safety and transparency.
+    string->data = flex_string_copy_safe(data, string->length);
 
     return string;
 }
@@ -224,6 +221,74 @@ int32_t flex_string_length(const char* input) {
     }
 
     return char_count;
+}
+
+char* flex_string_copy(const char* source, uint32_t length) {
+    if (!source || 0 == length) {
+        LOG_ERROR("%s: Invalid source string or length.\n", __func__);
+        return NULL;
+    }
+
+    char* destination = malloc((length + 1) * sizeof(char)); // +1 for null terminator
+    if (!destination) {
+        LOG_ERROR("%s: Failed to allocate memory for destination string.\n", __func__);
+        return NULL;
+    }
+
+    memcpy(destination, source, length);
+    destination[length] = '\0'; // Null-terminate the string
+
+    return destination;
+}
+
+char* flex_string_copy_safe(const char* src, uint32_t length) {
+    if (!src || 0 == length) {
+        LOG_ERROR("%s: Invalid source string or length.\n", __func__);
+        return NULL;
+    }
+
+    char* dest = malloc((length + 1) * sizeof(char)); // +1 for null terminator
+    if (!dest) {
+        LOG_ERROR("%s: Failed to allocate memory for destination string.\n", __func__);
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < length; i++) {
+        dest[i] = src[i];
+    }
+    dest[length] = '\0'; // Null-terminate the string
+
+    return dest;
+}
+
+int32_t flex_string_compare(const char* a, const char* b) {
+    if (!a || !b) {
+        LOG_ERROR("%s: One or both input strings are NULL.\n", __func__);
+        return -2; // Indicate invalid input
+    }
+
+    while (*a && *b) {
+        if (*a < *b) {
+            return -1;
+        }
+        if (*a > *b) {
+            return 1;
+        }
+
+        // Both bytes are equal, move to the next
+        a++;
+        b++;
+    }
+
+    // Check for string length differences
+    if (*a) {
+        return 1; // `a` is longer
+    }
+    if (*b) {
+        return -1; // `b` is longer
+    }
+
+    return 0; // Strings are equal
 }
 
 /**

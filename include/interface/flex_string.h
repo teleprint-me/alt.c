@@ -134,6 +134,7 @@ int32_t flex_string_length(const char* input);
  *
  * @param src The source string.
  * @param length The length of the source string.
+ * @note The caller is responsible for freeing the destination string.
  * @return The destination string.
  */
 char* flex_string_copy(const char* src, uint32_t length);
@@ -143,6 +144,7 @@ char* flex_string_copy(const char* src, uint32_t length);
  * 
  * @param src The source string.
  * @param length The length of the source string.
+ * @note The caller is responsible for freeing the destination string.
  * @return The destination string.
 */
 char* flex_string_copy_safe(const char* src, uint32_t length);
