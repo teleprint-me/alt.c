@@ -119,7 +119,7 @@ char* flex_string_utf8_char_glue(const uint8_t* string, int8_t char_length);
  * @param input The input string to be validated.
  * @return true if the string is valid UTF-8, false otherwise.
  */
-bool flex_string_utf8_validate(const char* input);
+bool flex_string_validate(const char* input);
 
 /**
  * @brief Calculates the length of a UTF-8 string in characters.
@@ -127,7 +127,7 @@ bool flex_string_utf8_validate(const char* input);
  * @param input The input string.
  * @return The number of UTF-8 characters in the string.
  */
-int32_t flex_string_utf8_length(const char* input);
+int32_t flex_string_length(const char* input);
 
 /**
  * @brief Substitutes all occurrences of a target UTF-8 character with a replacement string.
