@@ -99,6 +99,30 @@ int8_t flex_string_utf8_char_length(uint8_t byte);
  */
 bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length);
 
+
+/**
+ * @brief Callback function for UTF-8 character iterator.
+ *
+ * This function is called for each character in a UTF-8 string.
+ *
+ * @param char_start The start of the UTF-8 character.
+ * @param char_length The length of the UTF-8 character.
+ * @return true if the character is valid, false otherwise.
+ */
+typedef void* (*FlexStringUTF8Iterator)(const uint8_t* char_start, int8_t char_length);
+
+/**
+ * @brief Iterates over a UTF-8 string.
+ *
+ * This function takes a pointer to a UTF-8 string and a callback function that is called for each
+ * character in the string.
+ *
+ * @param input The input string to be iterated.
+ * @param callback The callback function to be called for each character in the string.
+ * @return true if the string was successfully iterated, false otherwise.
+ */
+static bool flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator callback);
+
 /**
  * @brief Glues the bytes of a UTF-8 character into a null-terminated string.
  *

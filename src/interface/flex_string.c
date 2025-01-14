@@ -151,6 +151,30 @@ bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length) {
     return true;
 }
 
+static bool flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator callback) {
+    if (!input || !callback) {
+        return false; // Invalid input or callback
+    }
+
+    const uint8_t* stream = (const uint8_t*) input;
+    while (*stream) {
+        // Determine the length of the current UTF-8 character
+        int8_t char_length = flex_string_utf8_char_length(*stream);
+        if (char_length == -1 || !flex_string_utf8_char_validate(stream, char_length)) {
+            return false; // Invalid sequence
+        }
+
+        // Invoke the callback for the current character
+        if (!callback(stream, char_length)) {
+            return false; // Early termination requested by the callback
+        }
+
+        stream += char_length; // Advance to the next character
+    }
+
+    return true; // Successfully iterated through the string
+}
+
 // Glue bytes of a UTF-8 character into a null-terminated string
 char* flex_string_utf8_char_glue(const uint8_t* string, int8_t char_length) {
     if (!string || *string == '\0' || 1 >= char_length) {
