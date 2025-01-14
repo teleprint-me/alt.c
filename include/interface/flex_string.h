@@ -24,20 +24,21 @@
 /**
  * @brief Represents a mutable string with dynamic memory management.
  */
-typedef struct {
-    char* data; ///< Pointer to the string data.
-    uint32_t length; ///< Length of the string (in characters, not bytes).
-    uint32_t capacity; ///< Capacity of the allocated buffer (in bytes).
+typedef struct __attribute__((packed)) FlexString {
     uint8_t valid_utf8; ///< Indicates whether the string is valid UTF-8 (1 = true, 0 = false).
+    uint32_t capacity; ///< Capacity of the allocated buffer (in bytes).
+    uint32_t length; ///< Length of the string (in characters, not bytes).
+    char* data; ///< Pointer to the string data.
 } FlexString;
 
 /**
  * @brief Represents a flexible string with multiple parts.
  */
-typedef struct {
-    char** parts; ///< Array of split strings.
-    uint32_t length; ///< Number of parts (strings) in the array.
+typedef struct __attribute__((packed)) FlexStringSplit {
+    uint8_t valid_utf8; ///< Indicates whether the string is valid UTF-8 (1 = true, 0 = false).
     uint32_t capacity; ///< Capacity of the `parts` array.
+    uint32_t length; ///< Number of parts (strings) in the array.
+    char** parts; ///< Array of split strings.
 } FlexStringSplit;
 
 // ---------------------- Lifecycle Functions ----------------------
@@ -99,7 +100,6 @@ int8_t flex_string_utf8_char_length(uint8_t byte);
  */
 bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length);
 
-
 /**
  * @brief Callback function for UTF-8 character iterator.
  *
@@ -107,9 +107,12 @@ bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length);
  *
  * @param char_start The start of the UTF-8 character.
  * @param char_length The length of the UTF-8 character.
+ * @param context The context pointer passed to the callback function.
  * @return true if the character is valid, false otherwise.
  */
-typedef void* (*FlexStringUTF8Iterator)(const uint8_t* char_start, int8_t char_length);
+typedef void* (*FlexStringUTF8Iterator)(
+    const uint8_t* char_start, int8_t char_length, void* context
+);
 
 /**
  * @brief Iterates over a UTF-8 string.
@@ -119,23 +122,12 @@ typedef void* (*FlexStringUTF8Iterator)(const uint8_t* char_start, int8_t char_l
  *
  * @param input The input string to be iterated.
  * @param callback The callback function to be called for each character in the string.
+ * @param context The context pointer passed to the callback function.
  * @return true if the string was successfully iterated, false otherwise.
  */
-static bool flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator callback);
-
-/**
- * @brief Glues the bytes of a UTF-8 character into a null-terminated string.
- *
- * This function takes a pointer to a UTF-8 character (represented as a sequence of bytes) and
- * returns a new string containing the character's bytes. The resulting string is null-terminated.
- *
- * @param string The input string containing the bytes of the UTF-8 character.
- * @param char_length The length of the input character.
- * @return A newly allocated null-terminated string containing the bytes of the UTF-8 character,
- *         or NULL if memory allocation fails.
- * @note The caller is responsible for freeing the returned string.
- */
-char* flex_string_utf8_char_glue(const uint8_t* string, int8_t char_length);
+void* flex_string_utf8_char_iterator(
+    const char* input, FlexStringUTF8Iterator callback, void* context
+);
 
 // ---------------------- String Operations ----------------------
 
@@ -159,33 +151,23 @@ bool flex_string_validate(const char* input);
 int32_t flex_string_length(const char* input);
 
 /**
- * @brief Copy a UTF-8 string (uses memcpy for performance)
- *
- * @param src The source string.
- * @param length The length of the source string.
- * @note The caller is responsible for freeing the destination string.
- * @return The destination string.
- */
-char* flex_string_copy(const char* src, uint32_t length);
-
-/**
  * @brief Safely copy a UTF-8 string (uses for loop to ensure precision)
  *
- * @param src The source string.
+ * @param source The source string.
  * @param length The length of the source string.
  * @note The caller is responsible for freeing the destination string.
- * @return The destination string.
+ * @return The destination string, or NULL on failure.
  */
-char* flex_string_copy_safe(const char* src, uint32_t length);
+char* flex_string_copy(const char* source, uint32_t length);
 
 /**
  * @brief Compare two UTF-8 strings for equality.
  *
- * @param a The first string.
- * @param b The second string.
- * @return 0 if a == b, -1 if a < b, 1 if a > b.
+ * @param left The left operand string.
+ * @param right The right operand string.
+ * @return 0 if a == b, -1 if a < b, 1 if a > b, -2 if !a or !b.
  */
-int32_t flex_string_compare(const char* a, const char* b);
+int32_t flex_string_compare(const char* left, const char* right);
 
 /**
  * @brief Substitutes all occurrences of a target UTF-8 substring with a replacement substring.
