@@ -34,7 +34,7 @@ FlexString* flex_string_create(char* data) {
     uint32_t length = flex_string_length(data); // Character length
     uint32_t capacity = strlen(data) + 1; // Byte length + null terminator
 
-    string->data = flex_string_copy_safe(data, capacity * sizeof(char)); // Logs errors if not successful
+    string->data = flex_string_copy(data, capacity * sizeof(char)); // Logs errors if not successful
     if (!string->data) {
         flex_string_free(string);
         return NULL;
@@ -93,7 +93,7 @@ void flex_string_free_split(FlexStringSplit* split) {
     }
 }
 
-// ---------------------- Character Operations ----------------------
+// ---------------------- UTF-8 Character Operations ----------------------
 
 int8_t flex_string_utf8_char_length(uint8_t byte) {
     if ((byte & 0x80) == 0) {
@@ -151,7 +151,7 @@ bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length) {
     return true;
 }
 
-static void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator callback) {
+void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator callback, void* context) {
     if (!input || !callback) {
         return NULL; // Invalid input or callback
     }
@@ -164,8 +164,8 @@ static void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Ite
             return NULL; // Invalid sequence
         }
 
-        // Invoke the callback for the current character
-        void* result = callback(stream, char_length);
+        // Invoke the callback with the current character and context
+        void* result = callback(stream, char_length, context);
         if (result) {
             return result; // Early return based on callback result
         }
@@ -176,92 +176,70 @@ static void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Ite
     return NULL; // Completed iteration without finding a result
 }
 
-// Glue bytes of a UTF-8 character into a null-terminated string
-char* flex_string_utf8_char_glue(const uint8_t* string, int8_t char_length) {
-    if (!string || *string == '\0' || 1 >= char_length) {
-        LOG_ERROR("%s: Invalid byte sequence or length.\n", __func__);
-        return NULL;
-    }
+// ---------------------- UTF-8 String Validation ----------------------
 
-    char* result = malloc(char_length + 1); // +1 for null terminator
-    if (!result) {
-        LOG_ERROR("%s: Failed to allocate memory.\n", __func__);
-        return NULL;
-    }
+// This is a required dummy structure to be used as the callback argument.
+typedef struct UTF8Validator {
+    bool is_valid;
+} UTF8Validator;
 
-    memcpy(result, string, char_length);
-    result[char_length] = '\0'; // Null-terminate the string
-    return result;
+// This is a required dummy callback function.
+void* utf8_char_validator(const uint8_t* char_start, int8_t char_length, void* context) {
+    (void)char_start;
+    (void)char_length;
+    UTF8Validator* validator = (UTF8Validator*)context;
+    validator->is_valid = true; // This is always true
+    return NULL; // Continue iteration as long as the input is valid
 }
 
-// ---------------------- String Operations ----------------------
-
+// Validate the input string.
 bool flex_string_validate(const char* input) {
     if (!input) {
-        return false; // Null input is invalid
+        return false;
     }
+    UTF8Validator validator = {.is_valid = false}; // Dummy struct
+    // The iterator will succeed if the input is valid.
+    return flex_string_utf8_char_iterator(input, utf8_char_validator, &validator) == NULL;
+}
 
-    const uint8_t* stream = (const uint8_t*) input;
-    while (*stream) {
-        // Determine the length of the current UTF-8 character
-        int8_t char_length = flex_string_utf8_char_length(*stream);
-        if (char_length == -1) {
-            LOG_ERROR("Invalid UTF-8 leading byte: 0x%02X\n", *stream);
-            return false;
-        }
+// ---------------------- UTF-8 String Length ----------------------
 
-        // Validate the UTF-8 character
-        if (!flex_string_utf8_char_validate(stream, char_length)) {
-            LOG_ERROR("Invalid UTF-8 sequence starting at byte: 0x%02X\n", *stream);
-            return false;
-        }
+typedef struct UTF8Length {
+    int32_t value;
+} UTF8Length;
 
-        // Move the pointer forward by the character length
-        stream += char_length;
-    }
-
-    return true;
+// Callback to validate each character
+void* utf8_char_counter(const uint8_t* char_start, int8_t char_length, void* context) {
+    (void)char_start;
+    (void)char_length;
+    UTF8Length* length  = (UTF8Length*) context;
+    length->value++;
+    return NULL; // Continue iteration as long as the input is valid
 }
 
 int32_t flex_string_length(const char* input) {
     if (!input) {
-        return -1; // Null input is invalid
+        return -1;
     }
-
-    if (*input == '\0') {
-        return 0; // This is a valid length (i think?)
+    if ('\0' == *input) {
+        return 0; // Empty string
     }
-
-    int32_t char_count = 0;
-    const unsigned char* stream = (const unsigned char*) input;
-
-    while (*stream) {
-        // Determine the length of the UTF-8 character
-        int char_length = flex_string_utf8_char_length(*stream);
-        if (char_length == -1) {
-            LOG_ERROR("Invalid UTF-8 leading byte: 0x%02X\n", *stream);
-            return -1;
-        }
-
-        // Validate the UTF-8 character directly
-        if (!flex_string_utf8_char_validate(stream, char_length)) {
-            LOG_ERROR("Invalid UTF-8 sequence starting at byte: 0x%02X\n", *stream);
-            return -1;
-        }
-
-        // Move the pointer forward by the character length
-        stream += char_length;
-
-        // Increment the character count
-        char_count++;
+    UTF8Length length = {.value=0};
+    if (flex_string_utf8_char_iterator(input, utf8_char_counter, &length) == NULL) {
+        return length.value;
     }
-
-    return char_count;
+    return -1;
 }
+
+// ---------------------- String Operations ----------------------
 
 char* flex_string_copy(const char* source, uint32_t length) {
     if (!source || 0 == length) {
         LOG_ERROR("%s: Invalid source string or length.\n", __func__);
+        return NULL;
+    }
+    if (false == flex_string_validate(source)) {
+        LOG_ERROR("%s: Invalid source string.\n", __func__);
         return NULL;
     }
 
@@ -271,30 +249,13 @@ char* flex_string_copy(const char* source, uint32_t length) {
         return NULL;
     }
 
-    memcpy(destination, source, length);
+    // Manually handle bytes to ensure every byte is copied according to the given length.
+    for (uint32_t i = 0; i < length; i++) {
+        destination[i] = source[i];
+    }
     destination[length] = '\0'; // Null-terminate the string
 
     return destination;
-}
-
-char* flex_string_copy_safe(const char* src, uint32_t length) {
-    if (!src || 0 == length) {
-        LOG_ERROR("%s: Invalid source string or length.\n", __func__);
-        return NULL;
-    }
-
-    char* dest = malloc((length + 1) * sizeof(char)); // +1 for null terminator
-    if (!dest) {
-        LOG_ERROR("%s: Failed to allocate memory for destination string.\n", __func__);
-        return NULL;
-    }
-
-    for (uint32_t i = 0; i < length; i++) {
-        dest[i] = src[i];
-    }
-    dest[length] = '\0'; // Null-terminate the string
-
-    return dest;
 }
 
 int32_t flex_string_compare(const char* a, const char* b) {
@@ -381,7 +342,7 @@ char* flex_string_replace(const char* input, const char* replacement, const char
 
             // Append the replacement
             if (replacement) {
-                result = flex_string_copy_safe(replacement, replacement_len);
+                result = flex_string_copy(replacement, replacement_len);
                 result_len += replacement_len;
             }
 
