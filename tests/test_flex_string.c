@@ -234,6 +234,38 @@ int test_flex_string_utf8_string_byte_length(void) {
     return 0;
 }
 
+int test_flex_string_utf8_string_compare(void) {
+    struct TestCase {
+        const char* first;
+        const char* second;
+        int32_t expected_result;
+    };
+
+    // 0 if a == b, -1 if a < b, 1 if a > b, -2 if !a or !b.
+    struct TestCase test_cases[] = {
+        {"Hello, world!", "Hello, world!", 0},
+    };
+
+    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
+    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
+
+    for (size_t i = 0; i < num_tests; ++i) {
+        const char* first = test_cases[i].first;
+        const char* second = test_cases[i].second;
+        int expected_result = test_cases[i].expected_result;
+        int32_t actual_result = flex_string_utf8_string_compare(first, second);
+        ASSERT(
+            actual_result == expected_result,
+            "Test case %zu failed: expected %d, got %d",
+            i + 1,
+            expected_result,
+            actual_result
+        );
+    }
+
+    return 0;
+}
+
 // ---------------------- FlexString test cases ----------------------
 
 // Test flex_string_create and flex_string_free.
