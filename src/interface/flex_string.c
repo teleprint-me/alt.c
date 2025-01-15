@@ -339,33 +339,30 @@ int32_t flex_string_utf8_string_compare(const char* first, const char* second) {
 
 char* flex_string_utf8_string_copy(const char* input) {
     if (!input) {
-        LOG_ERROR("%s: Invalid input string.\n", __func__);
-        return NULL;
-    }
-    if (false == flex_string_utf8_string_validate(input)) {
-        LOG_ERROR("%s: Invalid input string.\n", __func__);
+        LOG_ERROR("%s: Invalid input string (NULL).\n", __func__);
         return NULL;
     }
 
-    // Calculate the byte length of the input string
+    if (!flex_string_utf8_string_validate(input)) {
+        LOG_ERROR("%s: Invalid UTF-8 input string.\n", __func__);
+        return NULL;
+    }
+
     size_t capacity = flex_string_utf8_string_byte_length(input);
+
+    // Handle empty strings gracefully
     if (capacity == 0) {
-        LOG_ERROR("%s: Empty input string.\n", __func__);
-        return NULL;
+        return strdup(""); // Return an empty, allocated string
     }
 
-    // Allocate memory for the output string with an extra byte for null terminator
     char* output = malloc((capacity + 1) * sizeof(char));
     if (!output) {
-        LOG_ERROR("%s: Failed to allocate memory for output string.\n", __func__);
+        LOG_ERROR("%s: Memory allocation failed.\n", __func__);
         return NULL;
     }
 
-    // Manually handle bytes to ensure every byte is copied according to the given capacity.
-    for (uint32_t i = 0; i < capacity; i++) {
-        output[i] = input[i];
-    }
-    output[capacity] = '\0'; // Null-terminate the string
+    memcpy(output, input, capacity);
+    output[capacity] = '\0';
 
     return output;
 }

@@ -245,13 +245,13 @@ int test_flex_string_utf8_string_compare(void) {
         {"Hello, world!", "Hello, world!", 0},
         {"Hello", "World", -1},
         {"World", "Hello", 1},
-        {"Hello 🌟", "Hello 🌟", 0},     // Equal UTF-8 strings
-        {"Hello 🌟", "Hello", 1},       // First string is longer
-        {"Hello", "Hello 🌟", -1},      // Second string is longer
+        {"Hello 🌟", "Hello 🌟", 0}, // Equal UTF-8 strings
+        {"Hello 🌟", "Hello", 1}, // First string is longer
+        {"Hello", "Hello 🌟", -1}, // Second string is longer
         {"\xF0\x9F\x98\x80", "\xF0\x9F\x98\x81", -1}, // 😀 < 😁
-        {"\xF0\x9F\x98\x81", "\xF0\x9F\x98\x80", 1},  // 😁 > 😀
-        {NULL, "Hello", -2},            // Invalid input (NULL)
-        {"Hello", NULL, -2},            // Invalid input (NULL)
+        {"\xF0\x9F\x98\x81", "\xF0\x9F\x98\x80", 1}, // 😁 > 😀
+        {NULL, "Hello", -2}, // Invalid input (NULL)
+        {"Hello", NULL, -2}, // Invalid input (NULL)
     };
 
     size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
@@ -270,6 +270,44 @@ int test_flex_string_utf8_string_compare(void) {
             actual_result,
             first ? first : "(NULL)",
             second ? second : "(NULL)"
+        );
+    }
+
+    return 0;
+}
+
+int test_flex_string_utf8_string_copy(void) {
+    struct TestCase {
+        const char* input;
+        const char* expected_output;
+    };
+
+    struct TestCase test_cases[] = {
+        {"", ""},
+        {"Hello, world!", "Hello, world!"},
+        {"Hola, mundo!", "Hola, mundo!"},
+        {"안녕하세요, 세상!", "안녕하세요, 세상!"},
+        {"Привет, мир!", "Привет, мир!"},
+        {"你好，世界！", "你好，世界！"},
+        {"こんにちは", "こんにちは"},
+    };
+
+    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
+    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
+
+    for (size_t i = 0; i < num_tests; ++i) {
+        const char* input = test_cases[i].input;
+        const char* expected_output = test_cases[i].expected_output;
+        char* actual_output = flex_string_utf8_string_copy(input);
+        int32_t result = flex_string_utf8_string_compare(actual_output, expected_output);
+        free(actual_output);
+        ASSERT(
+            result == 0,
+            "Test case %zu failed: expected: %s, got: %s, result: %d",
+            i,
+            input,
+            expected_output,
+            result
         );
     }
 
@@ -326,8 +364,11 @@ int main(void) {
         "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
     );
     result += handle_test_case(
-        "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length);
-    
+        "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
+    );
+    result
+        += handle_test_case("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
+
     // Core FlexString Functions
     result
         += handle_test_case("test_flex_string_create_and_free", test_flex_string_create_and_free);
