@@ -19,6 +19,15 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
+// ---------------------- Enumerations ----------------------
+
+typedef enum FlexStringCompareResult {
+    FLEX_STRING_COMPARE_INVALID = -2,
+    FLEX_STRING_COMPARE_LESS = -1,
+    FLEX_STRING_COMPARE_EQUAL = 0,
+    FLEX_STRING_COMPARE_GREATER = 1
+} FlexStringCompareResult;
+
 // ---------------------- Structures ----------------------
 
 /**
@@ -129,7 +138,7 @@ void* flex_string_utf8_char_iterator(
     const char* input, FlexStringUTF8Iterator callback, void* context
 );
 
-// ---------------------- String Operations ----------------------
+// ---------------------- UTF-8 String Operations ----------------------
 
 /**
  * @brief Validates an entire UTF-8 string.
@@ -140,25 +149,71 @@ void* flex_string_utf8_char_iterator(
  * @param input The input string to be validated.
  * @return true if the string is valid UTF-8, false otherwise.
  */
-bool flex_string_validate(const char* input);
+bool flex_string_utf8_string_validate(const char* input);
 
 /**
- * @brief Calculates the length of a UTF-8 string in characters.
+ * @brief Calculates the symbolic length of a UTF-8 string in characters.
  *
  * @param input The input string.
- * @return The number of UTF-8 characters in the string.
+ * @return The number of symbolic UTF-8 characters in the string.
  */
-int32_t flex_string_length(const char* input);
+int32_t flex_string_utf8_string_char_length(const char* input);
 
 /**
- * @brief Safely copy a UTF-8 string (uses for loop to ensure precision)
+ * @brief Calculates the literal length of a UTF-8 string in bytes.
  *
- * @param source The source string.
- * @param length The length of the source string.
- * @note The caller is responsible for freeing the destination string.
+ * @param input The input string.
+ * @return The number of literal UTF-8 bytes in the string.
+ */
+int32_t flex_string_utf8_string_byte_length(const char* input);
+
+/**
+ * @brief Compares two UTF-8 strings.
+ *
+ * @param first The first string to compare.
+ * @param second The second string to compare.
+ * @return An integer indicating the result of the comparison:
+ * -2 if the strings are not valid UTF-8 strings.
+ * -1 if the first string is less than the second.
+ * 0 if the strings are equal.
+ * 1 if the first string is greater than the second.
+ */
+int32_t flex_string_utf8_string_compare(const char* first, const char* second);
+
+/**
+ * @brief Copies a UTF-8 string using a loop.
+ *
+ * This function copies a UTF-8 string using a loop to ensure precision,
+ * avoiding potential issues with string length calculations.
+ *
+ * @param input The string to copy.
+ * @note The caller is responsible for freeing the returned string.
  * @return The destination string, or NULL on failure.
  */
-char* flex_string_copy(const char* source, uint32_t length);
+char* flex_string_utf8_string_copy(const char* input);
+
+/**
+ * @brief Concatenates the target string to the source string.
+ *
+ * @param source The string to concatenate to the target string.
+ * @param target The string to concatenate to the source string.
+ * @note The caller is responsible for freeing the returned string.
+ * @return The concatenated string, or NULL on failure.
+ */
+char* flex_string_utf8_string_concat(const char* source, const char* target);
+
+/**
+ * @brief Appends the source string to the target string.
+ *
+ * @param source The string to append to the target string.
+ * @param target The string to append to the source string.
+ * @note The caller is responsible for freeing the returned string.
+ * @return The concatenated string, or NULL on failure.
+ */
+// Semantically, this may differ, but may prove to be identical to concatenation in implementation.
+char* flex_string_utf8_string_append(const char* source, const char* target);
+
+// ---------------------- FlexString Operations ----------------------
 
 /**
  * @brief Compare two UTF-8 strings for equality.
@@ -167,7 +222,7 @@ char* flex_string_copy(const char* source, uint32_t length);
  * @param right The right operand string.
  * @return 0 if a == b, -1 if a < b, 1 if a > b, -2 if !a or !b.
  */
-int32_t flex_string_compare(const char* left, const char* right);
+int32_t flex_string_compare(const FlexString* left, const FlexString* right);
 
 /**
  * @brief Substitutes all occurrences of a target UTF-8 substring with a replacement substring.
@@ -178,7 +233,9 @@ int32_t flex_string_compare(const char* left, const char* right);
  * @note The target and replacement substrings may be any valid sequence of UTF-8 bytes.
  * @return A new string with substitutions applied.
  */
-char* flex_string_replace(const char* input, const char* replacement, const char* target);
+FlexString* flex_string_replace(
+    const FlexString* input, const FlexString* target, const FlexString* replacement
+);
 
 /**
  * @brief Joins two strings into a new string.

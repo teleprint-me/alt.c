@@ -20,7 +20,7 @@ FlexString* flex_string_create(char* data) {
     }
 
     // Validate the input string
-    if (!flex_string_validate(data)) {
+    if (!flex_string_utf8_string_validate(data)) {
         LOG_ERROR("%s: Input data is not a valid UTF-8 string.\n", __func__);
         return NULL;
     }
@@ -31,10 +31,10 @@ FlexString* flex_string_create(char* data) {
         return NULL;
     }
 
-    uint32_t length = flex_string_length(data); // Character length
-    uint32_t capacity = strlen(data) + 1; // Byte length + null terminator
-
-    string->data = flex_string_copy(data, capacity * sizeof(char)); // Logs errors if not successful
+    // Logs errors if not successful
+    uint32_t length = flex_string_utf8_string_char_length(data); // Character length
+    uint32_t capacity = flex_string_utf8_string_byte_length(data); // Byte length + null terminator
+    string->data = flex_string_utf8_string_copy(data); // Alloc and copy
     if (!string->data) {
         flex_string_free(string);
         return NULL;
@@ -75,7 +75,6 @@ FlexStringSplit* flex_string_create_split(uint32_t initial_capacity) {
 
     split->length = 0;
     split->capacity = initial_capacity;
-
     return split;
 }
 
@@ -151,7 +150,9 @@ bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length) {
     return true;
 }
 
-void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator callback, void* context) {
+void* flex_string_utf8_char_iterator(
+    const char* input, FlexStringUTF8Iterator callback, void* context
+) {
     if (!input || !callback) {
         return NULL; // Invalid input or callback
     }
@@ -160,11 +161,18 @@ void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator c
     while (*stream) {
         // Determine the length of the current UTF-8 character
         int8_t char_length = flex_string_utf8_char_length(*stream);
+
         if (char_length == -1 || !flex_string_utf8_char_validate(stream, char_length)) {
-            return NULL; // Invalid sequence
+            // Notify the callback of an invalid sequence and allow it to decide
+            void* result = callback(stream, -1, context);
+            if (result) {
+                return result; // Early return based on callback result
+            }
+            stream++; // Move past the invalid byte to prevent infinite loops
+            continue;
         }
 
-        // Invoke the callback with the current character and context
+        // Invoke the callback with the current character
         void* result = callback(stream, char_length, context);
         if (result) {
             return result; // Early return based on callback result
@@ -178,28 +186,45 @@ void* flex_string_utf8_char_iterator(const char* input, FlexStringUTF8Iterator c
 
 // ---------------------- UTF-8 String Validation ----------------------
 
-// This is a required dummy structure to be used as the callback argument.
-typedef struct UTF8Validator {
-    bool is_valid;
-} UTF8Validator;
+typedef struct UTF8ValidationContext {
+    bool is_valid; // Overall validity of the input
+    const uint8_t* error_at; // Pointer to the first invalid byte, if any
+} UTF8ValidationContext;
 
-// This is a required dummy callback function.
 void* utf8_char_validator(const uint8_t* char_start, int8_t char_length, void* context) {
-    (void)char_start;
-    (void)char_length;
-    UTF8Validator* validator = (UTF8Validator*)context;
-    validator->is_valid = true; // This is always true
-    return NULL; // Continue iteration as long as the input is valid
+    UTF8ValidationContext* validator = (UTF8ValidationContext*) context;
+
+    if (char_length == -1) {
+        // Invalid UTF-8 sequence detected
+        validator->is_valid = false;
+        validator->error_at = char_start; // Capture the error location
+        return (void*) validator; // Stop iteration immediately
+    }
+
+    validator->is_valid = true; // Mark as valid for this character
+    return NULL; // Continue iteration
 }
 
-// Validate the input string.
-bool flex_string_validate(const char* input) {
+bool flex_string_utf8_string_validate(const char* input) {
     if (!input) {
         return false;
     }
-    UTF8Validator validator = {.is_valid = false}; // Dummy struct
-    // The iterator will succeed if the input is valid.
-    return flex_string_utf8_char_iterator(input, utf8_char_validator, &validator) == NULL;
+
+    UTF8ValidationContext validator = {
+        .is_valid = true,
+        .error_at = NULL,
+    };
+
+    flex_string_utf8_char_iterator(input, utf8_char_validator, &validator);
+
+    if (!validator.is_valid && validator.error_at) {
+        LOG_ERROR(
+            "Invalid UTF-8 sequence detected at byte offset: %ld\n",
+            validator.error_at - (const uint8_t*) input
+        );
+    }
+
+    return validator.is_valid;
 }
 
 // ---------------------- UTF-8 String Length ----------------------
@@ -210,185 +235,239 @@ typedef struct UTF8Length {
 
 // Callback to validate each character
 void* utf8_char_counter(const uint8_t* char_start, int8_t char_length, void* context) {
-    (void)char_start;
-    (void)char_length;
-    UTF8Length* length  = (UTF8Length*) context;
+    (void) char_start;
+    (void) char_length;
+    UTF8Length* length = (UTF8Length*) context;
     length->value++;
     return NULL; // Continue iteration as long as the input is valid
 }
 
-int32_t flex_string_length(const char* input) {
+int32_t flex_string_utf8_string_char_length(const char* input) {
     if (!input) {
         return -1;
     }
     if ('\0' == *input) {
         return 0; // Empty string
     }
-    UTF8Length length = {.value=0};
+    UTF8Length length = {.value = 0};
     if (flex_string_utf8_char_iterator(input, utf8_char_counter, &length) == NULL) {
         return length.value;
     }
     return -1;
 }
 
-// ---------------------- String Operations ----------------------
+// ---------------------- UTF-8 String Byte Length ----------------------
 
-char* flex_string_copy(const char* source, uint32_t length) {
-    if (!source || 0 == length) {
-        LOG_ERROR("%s: Invalid source string or length.\n", __func__);
-        return NULL;
+int32_t flex_string_utf8_string_byte_length(const char* input) {
+    if (!input) {
+        return -1; // Null input
     }
-    if (false == flex_string_validate(source)) {
-        LOG_ERROR("%s: Invalid source string.\n", __func__);
-        return NULL;
+    if (!flex_string_utf8_string_validate(input)) {
+        return -1; // Invalid UTF-8 string
     }
-
-    char* destination = malloc((length + 1) * sizeof(char)); // +1 for null terminator
-    if (!destination) {
-        LOG_ERROR("%s: Failed to allocate memory for destination string.\n", __func__);
-        return NULL;
+    if ('\0' == *input) {
+        return 0; // Empty string
     }
-
-    // Manually handle bytes to ensure every byte is copied according to the given length.
-    for (uint32_t i = 0; i < length; i++) {
-        destination[i] = source[i];
+    // Track the byte length of the string
+    uint32_t byte_length = 0;
+    // Iterate through each byte in the string
+    const char* stream = input;
+    while (*stream) {
+        byte_length++; // increment the byte length counter
+        stream++; // move to the next byte in the string
     }
-    destination[length] = '\0'; // Null-terminate the string
-
-    return destination;
+    return byte_length;
 }
 
-int32_t flex_string_compare(const char* a, const char* b) {
-    if (!a || !b) {
+// ---------------------- UFT-8 String Compare ----------------------
+
+int32_t flex_string_utf8_string_compare(const char* first, const char* second) {
+    // 0 if a == b, -1 if a < b, 1 if a > b, -2 if !a or !b.
+    if (!first || !second) {
         LOG_ERROR("%s: One or both input strings are NULL.\n", __func__);
-        return -2; // Indicate invalid input
+        return FLEX_STRING_COMPARE_INVALID; // NULL strings are invalid inputs.
+    }
+    if (!flex_string_utf8_string_validate(first)) {
+        LOG_ERROR("%s: First input string is not a valid UTF-8 string.\n", __func__);
+        return FLEX_STRING_COMPARE_INVALID; // Indicate invalid UTF-8 string
+    }
+    if (!flex_string_utf8_string_validate(second)) {
+        LOG_ERROR("%s: Second input string is not a valid UTF-8 string.\n", __func__);
+        return FLEX_STRING_COMPARE_INVALID; // Indicate invalid UTF-8 string
     }
 
-    while (*a && *b) {
-        if (*a < *b) {
-            return -1;
+    // Make the input strings immutable.
+    const char* first_stream = first;
+    const char* second_stream = second;
+
+    // Compare stream objects.
+    while (*first_stream && *second_stream) {
+        if (*first_stream < *second_stream) {
+            return FLEX_STRING_COMPARE_LESS;
         }
-        if (*a > *b) {
-            return 1;
+        if (*first_stream > *second_stream) {
+            return FLEX_STRING_COMPARE_GREATER;
         }
 
         // Both bytes are equal, move to the next
-        a++;
-        b++;
+        first_stream++;
+        second_stream++;
     }
 
     // Check for string length differences
-    if (*a) {
-        return 1; // `a` is longer
+    if (*first_stream) {
+        return FLEX_STRING_COMPARE_GREATER;
     }
-    if (*b) {
-        return -1; // `b` is longer
+    if (*second_stream) {
+        return FLEX_STRING_COMPARE_LESS;
     }
 
-    return 0; // Strings are equal
+    return FLEX_STRING_COMPARE_EQUAL;
 }
 
-char* flex_string_replace(const char* input, const char* replacement, const char* target) {
-    // Validate input
-    if (!input || !target) {
-        LOG_ERROR("%s: Invalid input or target string.\n", __func__);
+// ---------------------- UFT-8 String Copy ----------------------
+
+char* flex_string_utf8_string_copy(const char* input) {
+    if (!input) {
+        LOG_ERROR("%s: Invalid input string.\n", __func__);
         return NULL;
     }
-    if (!flex_string_validate(target)) {
-        LOG_ERROR("%s: Target is not a valid UTF-8 string.\n", __func__);
-        return NULL;
-    }
-    if (replacement && !flex_string_validate(replacement)) {
-        LOG_ERROR("%s: Replacement is not a valid UTF-8 string.\n", __func__);
+    if (false == flex_string_utf8_string_validate(input)) {
+        LOG_ERROR("%s: Invalid input string.\n", __func__);
         return NULL;
     }
 
-    // If the target and replacement are the same, return a copy of the input
-    if (replacement && flex_string_compare(target, replacement) == 0) {
-        return flex_string_copy(input, strlen(input));
-    }
-
-    // Determine lengths of input, target, and replacement
-    size_t input_len = flex_string_length(input);
-    size_t target_len = flex_string_length(target);
-    size_t replacement_len = flex_string_length(replacement);
-
-    // Allocate buffer for the result (estimate: input_len + some extra space)
-    char* result = malloc(input_len + 1); // Initial allocation
-    if (!result) {
-        LOG_ERROR("%s: Failed to allocate memory for the result string.\n", __func__);
+    // Calculate the byte length of the input string
+    size_t capacity = flex_string_utf8_string_byte_length(input);
+    if (capacity == 0) {
+        LOG_ERROR("%s: Empty input string.\n", __func__);
         return NULL;
     }
 
-    size_t result_capacity = input_len + 1;
-    size_t result_len = 0;
-
-    const char* current = input;
-    while (*current) {
-        // Check if the current substring matches the target
-        if (flex_string_compare(current, target) == 0) {
-            // Ensure enough space in the result buffer
-            size_t new_capacity = result_len + replacement_len + 1;
-            if (new_capacity > result_capacity) {
-                result_capacity = new_capacity * 2; // Double the capacity
-                char* temp = realloc(result, result_capacity);
-                if (!temp) {
-                    LOG_ERROR("%s: Memory allocation failed during resizing.\n", __func__);
-                    free(result);
-                    return NULL;
-                }
-                result = temp;
-            }
-
-            // Append the replacement
-            if (replacement) {
-                result = flex_string_copy(replacement, replacement_len);
-                result_len += replacement_len;
-            }
-
-            // Skip past the target in the input
-            current += target_len;
-        } else {
-            // Copy the current character into the result
-            result[result_len++] = *current++;
-        }
+    // Allocate memory for the output string with an extra byte for null terminator
+    char* output = malloc((capacity + 1) * sizeof(char));
+    if (!output) {
+        LOG_ERROR("%s: Failed to allocate memory for output string.\n", __func__);
+        return NULL;
     }
 
-    // Null-terminate the result
-    result[result_len] = '\0';
+    // Manually handle bytes to ensure every byte is copied according to the given capacity.
+    for (uint32_t i = 0; i < capacity; i++) {
+        output[i] = input[i];
+    }
+    output[capacity] = '\0'; // Null-terminate the string
 
-    return result;
+    return output;
 }
 
-char* flex_string_join(const char* a, const char* b) {
-    // Ensure input strings are not NULL
-    if (!a || !b) {
-        LOG_ERROR("%s: Invalid input string\n", __func__);
+// ---------------------- UFT-8 String Concatenation ----------------------
+
+char* flex_string_utf8_string_concat(const char* left, const char* right) {
+    // Check for null pointers and empty strings
+    if (!left || !right || '\0' == *left || '\0' == *right) {
+        LOG_ERROR("%s: Invalid input parameters\n", __func__);
+        return NULL;
+    }
+    // Validate the left and right operands.
+    if (!flex_string_utf8_string_validate(left)) {
+        LOG_ERROR("%s: Invalid left operand\n", __func__);
+        return NULL;
+    }
+    if (!flex_string_utf8_string_validate(right)) {
+        LOG_ERROR("%s: Invalid right operand\n", __func__);
+        return NULL;
+    }
+    // Concatenate the right operand to the left operand.
+    size_t left_len = flex_string_utf8_string_byte_length(left);
+    size_t right_len = flex_string_utf8_string_byte_length(right);
+    size_t dest_len = left_len + right_len + 1; // +1 for the null terminator
+    char* output = (char*) malloc(dest_len);
+    if (output == NULL) {
         return NULL;
     }
 
-    // Allocate memory for the new string (+1 for the null terminator)
-    size_t len = strlen(a) + strlen(b) + 1;
-    char* result = (char*) malloc(len);
+    // Copy string bytes into output
+    memcpy(output, left, left_len);
+    memcpy(output + left_len, right, right_len);
+    output[left_len + right_len] = '\0'; // Null-terminate the string
 
-    if (!result) {
-        LOG_ERROR("%s: Memory allocation failed\n", __func__);
-        return NULL;
-    }
-
-    // Concatenate the strings
-    strcpy(result, a);
-    strcat(result, b);
-
-    return result;
+    return output;
 }
+
+// ---------------------- UFT-8 String Operations ----------------------
+
+// FlexString* flex_string_replace(const FlexString* input, const FlexString* replacement, const
+// FlexString* target) {
+//     // Validate input
+//     if (!input || !input->data || !replacement || !replacement->data || !target || !target->data)
+//     {
+//         LOG_ERROR("%s: Invalid input, replacement, or target string.\n", __func__);
+//         return NULL;
+//     }
+
+//     // If the target and replacement are the same, return a copy of the input
+//     if (flex_string_compare(target, replacement) == 0) {
+//         return flex_string_copy(input, strlen(input));
+//     }
+
+//     // Determine lengths of input, target, and replacement
+//     size_t input_len = flex_string_length(input);
+//     size_t target_len = flex_string_length(target);
+//     size_t replacement_len = flex_string_length(replacement);
+
+//     // Allocate buffer for the result (estimate: input_len + some extra space)
+//     char* result = malloc(input_len + 1); // Initial allocation
+//     if (!result) {
+//         LOG_ERROR("%s: Failed to allocate memory for the result string.\n", __func__);
+//         return NULL;
+//     }
+
+//     size_t result_capacity = input_len + 1;
+//     size_t result_len = 0;
+
+//     const char* current = input;
+//     while (*current) {
+//         // Check if the current substring matches the target
+//         if (flex_string_compare(current, target) == 0) {
+//             // Ensure enough space in the result buffer
+//             size_t new_capacity = result_len + replacement_len + 1;
+//             if (new_capacity > result_capacity) {
+//                 result_capacity = new_capacity * 2; // Double the capacity
+//                 char* temp = realloc(result, result_capacity);
+//                 if (!temp) {
+//                     LOG_ERROR("%s: Memory allocation failed during resizing.\n", __func__);
+//                     free(result);
+//                     return NULL;
+//                 }
+//                 result = temp;
+//             }
+
+//             // Append the replacement
+//             if (replacement) {
+//                 result = flex_string_copy(replacement, replacement_len);
+//                 result_len += replacement_len;
+//             }
+
+//             // Skip past the target in the input
+//             current += target_len;
+//         } else {
+//             // Copy the current character into the result
+//             result[result_len++] = *current++;
+//         }
+//     }
+
+//     // Null-terminate the result
+//     result[result_len] = '\0';
+
+//     return result;
+// }
 
 FlexStringSplit* flex_string_split(const char* input, const char* delimiter) {
     if (!input || !delimiter) {
         LOG_ERROR("%s: Invalid input or delimiter\n", __func__);
         return NULL;
     }
-    if (!flex_string_validate(input)) {
+    if (!flex_string_utf8_string_validate(input)) {
         LOG_ERROR("%s: Invalid input string\n", __func__);
         return NULL;
     }
@@ -400,7 +479,7 @@ FlexStringSplit* flex_string_split(const char* input, const char* delimiter) {
         return NULL;
     }
 
-    char* temp = strdup(input);
+    char* temp = flex_string_utf8_string_copy(input);
     char* token = strtok(temp, delimiter);
     while (token) {
         split->parts = realloc(split->parts, (split->length + 1) * sizeof(char*));
@@ -409,7 +488,7 @@ FlexStringSplit* flex_string_split(const char* input, const char* delimiter) {
             free(split);
             return NULL;
         }
-        split->parts[split->length] = strdup(token);
+        split->parts[split->length] = flex_string_utf8_string_copy(token);
         split->length += 1;
         token = strtok(NULL, delimiter);
     }
