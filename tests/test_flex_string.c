@@ -290,6 +290,8 @@ int test_flex_string_utf8_string_copy(void) {
         {"Привет, мир!", "Привет, мир!"},
         {"你好，世界！", "你好，世界！"},
         {"こんにちは", "こんにちは"},
+        {NULL, NULL}, // Invalid input test case
+        {"\xF0\x28\x8C\xBC", NULL} // Invalid UTF-8 sequence
     };
 
     size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
@@ -298,17 +300,29 @@ int test_flex_string_utf8_string_copy(void) {
     for (size_t i = 0; i < num_tests; ++i) {
         const char* input = test_cases[i].input;
         const char* expected_output = test_cases[i].expected_output;
+
         char* actual_output = flex_string_utf8_string_copy(input);
+        if (!expected_output) {
+            // Expecting a NULL return for invalid cases
+            ASSERT(
+                actual_output == NULL,
+                "Test case %zu failed: expected NULL for invalid input, got non-NULL",
+                i
+            );
+            continue;
+        }
+
         int32_t result = flex_string_utf8_string_compare(actual_output, expected_output);
-        free(actual_output);
         ASSERT(
             result == 0,
             "Test case %zu failed: expected: %s, got: %s, result: %d",
             i,
-            input,
             expected_output,
+            actual_output ? actual_output : "(NULL)",
             result
         );
+
+        free(actual_output); // Free after use
     }
 
     return 0;
