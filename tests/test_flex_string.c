@@ -241,9 +241,17 @@ int test_flex_string_utf8_string_compare(void) {
         int32_t expected_result;
     };
 
-    // 0 if a == b, -1 if a < b, 1 if a > b, -2 if !a or !b.
     struct TestCase test_cases[] = {
         {"Hello, world!", "Hello, world!", 0},
+        {"Hello", "World", -1},
+        {"World", "Hello", 1},
+        {"Hello 🌟", "Hello 🌟", 0},     // Equal UTF-8 strings
+        {"Hello 🌟", "Hello", 1},       // First string is longer
+        {"Hello", "Hello 🌟", -1},      // Second string is longer
+        {"\xF0\x9F\x98\x80", "\xF0\x9F\x98\x81", -1}, // 😀 < 😁
+        {"\xF0\x9F\x98\x81", "\xF0\x9F\x98\x80", 1},  // 😁 > 😀
+        {NULL, "Hello", -2},            // Invalid input (NULL)
+        {"Hello", NULL, -2},            // Invalid input (NULL)
     };
 
     size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
@@ -252,14 +260,16 @@ int test_flex_string_utf8_string_compare(void) {
     for (size_t i = 0; i < num_tests; ++i) {
         const char* first = test_cases[i].first;
         const char* second = test_cases[i].second;
-        int expected_result = test_cases[i].expected_result;
+        int32_t expected_result = test_cases[i].expected_result;
         int32_t actual_result = flex_string_utf8_string_compare(first, second);
         ASSERT(
             actual_result == expected_result,
-            "Test case %zu failed: expected %d, got %d",
+            "Test case %zu failed: expected %d, got %d (first: %s, second: %s)",
             i + 1,
             expected_result,
-            actual_result
+            actual_result,
+            first ? first : "(NULL)",
+            second ? second : "(NULL)"
         );
     }
 
@@ -315,7 +325,9 @@ int main(void) {
     result += handle_test_case(
         "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
     );
-
+    result += handle_test_case(
+        "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length);
+    
     // Core FlexString Functions
     result
         += handle_test_case("test_flex_string_create_and_free", test_flex_string_create_and_free);
