@@ -173,9 +173,10 @@ int test_flex_string_utf8_string_char_length(void) {
         {"", 0},
         {"Hello!", 6},
         {"Hello, world!", 13},
-        {"Hello 🌟 World!", 14}, // GLOWING STAR (🌟)
-        {"Sure thing! \U0001F600", 13}, // GRINNING FACE emoji (😀)
-        {"That will be 25\u00A2!", 16} // CENT SIGN (¢)
+        {"Jolly ranchers are 25\u00A2!", 22 + 1}, // CENT SIGN (¢ is 2 bytes)
+        {"Donuts are only 1\u20AC!", 18 + 1}, // // EURO SIGN (€ is 3 bytes)
+        {"Hello 🌟 World!", 13 + 1}, // GLOWING STAR (🌟 is 4 bytes)
+        {"Sure thing \U0001F600!", 12 + 1}, // GRINNING FACE (😀 is 4 bytes)
     };
 
     size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
@@ -185,7 +186,14 @@ int test_flex_string_utf8_string_char_length(void) {
         const char* input = test_cases[i].input;
         int32_t expected_length = test_cases[i].expected_length;
         int32_t length = flex_string_utf8_string_char_length(input);
-        ASSERT(length == expected_length, "String length failed");
+        ASSERT(
+            length == expected_length,
+            "Validation failed for test case %zu (input: %s, expected: %d, got: %d)",
+            i,
+            input,
+            expected_length,
+            length
+        );
     }
     return 0;
 }
@@ -213,7 +221,14 @@ int test_flex_string_utf8_string_byte_length(void) {
         const char* input = test_cases[i].input;
         size_t expected_length = test_cases[i].expected_length;
         size_t actual_length = flex_string_utf8_string_byte_length(input);
-        ASSERT(actual_length == expected_length, "Expected length did not match actual length");
+        ASSERT(
+            actual_length == expected_length,
+            "Validation failed for test case %zu (input: %s, expected: %d, got: %d)",
+            i,
+            input,
+            expected_length,
+            actual_length
+        );
     }
 
     return 0;
