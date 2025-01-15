@@ -77,7 +77,7 @@ int run_tests(TestContext* test_cases, TestLogic test_logic, TestCallback callba
     return failures > 0 ? 1 : 0; // Return 1 if any failures, 0 otherwise
 }
 
-int handle_test_case(const char* test_name, int (*test_func)(void)) {
+int execute_test(const char* test_name, int (*test_func)(void)) {
     LOG_INFO("[RUN] %s\n", test_name);
     int result = test_func();
     if (result == 0) {
@@ -402,31 +402,31 @@ int main(void) {
 
     // Core UTF-8 Character Functions
     result
-        += handle_test_case("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
-    result += handle_test_case(
+        += execute_test("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
+    result += execute_test(
         "test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate
     );
 
     // Core UTF-8 String Functions
-    result += handle_test_case(
+    result += execute_test(
         "test_flex_string_utf8_string_validate", test_flex_string_utf8_string_validate
     );
-    result += handle_test_case(
+    result += execute_test(
         "test_flex_string_utf8_string_char_length", test_flex_string_utf8_string_char_length
     );
-    result += handle_test_case(
+    result += execute_test(
         "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
     );
-    result += handle_test_case(
+    result += execute_test(
         "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
     );
     result
-        += handle_test_case("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
+        += execute_test("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
 
     // Core FlexString Functions
     result
-        += handle_test_case("test_flex_string_create_and_free", test_flex_string_create_and_free);
-    result += handle_test_case(
+        += execute_test("test_flex_string_create_and_free", test_flex_string_create_and_free);
+    result += execute_test(
         "test_flex_string_split_create_and_free", test_flex_string_split_create_and_free
     );
 
