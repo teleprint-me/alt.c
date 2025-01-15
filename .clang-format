@@ -37,7 +37,7 @@ AlignAfterOpenBracket: BlockIndent
 AlignConsecutiveAssignments:
   Enabled: false
   AcrossComments: true
-  AlignCompound: true
+  AlignCompound: false
 AlignConsecutiveDeclarations:
   Enabled: false
   AcrossComments: true
@@ -89,6 +89,7 @@ InsertTrailingCommas: Wrapped
 
 # Miscellaneous insertions
 InsertBraces: true  # Warn: Setting this option to true could break code
+Cpp11BracedListStyle: true
 InsertNewlineAtEOF: true
 SeparateDefinitionBlocks: Always
 
