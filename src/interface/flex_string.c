@@ -216,14 +216,6 @@ bool flex_string_utf8_string_validate(const char* input) {
     };
 
     flex_string_utf8_char_iterator(input, utf8_char_validator, &validator);
-
-    if (!validator.is_valid && validator.error_at) {
-        LOG_ERROR(
-            "Invalid UTF-8 sequence detected at byte offset: %ld\n",
-            validator.error_at - (const uint8_t*) input
-        );
-    }
-
     return validator.is_valid;
 }
 
@@ -282,39 +274,57 @@ int32_t flex_string_utf8_string_byte_length(const char* input) {
 // ---------------------- UFT-8 String Compare ----------------------
 
 int32_t flex_string_utf8_string_compare(const char* first, const char* second) {
-    // 0 if a == b, -1 if a < b, 1 if a > b, -2 if !a or !b.
     if (!first || !second) {
         LOG_ERROR("%s: One or both input strings are NULL.\n", __func__);
         return FLEX_STRING_COMPARE_INVALID; // NULL strings are invalid inputs.
     }
+
     if (!flex_string_utf8_string_validate(first)) {
         LOG_ERROR("%s: First input string is not a valid UTF-8 string.\n", __func__);
-        return FLEX_STRING_COMPARE_INVALID; // Indicate invalid UTF-8 string
+        return FLEX_STRING_COMPARE_INVALID; // Indicate invalid UTF-8 string.
     }
+
     if (!flex_string_utf8_string_validate(second)) {
         LOG_ERROR("%s: Second input string is not a valid UTF-8 string.\n", __func__);
-        return FLEX_STRING_COMPARE_INVALID; // Indicate invalid UTF-8 string
+        return FLEX_STRING_COMPARE_INVALID; // Indicate invalid UTF-8 string.
     }
 
-    // Make the input strings immutable.
-    const char* first_stream = first;
-    const char* second_stream = second;
+    const uint8_t* first_stream = (const uint8_t*)first;
+    const uint8_t* second_stream = (const uint8_t*)second;
 
-    // Compare stream objects.
     while (*first_stream && *second_stream) {
-        if (*first_stream < *second_stream) {
+        int8_t first_char_len = flex_string_utf8_char_length(*first_stream);
+        int8_t second_char_len = flex_string_utf8_char_length(*second_stream);
+
+        if (first_char_len == -1 || second_char_len == -1) {
+            LOG_ERROR("%s: Invalid UTF-8 sequence encountered during comparison.\n", __func__);
+            return FLEX_STRING_COMPARE_INVALID;
+        }
+
+        int32_t first_char = 0;
+        int32_t second_char = 0;
+
+        // Decode UTF-8 to Unicode codepoints for comparison
+        for (int i = 0; i < first_char_len; i++) {
+            first_char = (first_char << 8) | first_stream[i];
+        }
+        for (int i = 0; i < second_char_len; i++) {
+            second_char = (second_char << 8) | second_stream[i];
+        }
+
+        // Compare the codepoints
+        if (first_char < second_char) {
             return FLEX_STRING_COMPARE_LESS;
         }
-        if (*first_stream > *second_stream) {
+        if (first_char > second_char) {
             return FLEX_STRING_COMPARE_GREATER;
         }
 
-        // Both bytes are equal, move to the next
-        first_stream++;
-        second_stream++;
+        first_stream += first_char_len;
+        second_stream += second_char_len;
     }
 
-    // Check for string length differences
+    // Check if strings are of different lengths
     if (*first_stream) {
         return FLEX_STRING_COMPARE_GREATER;
     }
