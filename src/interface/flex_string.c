@@ -216,6 +216,12 @@ bool flex_string_utf8_string_validate(const char* input) {
     };
 
     flex_string_utf8_char_iterator(input, utf8_char_validator, &validator);
+    if (!validator.is_valid && validator.error_at) {
+        LOG_ERROR(
+            "Invalid UTF-8 sequence detected at byte offset: %ld\n",
+            validator.error_at - (const uint8_t*) input
+        );
+    }
     return validator.is_valid;
 }
 
