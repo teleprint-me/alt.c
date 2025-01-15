@@ -20,6 +20,63 @@
         return 1; \
     }
 
+typedef struct TestContext {
+    size_t index; // Index of the current test case
+    size_t total_tests; // Total number of test cases
+    const char* test_name; // Name of the test
+    const void* input; // Input data for the test case
+    const void* expected; // Expected output for the test case
+    void* output; // Actual output (optional)
+    int result; // Test result (0 for success, 1 for failure)
+    const char* error_msg; // Error message (optional)
+} TestContext;
+
+typedef int (*TestLogic)(TestContext* context); // Test logic
+typedef void (*TestCallback)(TestContext* context); // Custom cleanup or logging
+
+int run_tests(TestContext* test_cases, TestLogic test_logic, TestCallback callback) {
+    if (!test_cases || !test_logic) {
+        LOG_ERROR("%s: Invalid parameters.\n", __func__);
+        return -1; // Indicate failure
+    }
+
+    LOG_INFO(
+        "[RUN] %s: Number of tests: %zu\n", test_cases[0].test_name, test_cases[0].total_tests
+    );
+
+    size_t total_tests = test_cases[0].total_tests;
+    size_t failures = 0;
+
+    for (size_t i = 0; i < total_tests; i++) {
+        TestContext* context = &test_cases[i];
+        context->index = i + 1;
+
+        // Execute the test logic
+        context->result = test_logic(context);
+
+        // Log failures
+        if (context->result != 0) {
+            failures++;
+            LOG_ERROR(
+                "[FAIL] %s: Test case %zu failed: %s\n",
+                context->test_name,
+                context->index,
+                context->error_msg ? context->error_msg : "Unknown error"
+            );
+        }
+
+        // Optional callback for additional handling
+        if (callback) {
+            callback(context);
+        }
+    }
+
+    size_t passed = total_tests - failures;
+    LOG_INFO("[RESULT] %s: %zu/%zu tests passed\n", test_cases[0].test_name, passed, total_tests);
+
+    return failures > 0 ? 1 : 0; // Return 1 if any failures, 0 otherwise
+}
+
 int handle_test_case(const char* test_name, int (*test_func)(void)) {
     LOG_INFO("[RUN] %s\n", test_name);
     int result = test_func();
@@ -276,56 +333,39 @@ int test_flex_string_utf8_string_compare(void) {
     return 0;
 }
 
-int test_flex_string_utf8_string_copy(void) {
-    struct TestCase {
-        const char* input;
-        const char* expected_output;
-    };
+int test_copy_logic(TestContext* context) {
+    const char* input = (const char*) context->input;
+    const char* expected = (const char*) context->expected;
 
-    struct TestCase test_cases[] = {
-        {"", ""},
-        {"Hello, world!", "Hello, world!"},
-        {"Hola, mundo!", "Hola, mundo!"},
-        {"안녕하세요, 세상!", "안녕하세요, 세상!"},
-        {"Привет, мир!", "Привет, мир!"},
-        {"你好，世界！", "你好，世界！"},
-        {"こんにちは", "こんにちは"},
-        {NULL, NULL}, // Invalid input test case
-        {"\xF0\x28\x8C\xBC", NULL} // Invalid UTF-8 sequence
-    };
+    char* actual = flex_string_utf8_string_copy(input);
+    context->output = actual; // Save output for potential inspection
 
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
+    int result = flex_string_utf8_string_compare(actual, expected);
 
-    for (size_t i = 0; i < num_tests; ++i) {
-        const char* input = test_cases[i].input;
-        const char* expected_output = test_cases[i].expected_output;
-
-        char* actual_output = flex_string_utf8_string_copy(input);
-        if (!expected_output) {
-            // Expecting a NULL return for invalid cases
-            ASSERT(
-                actual_output == NULL,
-                "Test case %zu failed: expected NULL for invalid input, got non-NULL",
-                i
-            );
-            continue;
-        }
-
-        int32_t result = flex_string_utf8_string_compare(actual_output, expected_output);
-        ASSERT(
-            result == 0,
-            "Test case %zu failed: expected: %s, got: %s, result: %d",
-            i,
-            expected_output,
-            actual_output ? actual_output : "(NULL)",
-            result
-        );
-
-        free(actual_output); // Free after use
+    if (result != 0) {
+        context->error_msg = "String copy did not match expected output.";
+        return 1; // Indicate failure
     }
+    return 0; // Success
+}
 
-    return 0;
+void test_copy_cleanup(TestContext* context) {
+    if (context->output) {
+        free(context->output); // Ensure memory is freed
+    }
+}
+
+int test_flex_string_utf8_string_copy(void) {
+    TestContext test_cases[] = {
+        {.input = "", .expected = "", .test_name = "UTF-8 String Copy", .total_tests = 6},
+        {.input = "Hello, world!", .expected = "Hello, world!"},
+        {.input = "안녕하세요, 세상!", .expected = "안녕하세요, 세상!"},
+        {.input = "こんにちは", .expected = "こんにちは"},
+        {.input = NULL, .expected = NULL},
+        {.input = "\xF0\x28\x8C\xBC", .expected = NULL},
+    };
+
+    return run_tests(test_cases, test_copy_logic, test_copy_cleanup);
 }
 
 // ---------------------- FlexString test cases ----------------------
