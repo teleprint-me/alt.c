@@ -50,7 +50,7 @@ MaxEmptyLinesToKeep: 1
 AlignTrailingComments:
   Kind: Never
   OverEmptyLines: 0  # Is set to 1 if MaxEmptyLinesToKeep is 2
-AlignArrayOfStructures: Left
+AlignArrayOfStructures: None
 
 # Spacing
 SpaceAfterCStyleCast: true
