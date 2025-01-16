@@ -299,35 +299,15 @@ int32_t flex_string_utf8_string_compare(const char* first, const char* second) {
     const uint8_t* second_stream = (const uint8_t*)second;
 
     while (*first_stream && *second_stream) {
-        int8_t first_char_len = flex_string_utf8_char_length(*first_stream);
-        int8_t second_char_len = flex_string_utf8_char_length(*second_stream);
-
-        if (first_char_len == -1 || second_char_len == -1) {
-            LOG_ERROR("%s: Invalid UTF-8 sequence encountered during comparison.\n", __func__);
-            return FLEX_STRING_COMPARE_INVALID;
+        if (*first_stream < *second_stream) {
+            return -1;
         }
-
-        int32_t first_char = 0;
-        int32_t second_char = 0;
-
-        // Decode UTF-8 to Unicode codepoints for comparison
-        for (int i = 0; i < first_char_len; i++) {
-            first_char = (first_char << 8) | first_stream[i];
+        if (*first_stream > *second_stream) {
+            return 1;
         }
-        for (int i = 0; i < second_char_len; i++) {
-            second_char = (second_char << 8) | second_stream[i];
-        }
-
-        // Compare the codepoints
-        if (first_char < second_char) {
-            return FLEX_STRING_COMPARE_LESS;
-        }
-        if (first_char > second_char) {
-            return FLEX_STRING_COMPARE_GREATER;
-        }
-
-        first_stream += first_char_len;
-        second_stream += second_char_len;
+        // Both bytes are equal, move to the next
+        first_stream++;
+        second_stream++;
     }
 
     // Check if strings are of different lengths
