@@ -26,7 +26,6 @@ typedef struct TestCase {
     int8_t result; // Test result (0 for success, 1 for failure)
     size_t index; // Index of the current test case
     const void* unit; // Arbitrary input/output structure (user-defined)
-    const char* description; // Optional test case description
 } TestCase;
 
 typedef struct TestContext {

@@ -24,12 +24,7 @@ int run_unit_tests(TestContext* context, TestLogic logic, TestCallback callback)
 
         if (result != 0) {
             failures++;
-            LOG_ERROR(
-                "[FAIL] %s: Test case %zu (%s) failed.\n",
-                context->test_name,
-                test_case->index,
-                test_case->description ? test_case->description : "No description"
-            );
+            LOG_ERROR("[FAIL] %s: Test case %zu failed.\n", context->test_name, test_case->index);
         }
 
         if (callback) {
