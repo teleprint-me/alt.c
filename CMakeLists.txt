@@ -43,6 +43,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(
     # sources are still in early development
     C_SOURCES
+    # Unit Testing
+    "src/interface/unit_test.c"
     # Algorithms
     "src/algorithm/hash_table.c"
     "src/algorithm/binary_tree.c"
