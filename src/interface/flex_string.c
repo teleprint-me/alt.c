@@ -300,10 +300,10 @@ int32_t flex_string_utf8_string_compare(const char* first, const char* second) {
 
     while (*first_stream && *second_stream) {
         if (*first_stream < *second_stream) {
-            return -1;
+            return FLEX_STRING_COMPARE_LESS;
         }
         if (*first_stream > *second_stream) {
-            return 1;
+            return FLEX_STRING_COMPARE_GREATER;
         }
         // Both bytes are equal, move to the next
         first_stream++;
