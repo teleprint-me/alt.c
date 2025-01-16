@@ -20,61 +20,54 @@
         return 1; \
     }
 
-typedef struct TestContext {
+// I/O can be complicated. Abstract I/O operations and allow the user to define them.
+typedef struct TestCase {
+    int8_t result; // Test result (0 for success, 1 for failure)
     size_t index; // Index of the current test case
-    size_t total_tests; // Total number of test cases
+    const void* unit; // Arbitrary input/output structure (user-defined)
+} TestCase;
+
+typedef struct TestContext {
+    const size_t total_tests; // Total number of test cases
     const char* test_name; // Name of the test
-    const void* input; // Input data for the test case
-    const void* expected; // Expected output for the test case
-    void* output; // Actual output (optional)
-    int result; // Test result (0 for success, 1 for failure)
-    const char* error_msg; // Error message (optional)
+    TestCase* test_cases; // Array of test cases
 } TestContext;
 
-typedef int (*TestLogic)(TestContext* context); // Test logic
-typedef void (*TestCallback)(TestContext* context); // Custom cleanup or logging
+typedef int (*TestLogic)(TestCase* test); // Test logic implementation
+typedef void (*TestCallback)(TestCase* test); // Cleanup or logging callback
 
-int run_tests(TestContext* test_cases, TestLogic test_logic, TestCallback callback) {
-    if (!test_cases || !test_logic) {
+int run_tests(TestContext* context, TestLogic logic, TestCallback callback) {
+    if (!context || !context->test_cases || !logic) {
         LOG_ERROR("%s: Invalid parameters.\n", __func__);
-        return -1; // Indicate failure
+        return -1;
     }
 
-    LOG_INFO(
-        "[RUN] %s: Number of tests: %zu\n", test_cases[0].test_name, test_cases[0].total_tests
-    );
+    LOG_INFO("[RUN] %s: Number of tests: %zu\n", context->test_name, context->total_tests);
 
-    size_t total_tests = test_cases[0].total_tests;
     size_t failures = 0;
 
-    for (size_t i = 0; i < total_tests; i++) {
-        TestContext* context = &test_cases[i];
-        context->index = i + 1;
+    for (size_t i = 0; i < context->total_tests; i++) {
+        TestCase* test_case = &context->test_cases[i];
+        test_case->index = i + 1;
 
-        // Execute the test logic
-        context->result = test_logic(context);
+        int result = logic(test_case);
 
-        // Log failures
-        if (context->result != 0) {
+        if (result != 0) {
             failures++;
-            LOG_ERROR(
-                "[FAIL] %s: Test case %zu failed: %s\n",
-                context->test_name,
-                context->index,
-                context->error_msg ? context->error_msg : "Unknown error"
-            );
+            LOG_ERROR("[FAIL] %s: Test case %zu failed.\n", context->test_name, test_case->index);
         }
 
-        // Optional callback for additional handling
         if (callback) {
-            callback(context);
+            callback(test_case);
         }
     }
 
-    size_t passed = total_tests - failures;
-    LOG_INFO("[RESULT] %s: %zu/%zu tests passed\n", test_cases[0].test_name, passed, total_tests);
+    size_t passed = context->total_tests - failures;
+    LOG_INFO(
+        "[RESULT] %s: %zu/%zu tests passed\n", context->test_name, passed, context->total_tests
+    );
 
-    return failures > 0 ? 1 : 0; // Return 1 if any failures, 0 otherwise
+    return failures > 0 ? 1 : 0;
 }
 
 int execute_test(const char* test_name, int (*test_func)(void)) {
@@ -291,6 +284,8 @@ int test_flex_string_utf8_string_byte_length(void) {
     return 0;
 }
 
+// ---------------------- Test UTF-8 String Compare ----------------------
+
 int test_flex_string_utf8_string_compare(void) {
     struct TestCase {
         const char* first;
@@ -333,39 +328,68 @@ int test_flex_string_utf8_string_compare(void) {
     return 0;
 }
 
-int test_copy_logic(TestContext* context) {
-    const char* input = (const char*) context->input;
-    const char* expected = (const char*) context->expected;
+// ---------------------- Test UTF-8 String Copy ----------------------
 
-    char* actual = flex_string_utf8_string_copy(input);
-    context->output = actual; // Save output for potential inspection
+typedef struct TestUTF8CopyUnit {
+    int32_t actual; // Actual comparison result
+    const int32_t expected; // Expected comparison result
+    const char* input; // Input string
+    const char* copy; // Copy of input string
+} TestUTF8CopyUnit;
 
-    int result = flex_string_utf8_string_compare(actual, expected);
+int test_copy_logic(TestCase* test) {
+    TestUTF8CopyUnit* unit = (TestUTF8CopyUnit*)test->unit;
 
-    if (result != 0) {
-        context->error_msg = "String copy did not match expected output.";
-        return 1; // Indicate failure
-    }
+    // Validate the input and copy the string
+    unit->copy = flex_string_utf8_string_copy(unit->input);
+
+    // Perform the comparison and store the result
+    unit->actual = flex_string_utf8_string_compare(unit->copy, unit->input);
+
+    // Assert the comparison result matches the expected result
+    ASSERT(
+        unit->actual == unit->expected,
+        "Input: %s, Expected: %d, Actual: %d",
+        unit->input ? unit->input : "(NULL)",
+        unit->expected,
+        unit->actual
+    );
+
     return 0; // Success
 }
 
-void test_copy_cleanup(TestContext* context) {
-    if (context->output) {
-        free(context->output); // Ensure memory is freed
+void test_copy_cleanup(TestCase* test) {
+    TestUTF8CopyUnit* unit = (TestUTF8CopyUnit*) test->unit;
+    if (unit->copy) {
+        free((void*) unit->copy);
+        unit->copy = NULL;
     }
 }
 
 int test_flex_string_utf8_string_copy(void) {
-    TestContext test_cases[] = {
-        {.input = "", .expected = "", .test_name = "UTF-8 String Copy", .total_tests = 6},
-        {.input = "Hello, world!", .expected = "Hello, world!"},
-        {.input = "안녕하세요, 세상!", .expected = "안녕하세요, 세상!"},
-        {.input = "こんにちは", .expected = "こんにちは"},
-        {.input = NULL, .expected = NULL},
-        {.input = "\xF0\x28\x8C\xBC", .expected = NULL},
+    TestUTF8CopyUnit units[] = {
+        {.input = NULL, .expected = FLEX_STRING_COMPARE_INVALID},
+        {.input = "", .expected = FLEX_STRING_COMPARE_EQUAL},
+        {.input = "Hello, world!", .expected = FLEX_STRING_COMPARE_EQUAL},
+        {.input = "안녕하세요, 세상!", .expected = FLEX_STRING_COMPARE_EQUAL},
+        {.input = "こんにちは", .expected = FLEX_STRING_COMPARE_EQUAL},
+        {.input = "\xF0\x28\x8C\xBC", .expected = FLEX_STRING_COMPARE_INVALID}, // Invalid UTF-8 sequence
     };
 
-    return run_tests(test_cases, test_copy_logic, test_copy_cleanup);
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
+
+    for (size_t i = 0; i < total_tests; i++) {
+        test_cases[i].unit = &units[i];
+    }
+
+    TestContext context = {
+        .test_name = "UTF-8 String Copy",
+        .total_tests = total_tests,
+        .test_cases = test_cases,
+    };
+
+    return run_tests(&context, test_copy_logic, test_copy_cleanup);
 }
 
 // ---------------------- FlexString test cases ----------------------
@@ -401,11 +425,9 @@ int main(void) {
     int result = 0;
 
     // Core UTF-8 Character Functions
+    result += execute_test("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
     result
-        += execute_test("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
-    result += execute_test(
-        "test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate
-    );
+        += execute_test("test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate);
 
     // Core UTF-8 String Functions
     result += execute_test(
@@ -420,12 +442,10 @@ int main(void) {
     result += execute_test(
         "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
     );
-    result
-        += execute_test("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
+    result += execute_test("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
 
     // Core FlexString Functions
-    result
-        += execute_test("test_flex_string_create_and_free", test_flex_string_create_and_free);
+    result += execute_test("test_flex_string_create_and_free", test_flex_string_create_and_free);
     result += execute_test(
         "test_flex_string_split_create_and_free", test_flex_string_split_create_and_free
     );
