@@ -17,7 +17,7 @@
 
 typedef struct TestUnitUTF8CharLength {
     int8_t actual;
-    int8_t expected;
+    const int8_t expected;
     const char* input;
 } TestUnitUTF8CharLength;
 
@@ -66,16 +66,14 @@ int test_flex_string_utf8_char_length(void) {
         .test_name = "UTF-8 Character Length", .total_tests = total_tests, .test_cases = test_cases
     };
 
-    run_unit_tests(&context, test_utf8_char_length_logic, NULL);
-
-    return 0;
+    return run_unit_tests(&context, test_utf8_char_length_logic, NULL);
 }
 
 // ---------------------- UTF-8 Character Validate ----------------------
 
 typedef struct TestUnitUTF8CharValidate {
     bool actual;
-    bool expected;
+    const bool expected;
     int8_t length;
     const char* input;
 } TestUnitUTF8CharValidate;
@@ -139,9 +137,7 @@ int test_flex_string_utf8_char_validate(void) {
         .test_cases = test_cases,
     };
 
-    run_unit_tests(&context, test_utf8_char_validate_logic, NULL);
-
-    return 0;
+    return run_unit_tests(&context, test_utf8_char_validate_logic, NULL);
 }
 
 /// @todo Add UTF-8 character iterator test cases
@@ -150,7 +146,7 @@ int test_flex_string_utf8_char_validate(void) {
 
 typedef struct TestUnitUTF8StringValidate {
     bool actual;
-    bool expected;
+    const bool expected;
     const char* input;
 } TestUnitUTF8StringValidate;
 
@@ -194,84 +190,103 @@ int test_flex_string_utf8_string_validate(void) {
         .test_cases = test_cases,
     };
 
-    run_unit_tests(&context, test_utf8_string_validate_logic, NULL);
-
-    return 0;
+    return run_unit_tests(&context, test_utf8_string_validate_logic, NULL);
 }
 
 // ---------------------- UTF-8 String Character Length ----------------------
 
-int test_flex_string_utf8_string_char_length(void) {
-    struct TestCase {
-        const char* input;
-        size_t expected_length;
-    };
+typedef struct TestUnitUTF8StringCharLength {
+    int32_t actual;
+    const int32_t expected;
+    const char* input;
+} TestUnitUTF8StringCharLength;
 
-    struct TestCase test_cases[] = {
-        {"", 0},
-        {"Hello!", 6},
-        {"Hello, world!", 13},
-        {"Jolly ranchers are 25\u00A2!", 22 + 1}, // CENT SIGN (¢ is 2 bytes)
-        {"Donuts are only 1\u20AC!", 18 + 1}, // // EURO SIGN (€ is 3 bytes)
-        {"Hello 🌟 World!", 13 + 1}, // GLOWING STAR (🌟 is 4 bytes)
-        {"Sure thing \U0001F600!", 12 + 1}, // GRINNING FACE (😀 is 4 bytes)
-    };
-
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
-
-    for (size_t i = 0; i < num_tests; ++i) {
-        const char* input = test_cases[i].input;
-        int32_t expected_length = test_cases[i].expected_length;
-        int32_t length = flex_string_utf8_string_char_length(input);
-        ASSERT(
-            length == expected_length,
-            "Validation failed for test case %zu (input: %s, expected: %d, got: %d)",
-            i,
-            input,
-            expected_length,
-            length
-        );
-    }
+int test_utf8_string_char_length_logic(TestCase* test) {
+    TestUnitUTF8StringCharLength* unit = (TestUnitUTF8StringCharLength*) test->unit;
+    unit->actual = flex_string_utf8_string_char_length(unit->input);
+    ASSERT(
+        unit->actual == unit->expected,
+        "Validation failed for test case %zu (input: %s, expected: %d, got: %d)",
+        test->index,
+        unit->input,
+        unit->expected,
+        unit->actual
+    );
     return 0;
+}
+
+int test_flex_string_utf8_string_char_length(void) {
+    TestUnitUTF8StringCharLength units[] = {
+        {.input = "", .expected = 0},
+        {.input = "Hello!", .expected = 6},
+        {.input = "Hello, world!", .expected = 13},
+        {.input = "Jolly ranchers are 25\u00A2!", .expected = 22 + 1}, // CENT SIGN (¢ is 2 bytes)
+        {.input = "Donuts are only 1\u20AC!", .expected = 18 + 1}, // // EURO SIGN (€ is 3 bytes)
+        {.input = "Hello 🌟 World!", .expected = 13 + 1}, // GLOWING STAR (🌟 is 4 bytes)
+        {.input = "Sure thing \U0001F600!", .expected = 12 + 1}, // GRINNING FACE (😀 is 4 bytes)
+    };
+
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
+
+    for (size_t i = 0; i < total_tests; ++i) {
+        test_cases[i].unit = &units[i];
+    }
+
+    TestContext context
+        = {.test_name = "UTF-8 String Char Length Test",
+           .total_tests = total_tests,
+           .test_cases = test_cases};
+
+    return run_unit_tests(&context, test_utf8_string_char_length_logic, NULL);
 }
 
 // ---------------------- UTF-8 String Byte Length ----------------------
 
+typedef struct TestUnitUTF8StringByteLength {
+    int32_t actual;
+    const int32_t expected;
+    const char* input;
+} TestUnitUTF8StringByteLength;
+
+int test_utf8_string_byte_length_logic(TestCase* test) {
+    TestUnitUTF8StringByteLength* unit = (TestUnitUTF8StringByteLength*) test->unit;
+    unit->actual = flex_string_utf8_string_byte_length(unit->input);
+    ASSERT(
+        unit->actual == unit->expected,
+        "Validation failed for test case %zu (input: %s, expected: %d, got: %d)",
+        test->index,
+        unit->input,
+        unit->expected,
+        unit->actual
+    );
+    return 0;
+}
+
 int test_flex_string_utf8_string_byte_length(void) {
-    struct TestCase {
-        const char* input;
-        int32_t expected_length;
+    TestUnitUTF8StringByteLength units[] = {
+        {.input = "", .expected = 0},
+        {.input = "Hello!", .expected = 6},
+        {.input = "Hello, world!", .expected = 13},
+        {.input = "Jolly ranchers are 25\u00A2!", .expected = 22 + 2}, // CENT SIGN (¢ is 2 bytes)
+        {.input = "Donuts are only 1\u20AC!", .expected = 18 + 3}, // // EURO SIGN (€ is 3 bytes)
+        {.input = "Hello 🌟 World!", .expected = 13 + 4}, // GLOWING STAR (🌟 is 4 bytes)
+        {.input = "Sure thing \U0001F600!", .expected = 12 + 4}, // GRINNING FACE (😀 is 4 bytes)
     };
 
-    struct TestCase test_cases[] = {
-        {"", 0},
-        {"Hello!", 6},
-        {"Hello, world!", 13},
-        {"Jolly ranchers are 25\u00A2!", 22 + 2}, // CENT SIGN (¢ is 2 bytes)
-        {"Donuts are only 1\u20AC!", 18 + 3}, // // EURO SIGN (€ is 3 bytes)
-        {"Hello 🌟 World!", 13 + 4}, // GLOWING STAR (🌟 is 4 bytes)
-        {"Sure thing \U0001F600!", 12 + 4}, // GRINNING FACE (😀 is 4 bytes)
-    };
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
 
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
-
-    for (size_t i = 0; i < num_tests; ++i) {
-        const char* input = test_cases[i].input;
-        size_t expected_length = test_cases[i].expected_length;
-        size_t actual_length = flex_string_utf8_string_byte_length(input);
-        ASSERT(
-            actual_length == expected_length,
-            "Validation failed for test case %zu (input: %s, expected: %d, got: %d)",
-            i,
-            input,
-            expected_length,
-            actual_length
-        );
+    for (size_t i = 0; i < total_tests; ++i) {
+        test_cases[i].unit = &units[i];
     }
 
-    return 0;
+    TestContext context
+        = {.test_name = "UTF-8 String Byte Length Test",
+           .total_tests = total_tests,
+           .test_cases = test_cases};
+
+    return run_unit_tests(&context, test_utf8_string_byte_length_logic, NULL);
 }
 
 // ---------------------- UTF-8 String Compare ----------------------
