@@ -218,46 +218,68 @@ int test_flex_string_utf8_string_byte_length(void) {
 
 // ---------------------- Test UTF-8 String Compare ----------------------
 
-int test_flex_string_utf8_string_compare(void) {
-    struct TestCase {
-        const char* first;
-        const char* second;
-        int32_t expected_result;
-    };
+typedef struct TestUTF8CompareUnit {
+    int32_t actual;
+    const int32_t expected;
+    const char* first;
+    const char* second;
+} TestUTF8CompareUnit;
 
-    struct TestCase test_cases[] = {
-        {"Hello, world!", "Hello, world!", 0},
-        {"Hello", "World", -1},
-        {"World", "Hello", 1},
-        {"Hello 🌟", "Hello 🌟", 0}, // Equal UTF-8 strings
-        {"Hello 🌟", "Hello", 1}, // First string is longer
-        {"Hello", "Hello 🌟", -1}, // Second string is longer
-        {"\xF0\x9F\x98\x80", "\xF0\x9F\x98\x81", -1}, // 😀 < 😁
-        {"\xF0\x9F\x98\x81", "\xF0\x9F\x98\x80", 1}, // 😁 > 😀
-        {NULL, "Hello", -2}, // Invalid input (NULL)
-        {"Hello", NULL, -2}, // Invalid input (NULL)
-    };
+int test_compare_logic(TestCase* test) {
+    TestUTF8CompareUnit* unit = (TestUTF8CompareUnit*) test->unit;
 
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
+    unit->actual = flex_string_utf8_string_compare(unit->first, unit->second);
 
-    for (size_t i = 0; i < num_tests; ++i) {
-        const char* first = test_cases[i].first;
-        const char* second = test_cases[i].second;
-        int32_t expected_result = test_cases[i].expected_result;
-        int32_t actual_result = flex_string_utf8_string_compare(first, second);
-        ASSERT(
-            actual_result == expected_result,
-            "Test case %zu failed: expected %d, got %d (first: %s, second: %s)",
-            i + 1,
-            expected_result,
-            actual_result,
-            first ? first : "(NULL)",
-            second ? second : "(NULL)"
-        );
-    }
+    ASSERT(
+        unit->actual == unit->expected,
+        "First: %s, Second: %s, Expected: %d, Actual: %d",
+        unit->first ? unit->first : "(NULL)",
+        unit->second ? unit->second : "(NULL)",
+        unit->expected,
+        unit->actual
+    );
 
     return 0;
+}
+
+int test_flex_string_utf8_string_compare(void) {
+    TestUTF8CompareUnit units[] = {
+        {
+            .first = "Hello, world!",
+            .second = "Hello, world!",
+            .expected = FLEX_STRING_COMPARE_EQUAL,
+        },
+        {.first = "Hello", .second = "World", .expected = FLEX_STRING_COMPARE_LESS},
+        {.first = "World", .second = "Hello", .expected = FLEX_STRING_COMPARE_GREATER},
+        {.first = "Hello 🌟", .second = "Hello 🌟", .expected = FLEX_STRING_COMPARE_EQUAL},
+        {.first = "Hello 🌟", .second = "Hello", .expected = FLEX_STRING_COMPARE_GREATER},
+        {.first = "Hello", .second = "Hello 🌟", .expected = FLEX_STRING_COMPARE_LESS},
+        {
+            .first = "\xF0\x9F\x98\x80",
+            .second = "\xF0\x9F\x98\x81",
+            .expected = FLEX_STRING_COMPARE_LESS,
+        },
+        {
+            .first = "\xF0\x9F\x98\x81",
+            .second = "\xF0\x9F\x98\x80",
+            .expected = FLEX_STRING_COMPARE_GREATER,
+        },
+        {.first = NULL, .second = "Hello", .expected = FLEX_STRING_COMPARE_INVALID},
+        {.first = "Hello", .second = NULL, .expected = FLEX_STRING_COMPARE_INVALID},
+    };
+
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
+
+    for (size_t i = 0; i < total_tests; ++i) {
+        test_cases[i].unit = &units[i];
+    }
+
+    TestContext context
+        = {.test_name = "UTF-8 String Compare", .total_tests = total_tests, .test_cases = test_cases
+        };
+
+    return run_unit_tests(&context, test_compare_logic, NULL);
 }
 
 // ---------------------- Test UTF-8 String Copy ----------------------
