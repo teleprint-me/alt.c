@@ -24,7 +24,12 @@ int run_unit_tests(TestContext* context, TestLogic logic, TestCallback callback)
 
         if (result != 0) {
             failures++;
-            LOG_ERROR("[FAIL] %s: Test case %zu failed.\n", context->test_name, test_case->index);
+            LOG_ERROR(
+                "[FAIL] %s: Test case %zu (%s) failed.\n",
+                context->test_name,
+                test_case->index,
+                test_case->description ? test_case->description : "No description"
+            );
         }
 
         if (callback) {
@@ -40,13 +45,13 @@ int run_unit_tests(TestContext* context, TestLogic logic, TestCallback callback)
     return failures > 0 ? 1 : 0;
 }
 
-int run_test_suite(const char* test_name, int (*test_func)(void)) {
-    LOG_INFO("[RUN] %s\n", test_name);
-    int result = test_func();
+int run_test_suite(const char* suite_name, TestSuite suite) {
+    LOG_INFO("[RUN] %s\n", suite_name);
+    int result = suite();
     if (result == 0) {
-        LOG_INFO("[PASS] %s\n", test_name);
+        LOG_INFO("[PASS] %s\n", suite_name);
     } else {
-        LOG_ERROR("[FAIL] %s\n", test_name);
+        LOG_ERROR("[FAIL] %s\n", suite_name);
     }
     return result;
 }
