@@ -11,75 +11,7 @@
 // ALT libraries
 #include "interface/flex_string.h"
 #include "interface/logger.h"
-
-// ---------------------- Test helper functions ----------------------
-
-#define ASSERT(condition, format, ...) \
-    if (!(condition)) { \
-        LOG_ERROR("%s: " format "\n", __func__, ##__VA_ARGS__); \
-        return 1; \
-    }
-
-// I/O can be complicated. Abstract I/O operations and allow the user to define them.
-typedef struct TestCase {
-    int8_t result; // Test result (0 for success, 1 for failure)
-    size_t index; // Index of the current test case
-    const void* unit; // Arbitrary input/output structure (user-defined)
-} TestCase;
-
-typedef struct TestContext {
-    const size_t total_tests; // Total number of test cases
-    const char* test_name; // Name of the test
-    TestCase* test_cases; // Array of test cases
-} TestContext;
-
-typedef int (*TestLogic)(TestCase* test); // Test logic implementation
-typedef void (*TestCallback)(TestCase* test); // Cleanup or logging callback
-
-int run_tests(TestContext* context, TestLogic logic, TestCallback callback) {
-    if (!context || !context->test_cases || !logic) {
-        LOG_ERROR("%s: Invalid parameters.\n", __func__);
-        return -1;
-    }
-
-    LOG_INFO("[RUN] %s: Number of tests: %zu\n", context->test_name, context->total_tests);
-
-    size_t failures = 0;
-
-    for (size_t i = 0; i < context->total_tests; i++) {
-        TestCase* test_case = &context->test_cases[i];
-        test_case->index = i + 1;
-
-        int result = logic(test_case);
-
-        if (result != 0) {
-            failures++;
-            LOG_ERROR("[FAIL] %s: Test case %zu failed.\n", context->test_name, test_case->index);
-        }
-
-        if (callback) {
-            callback(test_case);
-        }
-    }
-
-    size_t passed = context->total_tests - failures;
-    LOG_INFO(
-        "[RESULT] %s: %zu/%zu tests passed\n", context->test_name, passed, context->total_tests
-    );
-
-    return failures > 0 ? 1 : 0;
-}
-
-int execute_test(const char* test_name, int (*test_func)(void)) {
-    LOG_INFO("[RUN] %s\n", test_name);
-    int result = test_func();
-    if (result == 0) {
-        LOG_INFO("[PASS] %s\n", test_name);
-    } else {
-        LOG_ERROR("[FAIL] %s\n", test_name);
-    }
-    return result;
-}
+#include "interface/unit_test.h"
 
 // ---------------------- UTF-8 Character test cases ----------------------
 
@@ -338,7 +270,7 @@ typedef struct TestUTF8CopyUnit {
 } TestUTF8CopyUnit;
 
 int test_copy_logic(TestCase* test) {
-    TestUTF8CopyUnit* unit = (TestUTF8CopyUnit*)test->unit;
+    TestUTF8CopyUnit* unit = (TestUTF8CopyUnit*) test->unit;
 
     // Validate the input and copy the string
     unit->copy = flex_string_utf8_string_copy(unit->input);
@@ -373,7 +305,7 @@ int test_flex_string_utf8_string_copy(void) {
         {.input = "Hello, world!", .expected = FLEX_STRING_COMPARE_EQUAL},
         {.input = "안녕하세요, 세상!", .expected = FLEX_STRING_COMPARE_EQUAL},
         {.input = "こんにちは", .expected = FLEX_STRING_COMPARE_EQUAL},
-        {.input = "\xF0\x28\x8C\xBC", .expected = FLEX_STRING_COMPARE_INVALID}, // Invalid UTF-8 sequence
+        {.input = "\xF0\x28\x8C\xBC", .expected = FLEX_STRING_COMPARE_INVALID},
     };
 
     size_t total_tests = sizeof(units) / sizeof(units[0]);
@@ -389,7 +321,7 @@ int test_flex_string_utf8_string_copy(void) {
         .test_cases = test_cases,
     };
 
-    return run_tests(&context, test_copy_logic, test_copy_cleanup);
+    return run_unit_tests(&context, test_copy_logic, test_copy_cleanup);
 }
 
 // ---------------------- FlexString test cases ----------------------
@@ -425,28 +357,31 @@ int main(void) {
     int result = 0;
 
     // Core UTF-8 Character Functions
-    result += execute_test("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
     result
-        += execute_test("test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate);
+        += run_test_suite("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
+    result += run_test_suite(
+        "test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate
+    );
 
     // Core UTF-8 String Functions
-    result += execute_test(
+    result += run_test_suite(
         "test_flex_string_utf8_string_validate", test_flex_string_utf8_string_validate
     );
-    result += execute_test(
+    result += run_test_suite(
         "test_flex_string_utf8_string_char_length", test_flex_string_utf8_string_char_length
     );
-    result += execute_test(
+    result += run_test_suite(
         "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
     );
-    result += execute_test(
-        "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
+    result += run_test_suite(
+        "test_flex_string_utf8_string_compare", test_flex_string_utf8_string_compare
     );
-    result += execute_test("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
+    result
+        += run_test_suite("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
 
     // Core FlexString Functions
-    result += execute_test("test_flex_string_create_and_free", test_flex_string_create_and_free);
-    result += execute_test(
+    result += run_test_suite("test_flex_string_create_and_free", test_flex_string_create_and_free);
+    result += run_test_suite(
         "test_flex_string_split_create_and_free", test_flex_string_split_create_and_free
     );
 
