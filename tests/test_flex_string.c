@@ -96,7 +96,7 @@ int test_utf8_char_validate_logic(TestCase* test) {
     }
 
     // Validate the UTF-8 character sequence
-    unit->actual = flex_string_utf8_char_validate((uint8_t*)unit->input, unit->length);
+    unit->actual = flex_string_utf8_char_validate((uint8_t*) unit->input, unit->length);
     ASSERT(
         unit->actual == unit->expected,
         "Test case %zu (input: '%0x') failed: expected %s, got %s",
@@ -146,45 +146,60 @@ int test_flex_string_utf8_char_validate(void) {
 
 /// @todo Add UTF-8 character iterator test cases
 
-// ---------------------- UTF-8 String test cases ----------------------
+// ---------------------- UTF-8 String Validate ----------------------
 
-int test_flex_string_utf8_string_validate(void) {
-    struct TestCase {
-        const char* input;
-        bool expected_valid;
-    };
+typedef struct TestUnitUTF8StringValidate {
+    bool actual;
+    bool expected;
+    const char* input;
+} TestUnitUTF8StringValidate;
 
-    struct TestCase test_cases[] = {
-        {"Hello, world!", true},
-        {"Hola, mundo!", true},
-        {"こんにちは、世界！", true},
-        {"안녕하세요, 세상!", true},
-        {"Привет, мир!", true},
-        {"你好，世界！", true},
-        {"", true},
-        {"\xC0\xAF", false}, // Overlong byte sequence
-        {"\xF0\x28\x8C\xBC", false}, // Invalid 4-byte sequence
-    };
-
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
-
-    for (size_t i = 0; i < num_tests; ++i) {
-        const char* stream = test_cases[i].input;
-        bool expected_valid = test_cases[i].expected_valid;
-        bool actual_valid = flex_string_utf8_string_validate(stream);
-
-        ASSERT(
-            expected_valid == actual_valid,
-            "Validation mismatch in test case %zu (input: '%s', expected: %d, got: %d)",
-            i,
-            stream,
-            expected_valid,
-            actual_valid
-        );
-    }
+int test_utf8_string_validate_logic(TestCase* test) {
+    TestUnitUTF8StringValidate* unit = (TestUnitUTF8StringValidate*) test->unit;
+    unit->actual = flex_string_utf8_string_validate(unit->input);
+    ASSERT(
+        unit->actual == unit->expected,
+        "Test case %zu (input: '%s') failed: expected %s, got %s",
+        test->index,
+        unit->input,
+        unit->expected ? "true" : "false",
+        unit->actual ? "true" : "false"
+    );
     return 0;
 }
+
+int test_flex_string_utf8_string_validate(void) {
+    TestUnitUTF8StringValidate units[] = {
+        {.input = "", .expected = true},
+        {.input = "Hello, world!", .expected = true},
+        {.input = "Hola, mundo!", .expected = true},
+        {.input = "こんにちは、世界！", .expected = true},
+        {.input = "안녕하세요, 세상!", .expected = true},
+        {.input = "Привет, мир!", .expected = true},
+        {.input = "你好，世界！", .expected = true},
+        {.input = "\xC0\xAF", .expected = false}, // Overlong byte sequence
+        {.input = "\xF0\x28\x8C\xBC", .expected = false}, // Invalid 4-byte sequence
+    };
+
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
+
+    for (size_t i = 0; i < total_tests; ++i) {
+        test_cases[i].unit = &units[i];
+    }
+
+    TestContext context = {
+        .test_name = "UTF-8 String Validate Test",
+        .total_tests = total_tests,
+        .test_cases = test_cases,
+    };
+
+    run_unit_tests(&context, test_utf8_string_validate_logic, NULL);
+
+    return 0;
+}
+
+// ---------------------- UTF-8 String Character Length ----------------------
 
 int test_flex_string_utf8_string_char_length(void) {
     struct TestCase {
@@ -220,6 +235,8 @@ int test_flex_string_utf8_string_char_length(void) {
     }
     return 0;
 }
+
+// ---------------------- UTF-8 String Byte Length ----------------------
 
 int test_flex_string_utf8_string_byte_length(void) {
     struct TestCase {
@@ -257,7 +274,7 @@ int test_flex_string_utf8_string_byte_length(void) {
     return 0;
 }
 
-// ---------------------- Test UTF-8 String Compare ----------------------
+// ---------------------- UTF-8 String Compare ----------------------
 
 typedef struct TestUnitUTF8StringCompare {
     int32_t actual;
