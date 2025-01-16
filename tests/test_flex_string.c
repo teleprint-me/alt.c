@@ -15,43 +15,60 @@
 
 // ---------------------- UTF-8 Character test cases ----------------------
 
+typedef struct TestUTF8CharLengthUnit {
+    int8_t actual;
+    int8_t expected;
+    const char* input;
+} TestUTF8CharLengthUnit;
+
+int test_char_length_logic(TestCase* test) {
+    TestUTF8CharLengthUnit* unit = (TestUTF8CharLengthUnit*) test->unit;
+    unit->actual = flex_string_utf8_char_length(*unit->input);
+
+    // Check if the actual length is greater than 0
+    ASSERT(
+        unit->actual > 0,
+        "Invalid UTF-8 leading byte in test case %zu (input: '%s')",
+        test->index,
+        unit->input
+    );
+
+    // Check if the actual length matches the expected length
+    ASSERT(
+        unit->actual == unit->expected,
+        "Invalid UTF-8 byte length in test case %zu (input: '%s', expected: %d, got: %d)",
+        test->index,
+        unit->input,
+        unit->expected,
+        unit->actual
+    );
+
+    return 0; // Success
+}
+
 int test_flex_string_utf8_char_length(void) {
-    struct TestCase {
-        const char* input;
-        int expected_length; // Byte length of the first UTF-8 character
+    TestUTF8CharLengthUnit units[] = {
+        {.input = "a", .expected = 1}, // ASCII 'a'
+        {.input = "\x7F", .expected = 1}, // DEL character
+        {.input = "\u00A2", .expected = 2}, // Cent sign (¢)
+        {.input = "\u20AC", .expected = 3}, // Euro sign (€)
+        {.input = "\U0001F600", .expected = 4}, // Grinning Face (😀)
     };
 
-    struct TestCase test_cases[] = {
-        {"a", 1}, // ASCII 'a'
-        {"\x7F", 1}, // DEL character
-        {"\u00A2", 2}, // CENT SIGN (¢)
-        {"\u20AC", 3}, // EURO SIGN (€)
-        {"\U0001F600", 4}, // GRINNING FACE emoji (😀)
-    };
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
 
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
-
-    for (size_t i = 0; i < num_tests; i++) {
-        const uint8_t* input = (const uint8_t*) test_cases[i].input;
-        int expected_length = test_cases[i].expected_length;
-        int8_t char_length = flex_string_utf8_char_length(*input);
-
-        ASSERT(
-            char_length > 0,
-            "Invalid UTF-8 leading byte in test case %zu (input: '%s')",
-            i,
-            test_cases[i].input
-        );
-        ASSERT(
-            char_length == expected_length,
-            "Incorrect UTF-8 byte length in test case %zu (input: '%s', expected: %d, got: %d)",
-            i,
-            test_cases[i].input,
-            expected_length,
-            char_length
-        );
+    for (size_t i = 0; i < total_tests; i++) {
+        test_cases[i].unit = &units[i];
     }
+
+    TestContext context = {
+        .test_name = "UTF-8 Character Length",
+        .total_tests = total_tests,
+        .test_cases = test_cases
+    };
+
+    run_unit_tests(&context, test_char_length_logic, NULL);
 
     return 0;
 }
