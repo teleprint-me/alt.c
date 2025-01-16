@@ -13,7 +13,7 @@
 #include "interface/logger.h"
 #include "interface/unit_test.h"
 
-// ---------------------- UTF-8 Character test cases ----------------------
+// ---------------------- UTF-8 Character Length ----------------------
 
 typedef struct TestUnitUTF8CharLength {
     int8_t actual;
@@ -63,9 +63,7 @@ int test_flex_string_utf8_char_length(void) {
     }
 
     TestContext context = {
-        .test_name = "UTF-8 Character Length",
-        .total_tests = total_tests,
-        .test_cases = test_cases
+        .test_name = "UTF-8 Character Length", .total_tests = total_tests, .test_cases = test_cases
     };
 
     run_unit_tests(&context, test_utf8_char_length_logic, NULL);
@@ -73,49 +71,75 @@ int test_flex_string_utf8_char_length(void) {
     return 0;
 }
 
-int test_flex_string_utf8_char_validate(void) {
-    struct TestCase {
-        const char* input;
-        bool expected_valid;
-    };
+// ---------------------- UTF-8 Character Validate ----------------------
 
-    struct TestCase test_cases[] = {
-        {"a", true}, // Valid ASCII
-        {"\x7F", true}, // Valid 1-byte UTF-8
-        {"\u00A2", true}, // Valid 2-byte UTF-8 (¢)
-        {"\u20AC", true}, // Valid 3-byte UTF-8 (€)
-        {"\U0001F600", true}, // Valid 4-byte UTF-8 (😀)
-        {"\xC0\xAF", false}, // Overlong sequence
-        {"\xF0\x28\x8C\xBC", false}, // Invalid 4-byte sequence
-    };
+typedef struct TestUnitUTF8CharValidate {
+    bool actual;
+    bool expected;
+    int8_t length;
+    const char* input;
+} TestUnitUTF8CharValidate;
 
-    size_t num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
-    LOG_INFO("%s: Number of tests: %zu\n", __func__, num_tests);
+int test_utf8_char_validate_logic(TestCase* test) {
+    // Setup the unit test data
+    TestUnitUTF8CharValidate* unit = (TestUnitUTF8CharValidate*) test->unit;
 
-    for (size_t i = 0; i < num_tests; i++) {
-        const uint8_t* stream = (const uint8_t*) test_cases[i].input;
-        int8_t char_length = flex_string_utf8_char_length(*stream);
-
-        if (char_length == -1) {
-            ASSERT(
-                !test_cases[i].expected_valid,
-                "Expected invalid sequence but got valid: test case %zu (input: '%s')",
-                i,
-                test_cases[i].input
-            );
-            continue;
-        }
-
-        bool is_valid = flex_string_utf8_char_validate(stream, char_length);
+    // Calculate the length of the UTF-8 character sequence
+    unit->length = flex_string_utf8_char_length(*unit->input);
+    if (unit->length == -1) {
         ASSERT(
-            is_valid == test_cases[i].expected_valid,
-            "Validation mismatch: test case %zu (input: '%s', expected: %d, got: %d)",
-            i,
-            test_cases[i].input,
-            test_cases[i].expected_valid,
-            is_valid
+            unit->expected,
+            "Expected invalid sequence but got valid: test case %zu (input: '%0x')",
+            test->index,
+            *unit->input
         );
     }
+
+    // Validate the UTF-8 character sequence
+    unit->actual = flex_string_utf8_char_validate((uint8_t*)unit->input, unit->length);
+    ASSERT(
+        unit->actual == unit->expected,
+        "Test case %zu (input: '%0x') failed: expected %s, got %s",
+        test->index,
+        *unit->input,
+        unit->expected ? "true" : "false",
+        unit->actual ? "true" : "false"
+    );
+
+    return 0;
+}
+
+int test_flex_string_utf8_char_validate(void) {
+    // https://www.charset.org/utf-8
+    TestUnitUTF8CharValidate units[] = {
+        // Valid byte sequences
+        {.input = "a", .expected = true}, // Valid ASCII
+        {.input = "\x7F", .expected = true}, // Valid 1-byte UTF-8 (DEL)
+        {.input = "\u00A2", .expected = true}, // Valid 2-byte UTF-8 (¢)
+        {.input = "\u20AC", .expected = true}, // Valid 3-byte UTF-8 (€)
+        {.input = "\U0001F600", .expected = true}, // Valid 4-byte UTF-8 (😀)
+        // Malicious byte sequences
+        {.input = "\xC0\xAF", .expected = false}, // Overlong sequence
+        {.input = "\xF0\x28\x8C\xBC", .expected = false}, // Invalid 4-byte sequence
+        // Deprecated bytes (control characters no longer in use, 128-159)
+        {.input = "\x80", .expected = false}, // Control Character or Euro Sign (128)
+        {.input = "\xC2\x9F", .expected = false}, // Application Program Command (159)
+    };
+
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
+
+    for (size_t i = 0; i < total_tests; i++) {
+        test_cases[i].unit = &units[i];
+    }
+
+    TestContext context = {
+        .test_name = "UTF-8 Character Validation",
+        .total_tests = total_tests,
+        .test_cases = test_cases,
+    };
+
+    run_unit_tests(&context, test_utf8_char_validate_logic, NULL);
 
     return 0;
 }
