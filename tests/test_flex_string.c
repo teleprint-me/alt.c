@@ -15,14 +15,14 @@
 
 // ---------------------- UTF-8 Character test cases ----------------------
 
-typedef struct TestUTF8CharLengthUnit {
+typedef struct TestUnitUTF8CharLength {
     int8_t actual;
     int8_t expected;
     const char* input;
-} TestUTF8CharLengthUnit;
+} TestUnitUTF8CharLength;
 
-int test_char_length_logic(TestCase* test) {
-    TestUTF8CharLengthUnit* unit = (TestUTF8CharLengthUnit*) test->unit;
+int test_utf8_char_length_logic(TestCase* test) {
+    TestUnitUTF8CharLength* unit = (TestUnitUTF8CharLength*) test->unit;
     unit->actual = flex_string_utf8_char_length(*unit->input);
 
     // Check if the actual length is greater than 0
@@ -47,7 +47,7 @@ int test_char_length_logic(TestCase* test) {
 }
 
 int test_flex_string_utf8_char_length(void) {
-    TestUTF8CharLengthUnit units[] = {
+    TestUnitUTF8CharLength units[] = {
         {.input = "a", .expected = 1}, // ASCII 'a'
         {.input = "\x7F", .expected = 1}, // DEL character
         {.input = "\u00A2", .expected = 2}, // Cent sign (¢)
@@ -68,7 +68,7 @@ int test_flex_string_utf8_char_length(void) {
         .test_cases = test_cases
     };
 
-    run_unit_tests(&context, test_char_length_logic, NULL);
+    run_unit_tests(&context, test_utf8_char_length_logic, NULL);
 
     return 0;
 }
@@ -235,15 +235,15 @@ int test_flex_string_utf8_string_byte_length(void) {
 
 // ---------------------- Test UTF-8 String Compare ----------------------
 
-typedef struct TestUTF8CompareUnit {
+typedef struct TestUnitUTF8StringCompare {
     int32_t actual;
     const int32_t expected;
     const char* first;
     const char* second;
-} TestUTF8CompareUnit;
+} TestUnitUTF8StringCompare;
 
-int test_compare_logic(TestCase* test) {
-    TestUTF8CompareUnit* unit = (TestUTF8CompareUnit*) test->unit;
+int test_utf8_string_compare_logic(TestCase* test) {
+    TestUnitUTF8StringCompare* unit = (TestUnitUTF8StringCompare*) test->unit;
 
     unit->actual = flex_string_utf8_string_compare(unit->first, unit->second);
 
@@ -260,7 +260,7 @@ int test_compare_logic(TestCase* test) {
 }
 
 int test_flex_string_utf8_string_compare(void) {
-    TestUTF8CompareUnit units[] = {
+    TestUnitUTF8StringCompare units[] = {
         {
             .first = "Hello, world!",
             .second = "Hello, world!",
@@ -296,20 +296,20 @@ int test_flex_string_utf8_string_compare(void) {
         = {.test_name = "UTF-8 String Compare", .total_tests = total_tests, .test_cases = test_cases
         };
 
-    return run_unit_tests(&context, test_compare_logic, NULL);
+    return run_unit_tests(&context, test_utf8_string_compare_logic, NULL);
 }
 
 // ---------------------- Test UTF-8 String Copy ----------------------
 
-typedef struct TestUTF8CopyUnit {
+typedef struct TestUnitUTF8StringCopy {
     int32_t actual; // Actual comparison result
     const int32_t expected; // Expected comparison result
     const char* input; // Input string
     const char* copy; // Copy of input string
-} TestUTF8CopyUnit;
+} TestUnitUTF8StringCopy;
 
-int test_copy_logic(TestCase* test) {
-    TestUTF8CopyUnit* unit = (TestUTF8CopyUnit*) test->unit;
+int test_utf8_string_copy_logic(TestCase* test) {
+    TestUnitUTF8StringCopy* unit = (TestUnitUTF8StringCopy*) test->unit;
 
     // Validate the input and copy the string
     unit->copy = flex_string_utf8_string_copy(unit->input);
@@ -329,8 +329,8 @@ int test_copy_logic(TestCase* test) {
     return 0; // Success
 }
 
-void test_copy_cleanup(TestCase* test) {
-    TestUTF8CopyUnit* unit = (TestUTF8CopyUnit*) test->unit;
+void test_utf8_string_copy_cleanup(TestCase* test) {
+    TestUnitUTF8StringCopy* unit = (TestUnitUTF8StringCopy*) test->unit;
     if (unit->copy) {
         free((void*) unit->copy);
         unit->copy = NULL;
@@ -338,7 +338,7 @@ void test_copy_cleanup(TestCase* test) {
 }
 
 int test_flex_string_utf8_string_copy(void) {
-    TestUTF8CopyUnit units[] = {
+    TestUnitUTF8StringCopy units[] = {
         {.input = NULL, .expected = FLEX_STRING_COMPARE_INVALID},
         {.input = "", .expected = FLEX_STRING_COMPARE_EQUAL},
         {.input = "Hello, world!", .expected = FLEX_STRING_COMPARE_EQUAL},
@@ -360,7 +360,7 @@ int test_flex_string_utf8_string_copy(void) {
         .test_cases = test_cases,
     };
 
-    return run_unit_tests(&context, test_copy_logic, test_copy_cleanup);
+    return run_unit_tests(&context, test_utf8_string_copy_logic, test_utf8_string_copy_cleanup);
 }
 
 // ---------------------- FlexString test cases ----------------------
