@@ -376,6 +376,7 @@ char* flex_string_utf8_string_concat(const char* left, const char* right) {
     size_t dest_len = left_len + right_len + 1; // +1 for the null terminator
     char* output = (char*) malloc(dest_len);
     if (output == NULL) {
+        LOG_ERROR("%s: Failed to allocate memory for concatenated string.\n", __func__);
         return NULL;
     }
 
