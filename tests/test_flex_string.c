@@ -537,38 +537,25 @@ int test_flex_string_split_create_and_free(void) {
 int main(void) {
     global_logger.log_level = LOG_LEVEL_DEBUG;
 
+    TestRegister test_registry[] = {
+        {"test_flex_string_utf8_char_length", test_flex_string_utf8_char_length},
+        {"test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate},
+        {"test_flex_string_utf8_string_validate", test_flex_string_utf8_string_validate},
+        {"test_flex_string_utf8_string_char_length", test_flex_string_utf8_string_char_length},
+        {"test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length},
+        {"test_flex_string_utf8_string_compare", test_flex_string_utf8_string_compare},
+        {"test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy},
+        {"test_flex_string_utf8_string_concat", test_flex_string_utf8_string_concat},
+        {"test_flex_string_create_and_free", test_flex_string_create_and_free},
+        {"test_flex_string_split_create_and_free", test_flex_string_split_create_and_free},
+    };
+
     int result = 0;
+    size_t total_tests = sizeof(test_registry) / sizeof(test_registry[0]);
 
-    // Core UTF-8 Character Functions
-    result
-        += run_test_suite("test_flex_string_utf8_char_length", test_flex_string_utf8_char_length);
-    result += run_test_suite(
-        "test_flex_string_utf8_char_validate", test_flex_string_utf8_char_validate
-    );
-
-    // Core UTF-8 String Functions
-    result += run_test_suite(
-        "test_flex_string_utf8_string_validate", test_flex_string_utf8_string_validate
-    );
-    result += run_test_suite(
-        "test_flex_string_utf8_string_char_length", test_flex_string_utf8_string_char_length
-    );
-    result += run_test_suite(
-        "test_flex_string_utf8_string_byte_length", test_flex_string_utf8_string_byte_length
-    );
-    result += run_test_suite(
-        "test_flex_string_utf8_string_compare", test_flex_string_utf8_string_compare
-    );
-    result
-        += run_test_suite("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
-    // Add test suite for concatenating strings
-    result += run_test_suite("test_flex_string_utf8_string_concat", test_flex_string_utf8_string_concat);
-
-    // Core FlexString Functions
-    result += run_test_suite("test_flex_string_create_and_free", test_flex_string_create_and_free);
-    result += run_test_suite(
-        "test_flex_string_split_create_and_free", test_flex_string_split_create_and_free
-    );
+    for (size_t i = 0; i < total_tests; i++) {
+        result += run_test_suite(test_registry[i].name, test_registry[i].test_suite);
+    }
 
     return result > 0 ? 1 : 0; // Return 1 if any test failed, 0 otherwise
 }

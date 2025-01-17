@@ -34,6 +34,11 @@ typedef struct TestContext {
     TestCase* test_cases; // Array of test cases
 } TestContext;
 
+typedef struct TestRegister {
+    const char* name; // Test suite name
+    int (*test_suite)(void); // Pointer to the test suite function
+} TestRegister;
+
 // ---------------------- Function Pointers ----------------------
 
 typedef int (*TestLogic)(TestCase* test); // Test logic implementation
