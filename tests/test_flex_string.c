@@ -86,7 +86,7 @@ int test_utf8_char_validate_logic(TestCase* test) {
     unit->length = flex_string_utf8_char_length(*unit->input);
     if (unit->length == -1) {
         ASSERT(
-            unit->expected,
+            false == unit->expected, // if this is set to false, this is silent
             "Expected invalid sequence but got valid: test case %zu (input: '%0x')",
             test->index,
             *unit->input
@@ -96,7 +96,7 @@ int test_utf8_char_validate_logic(TestCase* test) {
     // Validate the UTF-8 character sequence
     unit->actual = flex_string_utf8_char_validate((uint8_t*) unit->input, unit->length);
     ASSERT(
-        unit->actual == unit->expected,
+        unit->actual == unit->expected, // this fails when false == unit->expected
         "Test case %zu (input: '%0x') failed: expected %s, got %s",
         test->index,
         *unit->input,
@@ -119,9 +119,14 @@ int test_flex_string_utf8_char_validate(void) {
         // Malicious byte sequences
         {.input = "\xC0\xAF", .expected = false}, // Overlong sequence
         {.input = "\xF0\x28\x8C\xBC", .expected = false}, // Invalid 4-byte sequence
+        {.input = "\x80", .expected = false}, // Continuation byte
+        {.input = "\xBF", .expected = false}, // Continuation byte
+        {.input = "\xC0", .expected = false}, // Invalid start byte
+        {.input = "\xC1", .expected = false}, // Invalid start byte
+        {.input = "\xE0\x80", .expected = false}, // Overlong encoding
+        {.input = "\xF8", .expected = false}, // Invalid 5-byte start byte
         // Deprecated bytes (control characters no longer in use, 128-159)
-        {.input = "\x80", .expected = false}, // Control Character or Euro Sign (128)
-        {.input = "\xC2\x9F", .expected = false}, // Application Program Command (159)
+        {.input = "\xC2\x9F", .expected = true}, // Application Program Command (159)
     };
 
     size_t total_tests = sizeof(units) / sizeof(units[0]);

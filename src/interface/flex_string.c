@@ -114,6 +114,10 @@ bool flex_string_utf8_char_validate(const uint8_t* string, int8_t char_length) {
     }
 
     if (char_length == 1) {
+        // Reject continuation bytes as standalone sequences
+        if ((string[0] & 0xC0) == 0x80) {
+            return false;
+        }
         // ASCII (1-byte) characters are always valid
         return true;
     }
