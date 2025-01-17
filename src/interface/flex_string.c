@@ -360,21 +360,23 @@ char* flex_string_utf8_string_copy(const char* input) {
 // ---------------------- UFT-8 String Concatenation ----------------------
 
 char* flex_string_utf8_string_concat(const char* left, const char* right) {
-    // Check for null pointers and empty strings
-    if (!left || !right || '\0' == *left || '\0' == *right) {
+    // Check for null pointers
+    if (!left || !right) {
         LOG_ERROR("%s: Invalid input parameters\n", __func__);
         return NULL;
     }
-    // Validate the left and right operands.
-    if (!flex_string_utf8_string_validate(left)) {
+
+    // Validate the left and right operands, but allow empty strings
+    if (*left != '\0' && !flex_string_utf8_string_validate(left)) {
         LOG_ERROR("%s: Invalid left operand\n", __func__);
         return NULL;
     }
-    if (!flex_string_utf8_string_validate(right)) {
+    if (*right != '\0' && !flex_string_utf8_string_validate(right)) {
         LOG_ERROR("%s: Invalid right operand\n", __func__);
         return NULL;
     }
-    // Concatenate the right operand to the left operand.
+
+    // Concatenate the right operand to the left operand
     size_t left_len = flex_string_utf8_string_byte_length(left);
     size_t right_len = flex_string_utf8_string_byte_length(right);
     size_t dest_len = left_len + right_len + 1; // +1 for the null terminator
@@ -387,7 +389,7 @@ char* flex_string_utf8_string_concat(const char* left, const char* right) {
     // Copy string bytes into output
     memcpy(output, left, left_len);
     memcpy(output + left_len, right, right_len);
-    output[left_len + right_len] = '\0'; // Null-terminate the string
+    output[dest_len - 1] = '\0'; // Null-terminate the string
 
     return output;
 }

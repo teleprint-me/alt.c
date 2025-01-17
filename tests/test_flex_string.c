@@ -360,7 +360,7 @@ int test_flex_string_utf8_string_compare(void) {
     return run_unit_tests(&context, test_utf8_string_compare_logic, NULL);
 }
 
-// ---------------------- Test UTF-8 String Copy ----------------------
+// ---------------------- UTF-8 String Copy ----------------------
 
 typedef struct TestUnitUTF8StringCopy {
     int32_t actual; // Actual comparison result
@@ -424,6 +424,89 @@ int test_flex_string_utf8_string_copy(void) {
     return run_unit_tests(&context, test_utf8_string_copy_logic, test_utf8_string_copy_cleanup);
 }
 
+// ---------------------- UTF-8 String Concatenation ----------------------
+
+typedef struct TestUnitUTF8StringConcat {
+    const char* left;     // Input left string
+    const char* right;    // Input right string
+    const char* expected; // Expected concatenated output (or NULL for error cases)
+    char* actual; // Allocated result (requires cleanup)
+} TestUnitUTF8StringConcat;
+
+int test_utf8_string_concat_logic(TestCase* test) {
+    TestUnitUTF8StringConcat* unit = (TestUnitUTF8StringConcat*) test->unit;
+
+    // Call the function under test
+    unit->actual = flex_string_utf8_string_concat(unit->left, unit->right);
+
+    // Check the result
+    if (unit->expected == NULL) {
+        ASSERT(
+            unit->actual == NULL,
+            "Test case %zu failed: expected NULL but got '%s'",
+            test->index,
+            unit->actual
+        );
+    } else {
+        ASSERT(
+            unit->actual != NULL,
+            "Test case %zu failed: expected '%s' but got NULL",
+            test->index,
+            unit->expected
+        );
+        ASSERT(
+            flex_string_utf8_string_compare(unit->actual, unit->expected) == 0,
+            "Test case %zu failed: expected '%s' but got '%s'",
+            test->index,
+            unit->expected,
+            unit->actual
+        );
+    }
+
+    return 0;
+}
+
+void test_utf8_string_concat_cleanup(TestCase* test) {
+    TestUnitUTF8StringConcat* unit = (TestUnitUTF8StringConcat*) test->unit;
+    if (unit->actual) {
+        free((void*) unit->actual);
+        unit->actual = NULL;
+    }
+}
+
+int test_flex_string_utf8_string_concat(void) {
+    // Define test cases
+    TestUnitUTF8StringConcat units[] = {
+        {.left = "Hello, ", .right = "World!", .expected = "Hello, World!"},
+        {.left = "こんにちは, ", .right = "世界!", .expected = "こんにちは, 世界!"},
+        {.left = "😀", .right = "🌍", .expected = "😀🌍"},
+        {.left = "", .right = "Hello", .expected = "Hello"},
+        {.left = "Hello", .right = "", .expected = "Hello"},
+        {.left = "", .right = "", .expected = ""},
+        {.left = "Hello", .right = "\x80", .expected = NULL}, // Invalid UTF-8
+        {.left = NULL, .right = "World", .expected = NULL},    // NULL left
+        {.left = "World", .right = NULL, .expected = NULL},    // NULL right
+    };
+
+    size_t total_tests = sizeof(units) / sizeof(units[0]);
+    TestCase test_cases[total_tests];
+
+    // Populate test cases
+    for (size_t i = 0; i < total_tests; i++) {
+        test_cases[i].unit = &units[i];
+        test_cases[i].index = i;
+    }
+
+    TestContext context = {
+        .test_name = "UTF-8 String Concatenation",
+        .total_tests = total_tests,
+        .test_cases = test_cases,
+    };
+
+    // Run the test suite
+    return run_unit_tests(&context, test_utf8_string_concat_logic, test_utf8_string_concat_cleanup);
+}
+
 // ---------------------- FlexString test cases ----------------------
 
 // Test flex_string_create and flex_string_free.
@@ -478,6 +561,8 @@ int main(void) {
     );
     result
         += run_test_suite("test_flex_string_utf8_string_copy", test_flex_string_utf8_string_copy);
+    // Add test suite for concatenating strings
+    result += run_test_suite("test_flex_string_utf8_string_concat", test_flex_string_utf8_string_concat);
 
     // Core FlexString Functions
     result += run_test_suite("test_flex_string_create_and_free", test_flex_string_create_and_free);
